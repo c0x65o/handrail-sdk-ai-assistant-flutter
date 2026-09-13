@@ -5,6 +5,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:handrail_ai_widgets/handrail_ai_widgets.dart';
 
 void main() {
+  for (final selectable in [false, true]) {
+    testWidgets('user text honors bubble foreground, selectable=$selectable',
+        (tester) async {
+      const foreground = Color(0xfff7f0e9);
+      await tester.pumpWidget(MaterialApp(
+          theme: ThemeData.light(),
+          home: Scaffold(
+              body: HandrailMarkdown(
+                  data: '**Literal user text**',
+                  isUserMessage: true,
+                  selectable: selectable,
+                  styleSheet: MarkdownStyleSheet(
+                      p: const TextStyle(
+                          color: foreground, fontSize: 12.5))))));
+      final style = selectable
+          ? tester.widget<SelectableText>(find.byType(SelectableText)).style
+          : tester.widget<Text>(find.text('**Literal user text**')).style;
+      expect(style?.color, foreground);
+      expect(style?.fontSize, 12.5);
+    });
+  }
   final fixtures =
       (jsonDecode(File('test/fixtures/markdown.json').readAsStringSync())
               as List)

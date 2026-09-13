@@ -26,7 +26,9 @@ class HandrailMarkdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isUserMessage) {
-      return selectable ? SelectableText(data) : Text(data);
+      return selectable
+          ? SelectableText(data, style: styleSheet?.p)
+          : Text(data, style: styleSheet?.p);
     }
     final theme =
         MarkdownStyleSheet.fromTheme(Theme.of(context)).merge(styleSheet);
