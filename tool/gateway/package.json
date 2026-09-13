@@ -1,0 +1,11 @@
+{
+  "name": "handrail-ai-flutter-gateway-tests",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@handrail/ai-assistant": "git+https://github.com/c0x65o/handrail-sdk-ai-assistant-js.git#d574ea74d675666ebd4ea27f0fa0a13bae2a13df"
+  }
+}

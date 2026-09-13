@@ -1,0 +1,13 @@
+.env
+.env.*
+*.env
+*.env.*
+!.env.example
+!*.env.example
+
+.dart_tool/
+.flutter-plugins*
+build/
+coverage/
+node_modules/
+.DS_Store
