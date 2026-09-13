@@ -115,6 +115,9 @@ class HandrailConversationSession {
   Future<void>? _submitting;
   String? _submittingJson;
   HandrailTurnSubmission? _admittedSubmission;
+  // The account controller can honor Stop queued before admission, before a
+  // provider start is allowed. This is internal SDK orchestration, not a host hook.
+  Future<bool> Function(HandrailTurnSubmission)? _mayStart;
   final _admissionCallbacks = <void Function(HandrailTurnSubmission)>[];
   Completer<void>? _startAcknowledgement;
   StreamSubscription<HandrailStreamFrame>? _observation;
@@ -465,10 +468,13 @@ class HandrailConversationSession {
           retryable: true);
     _publishAdmission(submission);
     if (_disposed) throw StateError('Conversation session is disposed');
+    if (_mayStart != null && !await _mayStart!(submission)) return;
+    if (_disposed) throw StateError('Conversation session is disposed');
     // A lost start acknowledgement can arrive after the run finished. Never
     // restart a canonical terminal turn, even if its transport record expired.
-    if (const ['completed', 'cancelled', 'failed']
-        .contains(turns.single['status'])) return;
+    if (const ['completed', 'cancelled', 'failed'].contains(_document!.turns
+        .firstWhere((turn) => turn['turn_id'] == submission.turnId)['status']))
+      return;
     await _disconnectObservation();
     if (_disposed) throw StateError('Conversation session is disposed');
     _observedTurnId = submission.turnId;
@@ -482,15 +488,60 @@ class HandrailConversationSession {
     await acknowledgement.future;
   }
 
+  /// Observes the canonical terminal state without starting or cancelling work.
+  /// Closing the account releases waiters; a view change does not interrupt them.
+  /// Failed and cancelled outcomes are returned for host-specific presentation.
+  Future<Map<String, Object?>> waitForTurn(String turnId) async {
+    if (_disposed) throw StateError('Conversation session is disposed');
+    final done = Completer<Map<String, Object?>>();
+    void inspect() {
+      if (done.isCompleted) return;
+      final turn = _document?.turns
+          .where((value) => value['turn_id'] == turnId)
+          .firstOrNull;
+      if (turn != null &&
+          const ['completed', 'failed', 'cancelled'].contains(turn['status'])) {
+        done.complete(turn);
+      }
+    }
+
+    final subscription = changes.listen((_) => inspect(), onDone: () {
+      if (!done.isCompleted) {
+        done.completeError(const HandrailGatewayException(
+            'observation_closed', 'The conversation account was closed.',
+            retryable: true));
+      }
+    });
+    try {
+      inspect();
+      return await done.future;
+    } finally {
+      await subscription.cancel();
+    }
+  }
+
   /// Requests server cancellation; status changes only after server confirmation.
   Future<void> requestCancellation(
-      {required String mutationId, required String idempotencyKey}) async {
+      {required String mutationId,
+      required String idempotencyKey,
+      String? expectedTurnId}) async {
     if (_disposed) throw StateError('Conversation session is disposed');
     if (_document == null) await refresh();
     if (_capabilities?.authoritativeCancellation != true)
       throw const HandrailGatewayException(
           'cancellation_unavailable', 'Server cancellation is unavailable.');
     final turnId = _document?.activeTurnId;
+    if (expectedTurnId != null && turnId != expectedTurnId) {
+      final known = _document?.turns
+          .where((turn) => turn['turn_id'] == expectedTurnId)
+          .firstOrNull;
+      if (known != null &&
+          const ['completed', 'failed', 'cancelled'].contains(known['status']))
+        return;
+      throw const HandrailGatewayException('cancellation_target_changed',
+          'The requested turn is not visible. Refresh before retrying cancellation.',
+          retryable: true);
+    }
     if (turnId == null) return;
     await client.cancelTurn({
       'conversationId': conversationId,

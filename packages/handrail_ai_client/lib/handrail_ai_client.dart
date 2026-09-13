@@ -9,6 +9,7 @@ import 'src/platform_http_client.dart' as platform_http;
 
 part 'src/session.dart';
 part 'src/assistant_controller.dart';
+part 'src/assistant_ui.dart';
 part 'src/submission.dart';
 part 'src/protected_http.dart';
 part 'src/pending_turn_store.dart';
@@ -17,6 +18,7 @@ part 'src/realtime_activity.dart';
 part 'src/realtime_workspace.dart';
 part 'src/transcription.dart';
 part 'src/attachments.dart';
+part 'src/attachment_download.dart';
 
 const applicationGatewayProtocolVersion = 'handrail.application-gateway.v1';
 
@@ -28,6 +30,7 @@ class HandrailGatewayCapabilities {
   final Map<String, Object?>? attachments;
   final Map<String, Object?>? documentInput;
   final HandrailTranscriptionCapability? transcription;
+  final HandrailAttachmentDownloadCapability? attachmentDownloads;
   final bool presence;
   final bool activity;
   final bool synchronization;
@@ -37,6 +40,7 @@ class HandrailGatewayCapabilities {
     this.attachments,
     this.documentInput,
     this.transcription,
+    this.attachmentDownloads,
     required this.presence,
     this.activity = false,
     required this.synchronization,
@@ -54,6 +58,10 @@ class HandrailGatewayCapabilities {
         transcription: json['transcription'] is Map
             ? HandrailTranscriptionCapability.fromJson(
                 Map<String, Object?>.from(json['transcription'] as Map))
+            : null,
+        attachmentDownloads: json['attachmentDownloads'] is Map
+            ? HandrailAttachmentDownloadCapability.fromJson(
+                Map<String, Object?>.from(json['attachmentDownloads'] as Map))
             : null,
         presence: json['presence'] == true,
         activity: json['activity'] == true,
@@ -732,6 +740,7 @@ class HandrailAiClient {
     required String mediaType,
     required String kind,
     required String idempotencyKey,
+    String? conversationId,
     Future<void>? cancellation,
     int maximumBytes = 20 * 1024 * 1024,
     Duration timeout = const Duration(seconds: 90),
@@ -742,6 +751,7 @@ class HandrailAiClient {
           mediaType: mediaType,
           kind: kind,
           idempotencyKey: idempotencyKey,
+          conversationId: conversationId,
           cancellation: cancellation,
           maximumBytes: maximumBytes,
           timeout: timeout);

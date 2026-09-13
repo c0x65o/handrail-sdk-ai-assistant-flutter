@@ -4,8 +4,8 @@ Dart clients and Flutter UI for an application-hosted Handrail AI assistant.
 
 | Package | Responsibility |
 | --- | --- |
-| [handrail_ai_client](packages/handrail_ai_client/README.md) | Headless Dart gateway client, conversation sessions, durable submission recovery, protected HTTP, activity, voice-call state and transcription. |
-| [handrail_ai_widgets](packages/handrail_ai_widgets/README.md) | Flutter composer, draft handling, approval controls, attachments, Markdown, recording and transcription UI. |
+| [handrail_ai_client](packages/handrail_ai_client/README.md) | Account-owned assistant/history controller, gateway client, conversation sessions, durable submission recovery, protected HTTP, activity, voice-call state and transcription. |
+| [handrail_ai_widgets](packages/handrail_ai_widgets/README.md) | Optional responsive workspace, history and transcript, composer/drafts, approval controls, attachments, Markdown and authenticated recording/transcription UI. |
 
 The packages are independent. Applications may use either or compose both. Dart
 import names and public APIs are preserved by the repository extraction.
@@ -30,10 +30,12 @@ install from a branch, tag, registry, tarball, local path or workspace override.
 No packaging or publishing step is needed beyond making the reviewed Git
 commit available; Flutter compiles the Dart source in the normal app build.
 
-This extraction is currently a development change. The repository's initial
-commit does not contain the packages. A consumer can switch only after a commit
-containing this source is publicly available; do not invent or reuse a JS SHA
-as the Flutter repository revision. See [extraction and adoption](docs/extraction.md).
+The extraction source is present in this repository's history. Local additions
+still require a reviewed, publicly available commit before consumer adoption.
+Verify that the frozen revision includes the APIs being adopted; do not reuse a
+JS SHA as the Flutter repository revision. See
+[extraction and adoption](docs/extraction.md) and
+[minimal assistant adoption](docs/mobile-assistant-adoption.md).
 
 ## Development
 

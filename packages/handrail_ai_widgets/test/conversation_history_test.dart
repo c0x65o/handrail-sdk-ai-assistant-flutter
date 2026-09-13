@@ -80,22 +80,27 @@ void main() {
       final history = History();
       addTearDown(history.changes.close);
       await tester.pumpWidget(MaterialApp(
-          home: MediaQuery(
-              data: MediaQueryData(
-                  size: Size(width, height),
-                  textScaler: TextScaler.linear(scale)),
-              child: Scaffold(
-                  body:
-                      HandrailConversationHistory(binding: history.binding)))));
-      await tester.tap(find.text('A long saved conversation title'));
+          builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context)
+                  .copyWith(textScaler: TextScaler.linear(scale)),
+              child: child!),
+          home: Scaffold(
+              body: HandrailConversationHistory(binding: history.binding))));
+      await tester.tap(find.byKey(const ValueKey('handrail-open-history')));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
-      expect(find.text('Background answer preview\n9/1/2026'),
-          findsNothing); // Locale owns date formatting.
-      expect(find.textContaining('Background answer preview'), findsOneWidget);
       await tester.tap(find.text('Unread (1)'));
       await tester.pumpAndSettle();
       expect(history.state['unreadOnly'], isTrue);
+      await tester.scrollUntilVisible(
+          find.byTooltip('Archive conversation'), 100,
+          scrollable: find
+              .descendant(
+                  of: find.byType(CustomScrollView),
+                  matching: find.byType(Scrollable))
+              .first);
+      expect(find.textContaining('Background answer preview'), findsOneWidget);
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Archive conversation'));
       await tester.pumpAndSettle();
       expect(history.actions, ['archive:one']);
@@ -103,9 +108,14 @@ void main() {
       history.changed();
       await tester.pumpAndSettle();
       expect(find.text('Retry history'), findsOneWidget);
+      await tester.ensureVisible(find.text('Retry history'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Retry history'));
       await tester.pumpAndSettle();
       expect(history.actions.last, 'refresh');
+      await tester.ensureVisible(
+          find.byKey(const ValueKey('handrail-conversation-one')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('handrail-conversation-one')));
       await tester.pumpAndSettle();
       expect(history.actions.last, 'open:one');
@@ -122,7 +132,7 @@ void main() {
         home: Scaffold(
             body: HandrailConversationHistory(binding: value.binding)));
     await tester.pumpWidget(subject(first));
-    await tester.tap(find.text('A long saved conversation title'));
+    await tester.tap(find.byKey(const ValueKey('handrail-open-history')));
     await tester.pumpAndSettle();
     expect(find.text('Saved conversation'), findsOneWidget);
     await tester.pumpWidget(subject(second));

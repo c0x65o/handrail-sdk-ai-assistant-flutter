@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -97,6 +98,24 @@ class HandrailAttachmentLimits {
       .where((entry) => acceptedMediaTypes.contains(entry.value))
       .map((entry) => entry.key)
       .toList();
+
+  /// Restricts negotiated limits with host business settings. Never expands them.
+  HandrailAttachmentLimits? intersect(HandrailAttachmentLimits other) {
+    final types = acceptedMediaTypes.intersection(other.acceptedMediaTypes);
+    if (types.isEmpty) return null;
+    return HandrailAttachmentLimits(
+      acceptedMediaTypes: types,
+      maximumFiles: math.min(maximumFiles, other.maximumFiles),
+      maximumBytesPerFile:
+          math.min(maximumBytesPerFile, other.maximumBytesPerFile),
+      maximumTotalBytes: math.min(maximumTotalBytes, other.maximumTotalBytes),
+      maximumDocumentFiles:
+          math.min(maximumDocumentFiles, other.maximumDocumentFiles),
+      maximumDocumentBytes:
+          math.min(maximumDocumentBytes, other.maximumDocumentBytes),
+    );
+  }
+
   static HandrailAttachmentLimits? fromCapabilities(
       Map<String, Object?>? attachments, Map<String, Object?>? documents,
       {int maximumTotalBytes = 20 * 1024 * 1024}) {

@@ -4,10 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:handrail_ai_widgets/handrail_ai_widgets.dart';
 
 HandrailAttachmentFile file(String name) => HandrailAttachmentFile(
-  fileName: name,
-  mediaType: 'application/pdf',
-  bytes: [1, 2],
-);
+      fileName: name,
+      mediaType: 'application/pdf',
+      bytes: [1, 2],
+    );
 HandrailAttachmentLimits limits({int maximumFiles = 5}) =>
     HandrailAttachmentLimits(
       acceptedMediaTypes: ['application/pdf'],
@@ -15,22 +15,54 @@ HandrailAttachmentLimits limits({int maximumFiles = 5}) =>
       maximumBytesPerFile: 100,
     );
 Map<String, Object?> reference(String filename) => {
-  'attachment_id': 'att_test',
-  'content_ref': 'ref_test',
-  'media_type': 'application/pdf',
-  'byte_size': 2,
-  'filename': filename,
-};
+      'attachment_id': 'att_test',
+      'content_ref': 'ref_test',
+      'media_type': 'application/pdf',
+      'byte_size': 2,
+      'filename': filename,
+    };
 HandrailComposerController controller(
   HandrailAttachmentUploader uploader, {
   Future<List<HandrailAttachmentFile>> Function(HandrailAttachmentLimits)?
-  picker,
-}) => HandrailComposerController(
-  limitsForConversation: (_) => limits(),
-  uploaderForConversation: (_) => uploader,
-  filePicker: picker,
-)..select('one');
+      picker,
+}) =>
+    HandrailComposerController(
+      limitsForConversation: (_) => limits(),
+      uploaderForConversation: (_) => uploader,
+      filePicker: picker,
+    )..select('one');
 void main() {
+  test('host file settings only restrict negotiated formats and each bound',
+      () {
+    final negotiated = HandrailAttachmentLimits(
+      acceptedMediaTypes: ['image/png', 'application/pdf'],
+      maximumFiles: 5,
+      maximumBytesPerFile: 100,
+      maximumTotalBytes: 200,
+      maximumDocumentFiles: 2,
+      maximumDocumentBytes: 40,
+    );
+    final combined = negotiated.intersect(HandrailAttachmentLimits(
+      acceptedMediaTypes: ['application/pdf', 'text/csv'],
+      maximumFiles: 3,
+      maximumBytesPerFile: 1000,
+      maximumTotalBytes: 150,
+      maximumDocumentFiles: 4,
+      maximumDocumentBytes: 30,
+    ))!;
+    expect(combined.acceptedMediaTypes, {'application/pdf'});
+    expect(combined.maximumFiles, 3);
+    expect(combined.maximumBytesPerFile, 100);
+    expect(combined.maximumTotalBytes, 150);
+    expect(combined.maximumDocumentFiles, 2);
+    expect(combined.maximumDocumentBytes, 30);
+    expect(
+        combined.intersect(HandrailAttachmentLimits(
+            acceptedMediaTypes: ['image/png'],
+            maximumFiles: 1,
+            maximumBytesPerFile: 1)),
+        isNull);
+  });
   test(
     'partial upload retry retains successful references and failed file identity until admission',
     () async {
@@ -121,14 +153,12 @@ void main() {
   test(
     'cancellation preserves files and latest text, excludes late upload, and prevents admission',
     () async {
-      final result =
-          Completer<
-            ({
-              Map<String, Object?>? reference,
-              String? errorCode,
-              bool retryable,
-            })
-          >();
+      final result = Completer<
+          ({
+            Map<String, Object?>? reference,
+            String? errorCode,
+            bool retryable,
+          })>();
       final started = Completer<void>(), aborted = Completer<void>();
       final drafts = controller(({
         required bytes,
@@ -186,14 +216,12 @@ void main() {
   test(
     'account disposal cancels its upload and excludes its late reference',
     () async {
-      final result =
-          Completer<
-            ({
-              Map<String, Object?>? reference,
-              String? errorCode,
-              bool retryable,
-            })
-          >();
+      final result = Completer<
+          ({
+            Map<String, Object?>? reference,
+            String? errorCode,
+            bool retryable,
+          })>();
       final started = Completer<void>(), aborted = Completer<void>();
       final drafts = controller(({
         required bytes,

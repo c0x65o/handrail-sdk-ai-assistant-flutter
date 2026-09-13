@@ -137,6 +137,90 @@ class Fixture {
 
 void main() {
   test(
+      'configured creation context is sampled once and frozen across lost replies',
+      () async {
+    final fixture = Fixture()..loseCreate = true;
+    var context = 'Reports', samples = 0;
+    final controller = HandrailAssistantController(
+      client: fixture.client,
+      pendingStore: fixture.pending,
+      pollingInterval: null,
+      newConversationMetadata: () {
+        samples++;
+        return {'contextLabel': context};
+      },
+    );
+    addTearDown(controller.dispose);
+    addTearDown(fixture.client.close);
+    await controller.initialize();
+    await expectLater(controller.historyBinding.create(),
+        throwsA(isA<HandrailGatewayException>()));
+    context = 'Customers';
+    await controller.historyBinding.create();
+    final requests = fixture.requests
+        .where((r) => r.url.path.endsWith('/conversations/create'))
+        .toList();
+    expect(requests[0].body, requests[1].body);
+    expect(samples, 1);
+    expect(controller.selectedDescriptor!.metadata['contextLabel'], 'Reports');
+    await controller.historyBinding.create();
+    expect(samples, 2);
+    expect(
+        controller.selectedDescriptor!.metadata['contextLabel'], 'Customers');
+    await controller.newConversation(metadata: const {});
+    expect(samples, 2);
+    expect(controller.selectedDescriptor!.metadata, isEmpty);
+  });
+  test('an empty loaded catalog is an empty transcript, not permanent loading',
+      () async {
+    final fixture = Fixture()..rows.clear();
+    final controller = fixture.controller(autoCreate: false);
+    addTearDown(controller.dispose);
+    addTearDown(fixture.client.close);
+    expect(controller.transcriptBinding.read()['loading'], isTrue);
+    await controller.initialize();
+    final state = controller.transcriptBinding.read();
+    expect(state['loading'], isFalse);
+    expect(state['document'], isNull);
+    expect(state['error'], isNull);
+    expect(fixture.creations, isEmpty);
+    await controller.newConversation();
+    expect(controller.transcriptBinding.read()['document'], isNotNull);
+    controller.clearSelection();
+    expect(controller.transcriptBinding.read()['loading'], isFalse);
+  });
+
+  test(
+      'domain presentation retry retains creation and observers can update filters',
+      () async {
+    final fixture = Fixture(), controller = fixture.controller();
+    addTearDown(controller.dispose);
+    addTearDown(fixture.client.close);
+    final subscription =
+        controller.changes.listen((_) => controller.setUnreadOnly(true));
+    addTearDown(subscription.cancel);
+    await controller.initialize();
+    String? readyId;
+    await expectLater(controller.newConversation(onReady: (id) async {
+      readyId = id;
+      throw StateError('Business presentation unavailable');
+    }), throwsStateError);
+    await controller.newConversation(onReady: (id) async {
+      expect(id, readyId);
+    });
+    expect(fixture.creations, hasLength(1));
+    expect(controller.unreadOnly, isTrue);
+    final selected = controller.session;
+    final reads = fixture.requests.length;
+    expect(await controller.ensureSession(readyId!), same(selected));
+    expect(fixture.requests, hasLength(reads));
+    controller.clearSelection();
+    expect(controller.selectedId, isNull);
+    expect(controller.workspace.snapshot.selectedConversationId, isNull);
+    expect(controller.sessionFor(readyId), same(selected));
+  });
+
+  test(
       'initialization coalesces and a failed history read cannot create a chat',
       () async {
     final fixture = Fixture()..failList = true;

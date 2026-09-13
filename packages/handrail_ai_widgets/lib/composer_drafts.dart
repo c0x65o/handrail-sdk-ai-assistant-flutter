@@ -3,6 +3,7 @@ import 'dart:math';
 import 'attachments.dart';
 import 'package:flutter/foundation.dart';
 import 'draft_controller.dart';
+import 'workspace_binding.dart';
 
 /// Account-scoped drafts and file selections, retained independently per chat.
 /// Hosts supply attachment validation/upload and the authenticated send adapter.
@@ -69,6 +70,11 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
       });
   bool get hasOtherDrafts => _drafts.entries
       .any((entry) => entry.key != _selectedId && entry.value.hasDraft);
+  bool get hasDrafts => _drafts.values.any((draft) => draft.hasDraft);
+
+  /// Includes work in drafts that are not currently selected.
+  bool get isWorking => _drafts.values.any((draft) =>
+      draft.picking || draft.uploading || draft.controller.isSubmitting);
 
   void select(String? conversationId, {bool adoptUnassignedDraft = false}) {
     if (_disposed || _selectedId == conversationId) return;
@@ -463,4 +469,39 @@ class HandrailComposerController
       : super(
             fileForAttachment: (file) => file,
             attachmentForFile: (file) => file);
+
+  /// Retains account drafts and binds selection and upload negotiation to the
+  /// SDK's optional UI surface. Dispose when the authenticated account ends.
+  factory HandrailComposerController.forAssistant(
+      HandrailWorkspaceBinding binding,
+      {HandrailAttachmentLimits? attachmentLimits,
+      Future<List<HandrailAttachmentFile>> Function(HandrailAttachmentLimits)?
+          filePicker}) {
+    final drafts = HandrailComposerController(
+      limitsForConversation: (id) {
+        final capabilities = binding.capabilitiesFor(id);
+        final negotiated = HandrailAttachmentLimits.fromCapabilities(
+            capabilities['attachments'] as Map<String, Object?>?,
+            capabilities['documentInput'] as Map<String, Object?>?);
+        return attachmentLimits == null
+            ? negotiated
+            : negotiated?.intersect(attachmentLimits);
+      },
+      uploaderForConversation: binding.uploaderFor,
+      filePicker: filePicker,
+    );
+    void select() => drafts.select(binding.read()['conversationId'] as String?,
+        adoptUnassignedDraft: true);
+    drafts._assistantSubscription = binding.changes.listen((_) => select());
+    select();
+    return drafts;
+  }
+
+  StreamSubscription<Object?>? _assistantSubscription;
+  @override
+  void dispose() {
+    unawaited(_assistantSubscription?.cancel());
+    _assistantSubscription = null;
+    super.dispose();
+  }
 }

@@ -24,8 +24,11 @@ class HandrailTranscriptionControl extends StatefulWidget {
       this.maximumBytes = 25 * 1024 * 1024,
       this.maxDraftLength,
       this.recorderFactory,
+      this.buttonKey,
+      this.buttonStyle,
       this.onChanged,
       this.onBusyChanged,
+      this.onErrorChanged,
       this.createId});
   final TextEditingController controller;
   final HandrailAudioTranscriber transcribe;
@@ -35,8 +38,14 @@ class HandrailTranscriptionControl extends StatefulWidget {
   final int maximumBytes;
   final int? maxDraftLength;
   final HandrailAudioRecorder Function()? recorderFactory;
+  final Key? buttonKey;
+  final ButtonStyle? buttonStyle;
   final ValueChanged<String>? onChanged;
   final ValueChanged<bool>? onBusyChanged;
+
+  /// Places recoverable errors in the host layout without covering controls.
+  /// The standard composer displays this as an inline, accessible message.
+  final ValueChanged<String?>? onErrorChanged;
   final String Function()? createId;
   @override
   State<HandrailTranscriptionControl> createState() =>
@@ -71,6 +80,7 @@ class _HandrailTranscriptionControlState
     if (!mounted) return;
     final wasBusy = _busy;
     setState(() => _phase = phase);
+    widget.onErrorChanged?.call(phase == _Phase.failed ? _errorText : null);
     if (_busy != wasBusy) widget.onBusyChanged?.call(_busy);
   }
 
@@ -109,11 +119,12 @@ class _HandrailTranscriptionControlState
       _release();
       _phase = _Phase.idle;
       final generation = _generation;
-      if (wasBusy)
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && generation == _generation && !_busy)
-            widget.onBusyChanged?.call(false);
-        });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && generation == _generation && !_busy) {
+          widget.onErrorChanged?.call(null);
+          if (wasBusy) widget.onBusyChanged?.call(false);
+        }
+      });
     }
   }
 
@@ -264,8 +275,6 @@ class _HandrailTranscriptionControlState
         unawaited(recorder.dispose().catchError((Object _) {}));
     }
     _phaseChanged(_Phase.failed);
-    ScaffoldMessenger.maybeOf(context)
-        ?.showSnackBar(SnackBar(content: Text(_errorText)));
   }
 
   String get _errorText => switch (_error) {
@@ -281,12 +290,23 @@ class _HandrailTranscriptionControlState
   @override
   Widget build(BuildContext context) =>
       Row(mainAxisSize: MainAxisSize.min, children: [
+        if (_phase == _Phase.failed && widget.onErrorChanged == null)
+          Semantics(
+            liveRegion: true,
+            child: Tooltip(
+              message: _errorText,
+              child: Icon(Icons.error_outline,
+                  color: Theme.of(context).colorScheme.error, size: 20),
+            ),
+          ),
         if (_busy || _retryable)
           IconButton(
               tooltip: 'Discard recording',
               onPressed: _cancel,
               icon: const Icon(Icons.close_rounded, size: 18)),
         IconButton(
+          key: widget.buttonKey,
+          style: widget.buttonStyle,
           tooltip: switch (_phase) {
             _Phase.starting => 'Starting microphone…',
             _Phase.recording => 'Stop recording and transcribe',

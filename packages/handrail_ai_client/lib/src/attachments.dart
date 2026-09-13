@@ -15,7 +15,9 @@ extension HandrailClientAttachments on HandrailAiClient {
     required String mediaType,
     required String idempotencyKey,
     required Future<void> cancellation,
-  }) attachmentUploader({int maximumBytes = 20 * 1024 * 1024}) => (
+  }) attachmentUploader(
+          {int maximumBytes = 20 * 1024 * 1024, String? conversationId}) =>
+      (
           {required bytes,
           required filename,
           required mediaType,
@@ -28,6 +30,7 @@ extension HandrailClientAttachments on HandrailAiClient {
               mediaType: mediaType,
               kind: mediaType.startsWith('image/') ? 'image' : 'document',
               idempotencyKey: idempotencyKey,
+              conversationId: conversationId,
               cancellation: cancellation,
               maximumBytes: maximumBytes);
           return (
@@ -57,6 +60,7 @@ extension HandrailClientAttachments on HandrailAiClient {
     required String mediaType,
     required String kind,
     required String idempotencyKey,
+    String? conversationId,
     Future<void>? cancellation,
     int maximumBytes = 20 * 1024 * 1024,
     Duration timeout = const Duration(seconds: 90),
@@ -76,7 +80,8 @@ extension HandrailClientAttachments on HandrailAiClient {
         kind != (mediaType.startsWith('image/') ? 'image' : 'document') ||
         !RegExp(r'^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$')
             .hasMatch(idempotencyKey) ||
-        timeout <= Duration.zero) {
+        timeout <= Duration.zero ||
+        conversationId != null && !_validSavedAttachmentId(conversationId)) {
       throw _attachmentFailure('invalid_attachment');
     }
     final captured = Uint8List.fromList(bytes);
@@ -109,7 +114,8 @@ extension HandrailClientAttachments on HandrailAiClient {
           ..fields.addAll({
             'kind': kind,
             'mediaType': mediaType,
-            'idempotencyKey': idempotencyKey
+            'idempotencyKey': idempotencyKey,
+            if (conversationId != null) 'conversationId': conversationId,
           })
           ..files.add(http.MultipartFile.fromBytes('file', captured,
               filename: filename,

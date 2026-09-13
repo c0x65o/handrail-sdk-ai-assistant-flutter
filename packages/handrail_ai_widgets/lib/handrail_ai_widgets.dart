@@ -12,10 +12,15 @@ export 'approval_mode.dart';
 export 'draft_controller.dart';
 export 'composer_drafts.dart';
 export 'conversation_history.dart';
+export 'conversation_transcript.dart';
+export 'workspace_binding.dart';
+export 'assistant_workspace.dart';
+export 'assistant_close_guard.dart';
 export 'audio_recorder.dart';
 export 'transcription_control.dart';
 export 'markdown.dart';
 export 'attachment_preview.dart';
+export 'saved_attachments.dart';
 export 'attachments.dart';
 
 class HandrailClipboardImage {
@@ -53,15 +58,108 @@ class HandrailClipboardImage {
   }
 }
 
-class HandrailApprovalBadge extends StatelessWidget {
+class HandrailApprovalBadge extends StatefulWidget {
   const HandrailApprovalBadge(
       {super.key,
       this.mode = HandrailApprovalMode.required,
       this.onChanged,
-      this.enabled = true});
+      this.enabled = true,
+      this.scope});
   final HandrailApprovalMode mode;
   final ValueChanged<HandrailApprovalMode>? onChanged;
   final bool enabled;
+  final Object? scope;
+  @override
+  State<HandrailApprovalBadge> createState() => _ApprovalBadgeState();
+}
+
+class _ApprovalBadgeState extends State<HandrailApprovalBadge> {
+  Route<dynamic>? _route;
+  int _generation = 0;
+  bool _opening = false;
+
+  void _close() {
+    _generation++;
+    _opening = false;
+    final route = _route;
+    _route = null;
+    if (route != null)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (route.isActive) route.navigator?.removeRoute(route);
+      });
+  }
+
+  @override
+  void didUpdateWidget(HandrailApprovalBadge oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.scope != widget.scope || oldWidget.enabled && !widget.enabled)
+      _close();
+  }
+
+  @override
+  void dispose() {
+    _close();
+    super.dispose();
+  }
+
+  Future<void> _open() async {
+    if (_opening) return;
+    _opening = true;
+    final generation = ++_generation;
+    var selected = widget.mode;
+    try {
+      await showModalBottomSheet<void>(
+          context: context,
+          showDragHandle: true,
+          builder: (context) {
+            _route = ModalRoute.of(context);
+            if (!mounted || generation != _generation) {
+              _close();
+              return const SizedBox();
+            }
+            return SafeArea(
+                child: StatefulBuilder(
+                    builder: (context, update) => Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SwitchListTile.adaptive(
+                                  contentPadding: EdgeInsets.zero,
+                                  title: const Text('Auto-approve changes'),
+                                  value: selected ==
+                                      HandrailApprovalMode.automatic,
+                                  onChanged: !widget.enabled ||
+                                          widget.onChanged == null
+                                      ? null
+                                      : (value) {
+                                          if (!mounted ||
+                                              generation != _generation ||
+                                              !widget.enabled) return;
+                                          selected = value
+                                              ? HandrailApprovalMode.automatic
+                                              : HandrailApprovalMode.required;
+                                          widget.onChanged?.call(selected);
+                                          update(() {});
+                                        }),
+                              Text(selected == HandrailApprovalMode.automatic
+                                  ? 'Add, edit, and delete without asking each time, within your account permissions.'
+                                  : 'Review and approve additions, edits, and deletions before they run.'),
+                              const SizedBox(height: 12),
+                              Text(widget.onChanged == null
+                                  ? 'Approval settings are managed by this application.'
+                                  : 'Applies to your next message. Changes already running keep their original setting.'),
+                            ]))));
+          });
+    } finally {
+      if (generation == _generation) {
+        _opening = false;
+        _route = null;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => IconButton(
         tooltip: 'Approval settings',
@@ -70,56 +168,15 @@ class HandrailApprovalBadge extends StatelessWidget {
             padding: WidgetStatePropertyAll(EdgeInsets.all(8)),
             backgroundColor: WidgetStatePropertyAll(Colors.transparent)),
         constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-        color: mode == HandrailApprovalMode.automatic
+        color: widget.mode == HandrailApprovalMode.automatic
             ? const Color(0xff202124)
             : const Color(0xff999999),
         icon: Icon(
-            mode == HandrailApprovalMode.automatic
+            widget.mode == HandrailApprovalMode.automatic
                 ? Icons.shield
                 : Icons.shield_outlined,
             size: 18),
-        onPressed: () {
-          var selected = mode;
-          showModalBottomSheet<void>(
-              context: context,
-              showDragHandle: true,
-              builder: (context) => SafeArea(
-                    child: StatefulBuilder(
-                        builder: (context, update) => Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                              child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    SwitchListTile.adaptive(
-                                        contentPadding: EdgeInsets.zero,
-                                        title:
-                                            const Text('Auto-approve changes'),
-                                        value: selected ==
-                                            HandrailApprovalMode.automatic,
-                                        onChanged: !enabled || onChanged == null
-                                            ? null
-                                            : (value) {
-                                                selected = value
-                                                    ? HandrailApprovalMode
-                                                        .automatic
-                                                    : HandrailApprovalMode
-                                                        .required;
-                                                onChanged!(selected);
-                                                update(() {});
-                                              }),
-                                    Text(selected ==
-                                            HandrailApprovalMode.automatic
-                                        ? 'Add, edit, and delete without asking each time, within your account permissions.'
-                                        : 'Review and approve additions, edits, and deletions before they run.'),
-                                    const SizedBox(height: 12),
-                                    Text(onChanged == null
-                                        ? 'Approval settings are managed by this application.'
-                                        : 'Applies to your next message. Changes already running keep their original setting.'),
-                                  ]),
-                            )),
-                  ));
-        },
+        onPressed: _open,
       );
 }
 
@@ -140,6 +197,7 @@ class HandrailComposer extends StatefulWidget {
       this.expandKey,
       this.expandedInputKey,
       this.input,
+      this.contextMenuBuilder,
       this.decoration,
       this.inputTextStyle,
       this.sendButtonStyle,
@@ -157,6 +215,7 @@ class HandrailComposer extends StatefulWidget {
       this.canSend = false,
       this.enabled = true,
       this.sending = false,
+      this.stopping = false,
       this.approvalMode = HandrailApprovalMode.required,
       this.onApprovalModeChanged,
       this.showApprovalControl = true,
@@ -167,6 +226,8 @@ class HandrailComposer extends StatefulWidget {
       this.transcriptionMaximumBytes = 25 * 1024 * 1024,
       this.transcriptionMaxDraftLength,
       this.audioRecorderFactory,
+      this.transcriptionButtonKey,
+      this.transcriptionButtonStyle,
       this.onPasteImage,
       this.onVoiceBusyChanged});
   final TextEditingController controller;
@@ -179,6 +240,10 @@ class HandrailComposer extends StatefulWidget {
   final String expandedEditorTitle;
   final Key? expandKey, expandedInputKey;
   final Widget? input;
+
+  /// Platform context-menu adapter for the standard editor. Sending, keyboard
+  /// handling and focus remain shared when a host customizes this menu.
+  final EditableTextContextMenuBuilder? contextMenuBuilder;
 
   /// Host branding for the shared composer, without replacing its behavior.
   final BoxDecoration? decoration;
@@ -193,7 +258,7 @@ class HandrailComposer extends StatefulWidget {
   final Key? attachKey, inputKey, sendKey;
   final VoidCallback? onAttach, onSend, onStop;
   final HandrailAttachmentDrafts? attachmentDrafts;
-  final bool canSend, enabled, sending, showApprovalControl;
+  final bool canSend, enabled, sending, stopping, showApprovalControl;
   final HandrailApprovalMode approvalMode;
   final ValueChanged<HandrailApprovalMode>? onApprovalModeChanged;
   final List<Widget>? voiceControls;
@@ -203,6 +268,8 @@ class HandrailComposer extends StatefulWidget {
   final int transcriptionMaximumBytes;
   final int? transcriptionMaxDraftLength;
   final HandrailAudioRecorder Function()? audioRecorderFactory;
+  final Key? transcriptionButtonKey;
+  final ButtonStyle? transcriptionButtonStyle;
   final FutureOr<void> Function(HandrailClipboardImage)? onPasteImage;
   final ValueChanged<bool>? onVoiceBusyChanged;
   @override
@@ -211,6 +278,7 @@ class HandrailComposer extends StatefulWidget {
 
 class _HandrailComposerState extends State<HandrailComposer> {
   bool _dictating = false;
+  String? _transcriptionError;
   final _ownedFocus = FocusNode(debugLabel: 'Handrail composer');
   FocusNode get _inputFocus => widget.focusNode ?? _ownedFocus;
   Route<void>? _editorRoute;
@@ -246,7 +314,10 @@ class _HandrailComposerState extends State<HandrailComposer> {
         (oldWidget.transcribeAudio == null) !=
             (widget.transcribeAudio == null) ||
         oldWidget.voiceControls == null && widget.voiceControls != null ||
-        oldWidget.enabled && !widget.enabled) _dictating = false;
+        oldWidget.enabled && !widget.enabled) {
+      _dictating = false;
+      _transcriptionError = null;
+    }
     if (!identical(oldWidget.controller, widget.controller) ||
         oldWidget.enabled && !widget.enabled) _closeEditor();
   }
@@ -430,6 +501,7 @@ class _HandrailComposerState extends State<HandrailComposer> {
                   : null,
               counterText: '',
               filled: false,
+              fillColor: Colors.transparent,
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
@@ -437,20 +509,20 @@ class _HandrailComposerState extends State<HandrailComposer> {
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 4, vertical: 2)),
           onChanged: widget.onChanged,
-          contextMenuBuilder: (context, editable) =>
-              AdaptiveTextSelectionToolbar.buttonItems(
-                  anchors: editable.contextMenuAnchors,
-                  buttonItems: [
-                ...editable.contextMenuButtonItems,
-                if (widget.onPasteImage != null ||
-                    widget.attachmentDrafts?.attachmentsEnabled == true)
-                  ContextMenuButtonItem(
-                      label: 'Paste image',
-                      onPressed: () {
-                        ContextMenuController.removeAny();
-                        unawaited(_paste());
-                      })
-              ]),
+          contextMenuBuilder: widget.contextMenuBuilder ??
+              (context, editable) => AdaptiveTextSelectionToolbar.buttonItems(
+                      anchors: editable.contextMenuAnchors,
+                      buttonItems: [
+                        ...editable.contextMenuButtonItems,
+                        if (widget.onPasteImage != null ||
+                            widget.attachmentDrafts?.attachmentsEnabled == true)
+                          ContextMenuButtonItem(
+                              label: 'Paste image',
+                              onPressed: () {
+                                ContextMenuController.removeAny();
+                                unawaited(_paste());
+                              })
+                      ]),
         );
     input = Focus(onKeyEvent: _key, child: input);
     if (widget.onPasteImage != null ||
@@ -519,9 +591,11 @@ class _HandrailComposerState extends State<HandrailComposer> {
                             color: Theme.of(context).colorScheme.error))),
             ],
             ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 26), child: input),
+                key: const ValueKey('handrail-composer-editor'),
+                constraints: const BoxConstraints(minHeight: 26),
+                child: input),
             const SizedBox(height: 4),
-            Row(children: [
+            Row(key: const ValueKey('handrail-composer-toolbar'), children: [
               if (widget.showAttachmentControl &&
                   (widget.attachmentDrafts?.attachmentsEnabled ?? true))
                 IconButton(
@@ -547,6 +621,7 @@ class _HandrailComposerState extends State<HandrailComposer> {
                         const BoxConstraints(minWidth: 40, minHeight: 40)),
               if (widget.showApprovalControl)
                 HandrailApprovalBadge(
+                    scope: (widget.controller, widget.transcriptionScope),
                     mode: widget.approvalMode,
                     onChanged: widget.onApprovalModeChanged,
                     enabled: widget.enabled && !widget.sending),
@@ -564,7 +639,14 @@ class _HandrailComposerState extends State<HandrailComposer> {
                     maxDraftLength:
                         widget.transcriptionMaxDraftLength ?? widget.maxLength,
                     recorderFactory: widget.audioRecorderFactory,
+                    buttonKey: widget.transcriptionButtonKey,
+                    buttonStyle: widget.transcriptionButtonStyle,
                     onChanged: widget.onChanged,
+                    onErrorChanged: (error) {
+                      if (_transcriptionError != error) {
+                        setState(() => _transcriptionError = error);
+                      }
+                    },
                     onBusyChanged: (busy) {
                       setState(() => _dictating = busy);
                       widget.onVoiceBusyChanged?.call(busy);
@@ -582,9 +664,11 @@ class _HandrailComposerState extends State<HandrailComposer> {
               const SizedBox(width: 4),
               IconButton.filled(
                   key: widget.sendKey,
-                  tooltip: widget.onStop != null && widget.sending
-                      ? 'Stop response'
-                      : 'Send message',
+                  tooltip: widget.stopping
+                      ? 'Stopping response…'
+                      : widget.onStop != null && widget.sending
+                          ? 'Stop response'
+                          : 'Send message',
                   style: (widget.sendButtonStyle ?? const ButtonStyle()).merge(
                       IconButton.styleFrom(
                           fixedSize: const Size.square(40),
@@ -592,24 +676,39 @@ class _HandrailComposerState extends State<HandrailComposer> {
                           shape: const CircleBorder(),
                           backgroundColor: const Color(0xff55b653),
                           foregroundColor: Colors.white)),
-                  onPressed: widget.sending && widget.onStop != null
-                      ? widget.onStop
-                      : widget.enabled &&
-                              widget.canSend &&
-                              !widget.sending &&
-                              !_dictating &&
-                              widget.attachmentDrafts?.pickingAttachments !=
-                                  true &&
-                              widget.attachmentDrafts?.uploadingAttachments !=
-                                  true
-                          ? _send
-                          : null,
-                  icon: Icon(
-                      widget.sending && widget.onStop != null
-                          ? Icons.stop_rounded
-                          : Icons.arrow_upward_rounded,
-                      size: 20)),
+                  onPressed: widget.stopping
+                      ? null
+                      : widget.sending && widget.onStop != null
+                          ? widget.onStop
+                          : widget.enabled &&
+                                  widget.canSend &&
+                                  !widget.sending &&
+                                  !_dictating &&
+                                  widget.attachmentDrafts?.pickingAttachments !=
+                                      true &&
+                                  widget.attachmentDrafts
+                                          ?.uploadingAttachments !=
+                                      true
+                              ? _send
+                              : null,
+                  icon: widget.stopping
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : Icon(
+                          widget.sending && widget.onStop != null
+                              ? Icons.stop_rounded
+                              : Icons.arrow_upward_rounded,
+                          size: 20)),
             ]),
+            if (_transcriptionError case final error?)
+              Semantics(
+                  liveRegion: true,
+                  child: Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(error,
+                          style: TextStyle(
+                              color: Theme.of(context).colorScheme.error)))),
           ]),
     );
   }

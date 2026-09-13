@@ -2,9 +2,83 @@
 
 Flutter/Dart headless client for the application-hosted Handrail AI wire protocol. It negotiates PDF/document, attachment, cancellation, presence, activity, synchronization, and resource capabilities; creates/lists/loads/renames/archives/restores threads; starts, resumes, and cancels SSE turns; uploads attachments; reviews approvals; generates titles; reads/marks and live-streams typed cross-device launcher activity; and publishes/subscribes to typing presence. `HandrailConversationState.apply` provides immutable typed state for text, tools, approvals, citations, attachments, and turn status.
 
-The package deliberately has no Flutter widget dependency. Build fully custom Material/Cupertino UI from the state model, or wrap it in an application-owned widget kit. Authentication remains application-owned through `protectedHeaders`; provider credentials, server executors, actor/company context, and attachment bytes never enter durable client state.
+The package has no Flutter widget dependency. Use the optional sibling `handrail_ai_widgets` package for shared presentation, or build custom Material/Cupertino views from the same state. Authentication remains application-owned through `protectedHeaders`; provider credentials, server executors, actor/company context, and attachment bytes never enter durable client state.
 
-Intentional native difference: the TypeScript package includes optional React styled primitives and renderer plugins; Dart stays headless and exposes typed state/streams for application-owned Material or Cupertino widgets. Browser `Blob` upload becomes `List<int>` multipart upload. Gateway protocol, resume checkpoints, terminal outcomes, approvals, activity, presence, and concurrent-workspace semantics remain aligned.
+The TypeScript SDK supplies React presentation, while the sibling widgets package supplies Flutter presentation. Browser `Blob` upload becomes `List<int>` multipart upload. Gateway protocol, resume checkpoints, terminal outcomes, approvals, activity, presence, and concurrent-workspace semantics remain aligned.
+
+## Account-owned assistant and history
+
+`HandrailAssistantController(client: client, pendingStore: accountStore)` owns
+catalog paging, active/archived views, selection, conversation sessions, pending
+send recovery, versioned archive/restore and stable cancellation identities.
+Retain it across closing a sheet; dispose it on logout/account changes. Host
+code supplies authenticated transport, encrypted storage, business request
+construction and feature settings. `clientId`, `newConversationTitle`,
+`autoCreate`, `pageSize` and `pollingInterval` configure the common behavior.
+
+The controller owns one account observation loop. Each cycle coalesces the
+global activity read, then refreshes selected, running or pending open sessions.
+An idle unselected transcript does not run its own timer or repeatedly fetch
+account activity. Remote running activity brings an already-open session back
+into observation. `refreshObservations()` performs the same cycle manually;
+`pollingInterval: null` disables its timer. Activity failures retain prior unread
+evidence in `activityError` without changing send authorization or hiding a valid
+catalog. Account disposal stops the loop and ignores late replies.
+
+The optional `HandrailConversationHistory(binding: assistant.historyBinding)`
+consumes its standard history presentation directly. Hosts do not need a catalog
+loop or history action callbacks. `setHistoryView`, `setUnreadOnly`,
+`refreshHistory(more: true)`, `openConversation` and `clearSelection` also support
+custom branding. Clearing a selection preserves sessions and background work.
+Unread filtering/counts cover loaded catalog pages, including unopened chats
+with authenticated remote activity; loading older pages expands that set.
+
+`HandrailConversationTranscript(binding: assistant.transcriptBinding)` consumes
+canonical messages, activity, pending/error state and recovery directly. The
+binding exposes loaded empty catalogs as empty views, not ongoing loading.
+The optional UI acknowledges a terminal reply only when the actual transcript
+end is visible on the current foreground route; repository loading must not
+mark it read. The controller's `markRead` also checks that remote activity
+belongs to the observed terminal turn. Standard message/citation/Copy and domain
+formatting adapters are documented in the widgets package.
+
+`newConversation(metadata: ..., onReady: ...)` retains the original creation
+request until shared hydration and optional business presentation succeed.
+Retry reuses it even when the response or presentation fails. `ensureSession`
+reuses an initialized session; `openConversation` explicitly refreshes canonical
+metadata/state and recovers only the account's retained submission. Bind
+`beforePendingRecovery` to the composer workspace's
+`capturePendingAcceptance(id)` to clear its original draft when a lost send is
+acknowledged on reopening. Newer edits and other conversations remain intact.
+
+Configure `newConversationMetadata: () => {'route': currentRoute}` on the account
+controller when New should capture host context. It runs only when creating a
+new request, and the resulting JSON is frozen with that request's identity.
+Retries do not resample later route changes. Explicit `newConversation(metadata:
+...)` takes precedence, including an empty map. `workingAnywhere` reports pending
+submissions, catalog/selection mutations and local or remote running work across
+the account, including conversations that are not selected. It is a presentation
+signal for optional close policies, not an authorization grant.
+
+Use `assistant.sendMessage(request, onAccepted: ...)` and
+`assistant.retryPendingMessage(...)` with shared draft capture. `canSend` gates
+readiness separately from draft editability. `requestCancellation` retains its
+identity for uncertain retries; canonical server state determines completion.
+`session.waitForTurn(id)` observes completed/failed/cancelled outcomes without
+changing selection or starting work. Disposing the account releases waiters and
+observers; it does not cancel server execution or close a host-owned HTTP client.
+
+Use `submitting` alongside `running` for the composer Send/Stop state, and
+`canStop` for control eligibility. Stop before admission queues against the
+originating account/conversation; once its message is admitted, the SDK requests
+authoritative cancellation before allowing provider dispatch. A failed queued
+cancellation keeps the saved send recoverable and retries the same cancellation
+identity before a start. Changing selection cannot redirect that Stop. The
+`stopping` flag includes waiting for admission and is not terminal confirmation;
+render the canonical turn outcome. File uploads use the shared draft queue's
+`cancelUploads`, preserving unsent text/files.
+
+See [minimal mobile adoption](../../docs/mobile-assistant-adoption.md).
 
 Version 0.1.1 separates `observationConnected` from server turn status. A
 `disconnected` terminal or an SSE response ending without a terminal frame does
@@ -186,3 +260,29 @@ alone does not prove the provider never ran.
 expected by the optional Flutter composer. This keeps the two SDK packages
 independent while removing per-host HTTP/error adapters. A retained retry must
 reuse its exact recording and key; `outcome_unknown` is never retryable.
+
+### Protected saved attachments
+
+`HandrailGatewayCapabilities.attachmentDownloads` negotiates a bounded protected
+reader independently of new uploads. `uiBinding.downloaderFor(id)` supplies the
+optional workspace's default saved-file controls. Lower-level integrations can
+use `attachmentDownloader(conversationId: id, capability: capability)` or
+`downloadAttachment`. The reader authenticates every request, confines endpoints
+to the configured gateway, refuses redirects, checks MIME and expected size,
+bounds streaming reads and returns safe errors without server bodies. Its
+cancellation future covers authentication, request and body reads, including
+late responses. The standard timeout is 30 seconds. Retention remains a server
+policy; an expired or consumed file is not silently restaged.
+
+Uploads through the standard gateway need the originating conversation. Use
+`attachmentUploader(conversationId: id)` for custom queue bindings, or the
+default `uiBinding.uploaderFor(id)`, which captures that identity before a user
+switches conversations. Legacy endpoints can still omit the optional argument.
+
+The cross-repository attachment test requires an explicit local candidate build:
+`HANDRAIL_TEST_JS_SDK_DIST=/absolute/path/to/handrail-sdk-ai-assistant-js/dist make check`.
+It exercises real multipart upload, admission, protected download, account and
+conversation isolation, and expiry against a synthetic standard JS gateway.
+Without the variable this one candidate test is skipped; the existing locked
+gateway fixture is unchanged. This is test-only resolution, not a dependency
+installation or a substitute for a reviewed public SDK SHA and matching locks.

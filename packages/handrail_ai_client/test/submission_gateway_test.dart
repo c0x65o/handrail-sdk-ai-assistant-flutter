@@ -22,6 +22,40 @@ Map<String, Object?> request(String text) => {
       'correlation_hints': {},
     };
 
+/// Pauses before the real HTTP admission reaches the Node SDK gateway.
+class _AdmissionGate extends http.BaseClient {
+  final delegate = http.Client();
+  final admissionEntered = Completer<void>(),
+      releaseAdmission = Completer<void>();
+  final cancellations = <Map<String, Object?>>[];
+  bool failCancelOnce = false;
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (request is http.Request) {
+      final body = request.body.isEmpty
+          ? <String, Object?>{}
+          : jsonDecode(request.body) as Map<String, Object?>;
+      if (request.url.path.endsWith('/synchronization') &&
+          body['operation'] == 'append_mutations' &&
+          !admissionEntered.isCompleted) {
+        admissionEntered.complete();
+        await releaseAdmission.future;
+      }
+      if (request.url.path.endsWith('/turns/cancel')) {
+        cancellations.add(body);
+        if (failCancelOnce) {
+          failCancelOnce = false;
+          return http.StreamedResponse(Stream.value(utf8.encode('{}')), 503);
+        }
+      }
+    }
+    return delegate.send(request);
+  }
+
+  @override
+  void close() => delegate.close();
+}
+
 void main() {
   late Process server;
   late Uri origin;
@@ -36,9 +70,10 @@ void main() {
     await http.post(origin.resolve('/test/finish'));
   }
 
-  HandrailAiClient client({String? loseResponse}) {
+  HandrailAiClient client({String? loseResponse, http.Client? httpClient}) {
     final value = HandrailAiClient(
         baseUri: origin.resolve('/api/ai'),
+        httpClient: httpClient,
         protectedHeaders: () =>
             {if (loseResponse != null) 'x-test-lose-response': loseResponse});
     clients.add(value);
@@ -119,12 +154,17 @@ void main() {
     final id = controller.selectedId!;
     expect(controller.canSend, isTrue);
     var accepted = false;
-    await controller.sendMessage(request('Shared history question'),
+    final submission = await controller.sendMessage(
+        request('Shared history question'),
         onAccepted: (_) => accepted = true);
     expect(accepted, isTrue);
     expect(storage, isEmpty);
+    final outcome = controller.session!.waitForTurn(submission!.turnId);
     await finish();
     await completed(controller.session!);
+    expect((await outcome)['status'], 'completed');
+    expect((await controller.session!.waitForTurn(submission.turnId))['status'],
+        'completed');
     final messages = controller.document!.messages;
     await controller.archive(id);
     expect(controller.archived, isTrue);
@@ -137,6 +177,101 @@ void main() {
     await controller.setHistoryView(HandrailHistoryView.active);
     expect(controller.history.any((row) => row.id == id), isTrue);
     expect(controller.document!.messages, messages);
+  });
+
+  for (final failCancel in [false, true]) {
+    test(
+        'Stop queued before admission targets its original chat; failed cancel=$failCancel',
+        () async {
+      final gate = _AdmissionGate()..failCancelOnce = failCancel;
+      final api = client(httpClient: gate), storage = <String, String>{};
+      final controller = HandrailAssistantController(
+        client: api,
+        pollingInterval: null,
+        pendingStore: HandrailKeyValuePendingTurnStore(
+          namespace: 'stop-account',
+          read: (key) async => storage[key],
+          write: (key, value) async {
+            storage[key] = value;
+          },
+          delete: (key) async {
+            storage.remove(key);
+          },
+        ),
+      );
+      addTearDown(controller.dispose);
+      await controller.newConversation();
+      final original = controller.selectedId!;
+      final before = await stats();
+      var accepted = 0;
+      final sending = controller.sendMessage(
+          request('Stop before provider dispatch'),
+          onAccepted: (_) => accepted++);
+      final failed = failCancel
+          ? expectLater(sending, throwsA(isA<HandrailGatewayException>()))
+          : null;
+      await gate.admissionEntered.future;
+      expect(controller.canStop, isTrue);
+      await controller.requestCancellation();
+      expect(controller.stopping, isTrue);
+      expect(gate.cancellations, isEmpty);
+      await controller.newConversation();
+      final selected = controller.selectedId!;
+      expect(selected, isNot(original));
+      expect(controller.stopping, isFalse);
+      expect(controller.busy, isFalse);
+      expect(controller.workingAnywhere, isTrue);
+      expect(controller.uiBinding.read()['workingAnywhere'], isTrue);
+      gate.releaseAdmission.complete();
+      if (failed != null) {
+        await failed;
+        expect(storage, isNotEmpty);
+        await controller.retryPendingMessage(conversationId: original);
+      } else {
+        await sending;
+      }
+      expect(accepted, 1);
+      expect(controller.selectedId, selected);
+      expect(controller.canSend, isTrue);
+      expect(controller.workingAnywhere, isFalse);
+      expect(controller.sessionFor(original)!.document!.latestTurn!['status'],
+          'cancelled');
+      expect(storage, isEmpty);
+      expect(gate.cancellations.length, failCancel ? 2 : 1);
+      expect(gate.cancellations.first['conversationId'], original);
+      expect(
+          gate.cancellations.every((request) =>
+              jsonEncode(request) == jsonEncode(gate.cancellations.first)),
+          isTrue);
+      final after = await stats();
+      expect(after['starts'], before['starts']);
+      expect(after['invocations'], before['invocations']);
+    });
+  }
+
+  test(
+      'closing the account settles terminal observers without cancelling server work',
+      () async {
+    final api = client(), id = await conversation(api), view = session(api, id);
+    await view.initialize();
+    final submission = await view.prepareTurn(
+        operationId: 'wait-${identity++}',
+        clientId: 'dart-test',
+        request: request('Continue in background'));
+    await view.submitTurn(submission);
+    final result = expectLater(
+        view.waitForTurn(submission.turnId),
+        throwsA(isA<HandrailGatewayException>()
+            .having((e) => e.code, 'code', 'observation_closed')));
+    await view.dispose();
+    await result;
+    final reloaded = session(api, id);
+    await reloaded.initialize();
+    expect(reloaded.document!.activeTurnId, submission.turnId);
+    await finish();
+    await completed(reloaded);
+    expect(
+        (await reloaded.waitForTurn(submission.turnId))['status'], 'completed');
   });
 
   test(

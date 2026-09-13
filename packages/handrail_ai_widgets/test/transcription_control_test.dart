@@ -12,19 +12,21 @@ Widget subject(TextEditingController draft, _Recorder recorder,
         {Object scope = 'one', int? maxLength, VoidCallback? onSend}) =>
     MaterialApp(
         home: Scaffold(
-            body: HandrailComposer(
-      controller: draft,
-      inputKey: const ValueKey('draft'),
-      sendKey: const ValueKey('send'),
-      showAttachmentControl: false,
-      showApprovalControl: false,
-      transcribeAudio: transcribe,
-      transcriptionScope: scope,
-      transcriptionMaxDraftLength: maxLength,
-      audioRecorderFactory: () => recorder,
-      canSend: true,
-      onSend: onSend ?? () {},
-    )));
+            body: Align(
+                alignment: Alignment.bottomCenter,
+                child: HandrailComposer(
+                  controller: draft,
+                  inputKey: const ValueKey('draft'),
+                  sendKey: const ValueKey('send'),
+                  showAttachmentControl: false,
+                  showApprovalControl: false,
+                  transcribeAudio: transcribe,
+                  transcriptionScope: scope,
+                  transcriptionMaxDraftLength: maxLength,
+                  audioRecorderFactory: () => recorder,
+                  canSend: true,
+                  onSend: onSend ?? () {},
+                ))));
 
 Future<void> recordAndStop(WidgetTester tester) async {
   await tester.tap(find.byTooltip('Dictate a message'));
@@ -91,6 +93,12 @@ void main() {
     }, maxLength: 20));
     await recordAndStop(tester);
     await tester.pumpAndSettle();
+    expect(find.byType(SnackBar), findsNothing);
+    expect(
+        find.text(
+            'Voice input could not finish. Your typed draft is still available.'),
+        findsOneWidget);
+    expect(find.byTooltip('Retry transcription').hitTestable(), findsOneWidget);
     await tester.tap(find.byTooltip('Retry transcription'));
     await tester.pumpAndSettle();
     expect(calls, hasLength(2));
@@ -98,12 +106,16 @@ void main() {
     expect(calls[0].bytes, calls[1].bytes);
     expect(draft.text, 'this is too long');
     expect(find.byTooltip('Insert saved dictation'), findsOneWidget);
+    expect(find.text('Shorten the draft, then insert the saved dictation.'),
+        findsOneWidget);
     await tester.enterText(find.byKey(const ValueKey('draft')), 'now');
     await tester.tap(find.byTooltip('Insert saved dictation'));
     await tester.pumpAndSettle();
     expect(draft.text, 'now dictated words');
     expect(calls, hasLength(2));
     expect(recorder.recording?.byteSize, 0);
+    expect(find.text('Shorten the draft, then insert the saved dictation.'),
+        findsNothing);
   });
 
   testWidgets(

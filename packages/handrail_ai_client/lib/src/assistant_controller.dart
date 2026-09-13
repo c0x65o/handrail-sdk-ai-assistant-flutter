@@ -39,10 +39,14 @@ class HandrailAssistantController {
       this.pageSize = 50,
       this.pollingInterval = const Duration(seconds: 1),
       String Function()? createId,
+      this.newConversationMetadata,
       this.beforePendingRecovery})
       : _createId = createId ?? _assistantIdentity {
     if (pageSize < 1 || pageSize > 100)
       throw ArgumentError.value(pageSize, 'pageSize');
+    if (pollingInterval != null &&
+        pollingInterval! < const Duration(milliseconds: 100))
+      throw ArgumentError.value(pollingInterval, 'pollingInterval');
     _workspaceSubscription = workspace.changes.listen((_) => _publish());
   }
   final HandrailAiClient client;
@@ -53,6 +57,9 @@ class HandrailAssistantController {
   final Duration? pollingInterval;
   final String Function() _createId;
 
+  /// Business context sampled once for a new creation, retained across retries.
+  final Map<String, Object?> Function()? newConversationMetadata;
+
   /// Capture a draft's original acceptance callback before recovering saved intent.
   final void Function()? Function(String conversationId)? beforePendingRecovery;
   final workspace = HandrailConversationWorkspace();
@@ -61,12 +68,13 @@ class HandrailAssistantController {
       <StreamSubscription<HandrailConversationSession>>[];
   late final StreamSubscription<HandrailConversationWorkspaceSnapshot>
       _workspaceSubscription;
-  final _changes =
-      StreamController<HandrailAssistantController>.broadcast(sync: true);
+  final _changes = StreamController<HandrailAssistantController>.broadcast();
   final _descriptors = <String, HandrailConversationDescriptor>{};
   final _pending = <String>{}, _sending = <String>{}, _stopping = <String>{};
   final _operationErrors = <String, HandrailGatewayException>{};
   final _cancelKeys = <String, String>{};
+  final _cancelBeforeStart = <String>{};
+  final _cancelling = <String, Future<void>>{};
   final _lifecycleRequests = <String, Map<String, Object?>>{};
   final _lifecycleOperations = <String, Future<void>>{};
   final _lifecycleDirections = <String, bool>{};
@@ -80,10 +88,13 @@ class HandrailAssistantController {
       _initialCreateAttempted = false;
   int _historyGeneration = 0, _selectionGeneration = 0;
   Future<void>? _initializing, _listing, _creating;
+  Future<void>? _readingActivity, _observing;
+  Future<HandrailGatewayCapabilities>? _activityCapabilities;
+  Timer? _pollTimer;
   Map<String, Object?>? _createRequest;
   HandrailConversationDescriptor? _createdDescriptor;
   bool _selecting = false;
-  HandrailGatewayException? _historyError, _selectionError;
+  HandrailGatewayException? _historyError, _selectionError, _activityError;
 
   Stream<HandrailAssistantController> get changes => _changes.stream;
   HandrailHistoryView get historyView => _view;
@@ -108,12 +119,28 @@ class HandrailAssistantController {
       _selectionError == null;
   bool get hasPendingMessage => _pending.contains(_selectedId);
   bool get stopping => _stopping.contains(_selectedId);
+  bool get submitting => _sending.contains(_selectedId);
+  bool get canStop =>
+      !stopping &&
+      (running ||
+          submitting ||
+          hasPendingMessage && _cancelBeforeStart.contains(_selectedId));
   bool get busy =>
       _selecting ||
       _creating != null ||
       _sending.contains(_selectedId) ||
       _lifecycleOperations.containsKey(_selectedId);
-  HandrailGatewayException? get historyError => _historyError;
+
+  /// Account-wide work, including an unselected conversation's submission.
+  bool get workingAnywhere =>
+      _selecting ||
+      _creating != null ||
+      _sending.isNotEmpty ||
+      _lifecycleOperations.isNotEmpty ||
+      _sessions.values.any((value) => value.document?.activeTurnId != null) ||
+      workspace.snapshot.runningCount > 0;
+  HandrailGatewayException? get historyError => _historyError ?? _activityError;
+  HandrailGatewayException? get activityError => _activityError;
   HandrailGatewayException? get error =>
       _selectionError ?? _operationErrors[_selectedId];
   bool isUnread(String id) =>
@@ -192,6 +219,37 @@ class HandrailAssistantController {
             }
         ],
       };
+
+  /// Canonical transcript plus common recovery/read actions for the optional UI.
+  ({
+    Object scope,
+    Stream<Object?> changes,
+    Map<String, Object?> Function() read,
+    Future<void> Function() retry,
+    Future<void> Function() markRead
+  }) get transcriptBinding => (
+        scope: this,
+        changes: changes,
+        read: () => {
+              'conversationId': selectedId,
+              'document': document?.state,
+              'loading': document == null &&
+                  error == null &&
+                  historyError == null &&
+                  (busy || loadingHistory || !_loadedHistory),
+              'busy': busy,
+              'running': running,
+              'submitting': submitting,
+              'archived': archived,
+              'pending': hasPendingMessage,
+              'error': error?.message ??
+                  session?.error?.message ??
+                  (document == null ? historyError?.message : null),
+            },
+        retry: () =>
+            selectedId == null ? initialize() : openConversation(selectedId!),
+        markRead: markRead,
+      );
 
   void _assertActive() {
     if (_disposed) throw StateError('Assistant account is closed');
@@ -291,6 +349,12 @@ class HandrailAssistantController {
         if (_nextCursor != null) _seenCursors.add(_nextCursor!);
         _loadedHistory = true;
         _historyError = null;
+        _startPolling();
+        if (!more) {
+          try {
+            await refreshActivity();
+          } catch (_) {/* Keep valid catalog data. */}
+        }
       } catch (cause) {
         if (!_disposed && generation == _historyGeneration) {
           _historyError = _assistantFailure(cause, 'history_unavailable',
@@ -328,24 +392,50 @@ class HandrailAssistantController {
 
   void setUnreadOnly(bool value) {
     _assertActive();
+    if (_unreadOnly == value) return;
     _unreadOnly = value;
     _publish();
   }
 
   Future<HandrailConversationSession> ensureSession(String id) async {
     _assertActive();
+    final existing = _sessions[id];
+    if (existing?.document != null) return existing!;
     final value = _sessions.putIfAbsent(id, () {
       final session = HandrailConversationSession(
           client: client,
           conversationId: id,
           workspace: workspace,
-          pollingInterval: pollingInterval);
+          pollingInterval: null,
+          synchronizeActivity: false);
+      session._mayStart = (submission) async {
+        if (!_cancelBeforeStart.remove(id)) return true;
+        try {
+          await _cancelTurn(id, submission.turnId);
+          return false;
+        } catch (_) {
+          if (!_disposed) _cancelBeforeStart.add(id);
+          rethrow;
+        }
+      };
       _sessionSubscriptions.add(session.changes.listen((_) => _publish()));
       return session;
     });
     await value.initialize();
     _assertActive();
+    _startPolling();
     return value;
+  }
+
+  /// Clears the visible selection without discarding drafts or stopping work.
+  void clearSelection() {
+    _assertActive();
+    _selectionGeneration++;
+    _selectedId = null;
+    _selecting = false;
+    _selectionError = null;
+    workspace.select(null);
+    _publish();
   }
 
   Future<HandrailConversationDescriptor> getDescriptor(String id) async {
@@ -424,13 +514,22 @@ class HandrailAssistantController {
     }
   }
 
-  Future<void> newConversation({Map<String, Object?> metadata = const {}}) {
+  /// Retains creation identity until shared hydration and optional domain
+  /// presentation finish. Retrying a failed [onReady] cannot create a duplicate.
+  Future<void> newConversation(
+      {Map<String, Object?>? metadata,
+      Future<void> Function(String conversationId)? onReady}) {
     _assertActive();
     if (_creating != null) return _creating!;
+    final creationMetadata = _createRequest == null
+        ? metadata ??
+            newConversationMetadata?.call() ??
+            const <String, Object?>{}
+        : const <String, Object?>{};
     _createRequest ??= _immutableJson({
       'idempotencyKey': _createId(),
       'title': newConversationTitle,
-      if (metadata.isNotEmpty) 'metadata': metadata
+      if (creationMetadata.isNotEmpty) 'metadata': creationMetadata
     }) as Map<String, Object?>;
     late final Future<void> operation;
     operation = (() async {
@@ -451,6 +550,8 @@ class HandrailAssistantController {
           await setHistoryView(HandrailHistoryView.active);
         else
           await refreshHistory();
+        _assertActive();
+        await onReady?.call(row.id);
         _assertActive();
         _createRequest = null;
         _createdDescriptor = null;
@@ -510,6 +611,8 @@ class HandrailAssistantController {
       rethrow;
     } finally {
       _sending.remove(id);
+      if (!_pending.contains(id) && _cancelBeforeStart.remove(id))
+        _stopping.remove(id);
       _publish();
     }
   }
@@ -548,28 +651,47 @@ class HandrailAssistantController {
     final id = conversationId ?? _selectedId,
         current = _sessions[conversationId ?? _selectedId];
     final turnId = current?.document?.activeTurnId;
-    if (id == null ||
-        current == null ||
-        turnId == null ||
-        _stopping.contains(id)) return;
-    _stopping.add(id);
-    _operationErrors.remove(id);
-    _publish();
-    try {
-      final key = _cancelKeys.putIfAbsent('$id:$turnId', _createId);
-      await current.requestCancellation(
-          mutationId: 'cancel:$key', idempotencyKey: 'cancel:$key');
-    } catch (cause) {
-      if (!_disposed)
-        _operationErrors[id] = _assistantFailure(
-            cause,
-            'cancellation_unconfirmed',
-            'Cancellation could not be confirmed. Check the conversation before retrying.');
-      rethrow;
-    } finally {
-      _stopping.remove(id);
-      _publish();
+    if (id == null || current == null || _stopping.contains(id)) return;
+    if (turnId == null) {
+      if (_sending.contains(id)) {
+        _cancelBeforeStart.add(id);
+        _stopping.add(id);
+        _publish();
+      }
+      return;
     }
+    if (_sending.contains(id)) _cancelBeforeStart.add(id);
+    await _cancelTurn(id, turnId);
+  }
+
+  Future<void> _cancelTurn(String id, String turnId) {
+    _assertActive();
+    final identity = '$id:$turnId';
+    return _cancelling[identity] ??= (() async {
+      _stopping.add(id);
+      _operationErrors.remove(id);
+      _publish();
+      try {
+        final key = _cancelKeys.putIfAbsent(identity, _createId);
+        await _sessions[id]!.requestCancellation(
+            mutationId: 'cancel:$key',
+            idempotencyKey: 'cancel:$key',
+            expectedTurnId: turnId);
+      } catch (cause) {
+        if (!_disposed)
+          _operationErrors[id] = _assistantFailure(
+              cause,
+              'cancellation_unconfirmed',
+              'Cancellation could not be confirmed. Check the conversation before retrying.');
+        rethrow;
+      } finally {
+        _stopping.remove(id);
+        _publish();
+      }
+    })()
+        .whenComplete(() {
+      _cancelling.remove(identity);
+    });
   }
 
   Future<void> markRead({String? conversationId}) async {
@@ -587,13 +709,82 @@ class HandrailAssistantController {
     await current.markRead();
   }
 
-  Future<void> refreshActivity() async {
+  void _startPolling() {
+    if (_disposed || _pollTimer != null || pollingInterval == null) return;
+    _pollTimer = Timer.periodic(pollingInterval!, (_) {
+      unawaited(refreshObservations());
+    });
+  }
+
+  /// One account observation cycle. Active/selected sessions stay current;
+  /// closed idle transcripts do not each poll the gateway or global activity.
+  Future<void> refreshObservations() {
     _assertActive();
-    if ((await client.capabilities()).activity) {
-      final records = await client.listActivity();
-      _assertActive();
-      workspace.replaceRemoteActivity(records);
+    return _observing ??= (() async {
+      try {
+        await refreshActivity();
+      } catch (_) {/* Retry activity next cycle. */}
+      if (_disposed) return;
+      for (final entry in List.of(_sessions.entries)) {
+        final id = entry.key, session = entry.value;
+        final remote = workspace.remoteActivityFor(id);
+        if (id != _selectedId &&
+            session.document?.activeTurnId == null &&
+            !_pending.contains(id) &&
+            !_sending.contains(id) &&
+            !const [
+              HandrailTurnStatus.running,
+              HandrailTurnStatus.waitingForTool
+            ].contains(remote?.status)) continue;
+        try {
+          await session.refresh();
+        } catch (_) {/* Session retains its error/state. */}
+        if (_disposed) return;
+      }
+    })()
+        .whenComplete(() {
+      _observing = null;
+    });
+  }
+
+  Future<HandrailGatewayCapabilities> _getActivityCapabilities() {
+    for (final session in _sessions.values) {
+      final known = session.capabilities;
+      if (known != null) return Future.value(known);
     }
+    return _activityCapabilities ??=
+        client.capabilities().catchError((Object cause) {
+      _activityCapabilities = null;
+      throw cause;
+    });
+  }
+
+  /// Coalesces the account-wide read across history, manual refresh and polling.
+  /// A failed read retains prior activity and never changes send permissions.
+  Future<void> refreshActivity() {
+    _assertActive();
+    return _readingActivity ??= (() async {
+      try {
+        final capability = await _getActivityCapabilities();
+        if (_disposed) return;
+        if (capability.activity) {
+          final records = await client.listActivity();
+          if (_disposed) return;
+          workspace.replaceRemoteActivity(records);
+        }
+        _activityError = null;
+      } catch (cause) {
+        if (!_disposed)
+          _activityError = _assistantFailure(cause, 'activity_unavailable',
+              'Conversation activity could not be refreshed. Retry history.');
+        rethrow;
+      } finally {
+        _publish();
+      }
+    })()
+        .whenComplete(() {
+      _readingActivity = null;
+    });
   }
 
   Future<void> setInitialTitle(
@@ -688,6 +879,7 @@ class HandrailAssistantController {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    _pollTimer?.cancel();
     _historyGeneration++;
     _selectionGeneration++;
     final sessions =
