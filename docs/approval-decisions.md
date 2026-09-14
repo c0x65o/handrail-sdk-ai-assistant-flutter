@@ -1,5 +1,16 @@
 # Shared mobile approval decisions
 
+The default review in public commit `7ef5795a823b282ee53dc08951ada1817be11c24`
+uses `HandrailStructuredDetails` to show labeled fields, nested lists, selectable
+values and explicit empty states. Long descriptions wrap on narrow screens;
+amounts and IDs are not reformatted or truncated. Custom business review cards
+can use the same exported widget with their already validated arguments:
+`HandrailStructuredDetails(value: review.arguments)`. This presentation does not
+change review completeness, identity binding, permission or decision controls.
+The structured-details and approval widget tests cover narrow/large-text layouts,
+literal values and preserved approval restrictions. App rollout requires this
+public Git revision in both the manifest and lockfile.
+
 This API is included in public Flutter commit
 `50fe566d73f68b2beacc2a874dc9a038363b1509`. All three main mobile consumers now
 normally install it with matching locks. The exact-decision receipt correction
