@@ -84,6 +84,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(f.calls.last, ['retry', 'p']);
   });
+  testWidgets('large review details start closed while decision controls remain available', (tester) async {
+    final f = Reviews();
+    addTearDown(f.changes.close);
+    f.proposal.addAll({'reviewed': true, 'complete': false,
+      'arguments': {'fields': [for (var i = 0; i < 12; i++) {'value': 'Saved $i'}]}});
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: SingleChildScrollView(
+      child: HandrailApprovalDecisionsView(binding: f.binding),
+    ))));
+    expect(find.text('Saved 11'), findsNothing);
+    expect(find.textContaining('incomplete'), findsOneWidget);
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Approve')).onPressed, isNull);
+    expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Reject')).onPressed, isNotNull);
+    await tester.tap(find.text('Action details'));
+    await tester.pumpAndSettle();
+    expect(find.text('Saved 11'), findsOneWidget);
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Approve')).onPressed, isNull);
+    expect(f.calls, isEmpty);
+  });
   testWidgets('custom business rendering does not enable an incomplete review',
       (tester) async {
     final f = Reviews();

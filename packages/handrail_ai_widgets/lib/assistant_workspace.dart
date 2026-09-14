@@ -46,7 +46,7 @@ class HandrailAssistantWorkspace<T> extends StatefulWidget {
     this.showArchived = true,
     this.showUnread = true,
     this.showToolActivity = true,
-    this.showPromptCounter = true,
+    this.showPromptCounter = false,
     this.submissionEnabled = true,
     this.sidebarBreakpoint = 720,
     this.focusNode,
@@ -84,16 +84,18 @@ class HandrailAssistantWorkspace<T> extends StatefulWidget {
     this.transcriptKey,
     this.errorKey,
     this.audioRecorderFactory,
-  })  : assert(maxPromptLength > 0),
-        assert(maxInputLength == null ||
-            maxInputLength > 0 && maxInputLength <= maxPromptLength),
-        assert(composerMaxLines > 0),
-        assert(sidebarBreakpoint >= 400);
+  }) : assert(maxPromptLength > 0),
+       assert(
+         maxInputLength == null ||
+             maxInputLength > 0 && maxInputLength <= maxPromptLength,
+       ),
+       assert(composerMaxLines > 0),
+       assert(sidebarBreakpoint >= 400);
   final HandrailWorkspaceBinding binding;
   final HandrailComposerController drafts;
   final T Function()? captureContext;
   final Map<String, Object?> Function(HandrailWorkspaceSubmission<T>)?
-      buildRequest;
+  buildRequest;
   final int maxPromptLength;
   final int? maxInputLength;
   final int composerMaxLines;
@@ -129,7 +131,7 @@ class HandrailAssistantWorkspace<T> extends StatefulWidget {
   final bool allowMessageLinks;
   final Future<void> Function(String)? copyText;
   final Future<List<HandrailAttachmentFile>> Function(HandrailAttachmentLimits)?
-      attachmentPicker;
+  attachmentPicker;
   final ValueChanged<HandrailApprovalMode>? onApprovalModeChanged;
   final String? Function(Map<String, Object?>)? approvalTitle;
   final Widget? Function(BuildContext, Map<String, Object?>)? toolResultBuilder,
@@ -137,7 +139,7 @@ class HandrailAssistantWorkspace<T> extends StatefulWidget {
 
   /// Display only: complete-review and permission gates remain in the binding.
   final Widget? Function(BuildContext, Map<String, Object?>)?
-      approvalReviewBuilder;
+  approvalReviewBuilder;
   final HandrailAttachmentSaver? saveAttachment;
   final List<Widget> transcriptTrailing;
   final WidgetBuilder? emptyBuilder;
@@ -226,23 +228,25 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
       final context = widget.captureContext?.call();
       await drafts.submitWithAttachments((text, files, accepted) async {
         final submission = HandrailWorkspaceSubmission<T>(
-            text: text,
-            attachments: List.unmodifiable(files),
-            context: context,
-            approvalMode: mode);
+          text: text,
+          attachments: List.unmodifiable(files),
+          context: context,
+          approvalMode: mode,
+        );
         final request =
             builder?.call(submission) ?? _defaultRequest(submission);
         final metadata = request['metadata'];
         return binding.send(
-            conversationId: id,
-            request: {
-              ...request,
-              'metadata': {
-                if (metadata is Map) ...Map<String, Object?>.from(metadata),
-                ...submission.approvalMetadata,
-              },
+          conversationId: id,
+          request: {
+            ...request,
+            'metadata': {
+              if (metadata is Map) ...Map<String, Object?>.from(metadata),
+              ...submission.approvalMetadata,
             },
-            onAccepted: accepted);
+          },
+          onAccepted: accepted,
+        );
       });
     } on HandrailAttachmentException {
       // The shared attachment queue renders retained retry/discard guidance.
@@ -252,38 +256,39 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
           widget.binding.read()['conversationId'] == id &&
           widget.binding.read()['error'] == null) {
         setState(
-            () => _localError = 'The message could not be sent. Try again.');
+          () => _localError = 'The message could not be sent. Try again.',
+        );
       }
     }
   }
 
   Map<String, Object?> _defaultRequest(
-          HandrailWorkspaceSubmission<T> submission) =>
+    HandrailWorkspaceSubmission<T> submission,
+  ) => {
+    'protocol_version': 'handrail.ai-runtime.v1',
+    'continuation_of': null,
+    'messages': [
       {
-        'protocol_version': 'handrail.ai-runtime.v1',
-        'continuation_of': null,
-        'messages': [
-          {
-            'role': 'user',
-            'content': [
-              if (submission.text.trim().isNotEmpty)
-                {'type': 'text', 'text': submission.text.trim()},
-              for (final file in submission.attachments)
-                {
-                  'type': (file['media_type'] as String).startsWith('image/')
-                      ? 'image'
-                      : 'document',
-                  'attachment': file,
-                },
-            ],
-          }
+        'role': 'user',
+        'content': [
+          if (submission.text.trim().isNotEmpty)
+            {'type': 'text', 'text': submission.text.trim()},
+          for (final file in submission.attachments)
+            {
+              'type': (file['media_type'] as String).startsWith('image/')
+                  ? 'image'
+                  : 'document',
+              'attachment': file,
+            },
         ],
-        'tools': [],
-        'tool_results': [],
-        'generation': {},
-        'correlation_hints': <String, Object?>{},
-        'metadata': submission.approvalMetadata,
-      };
+      },
+    ],
+    'tools': [],
+    'tool_results': [],
+    'generation': {},
+    'correlation_hints': <String, Object?>{},
+    'metadata': submission.approvalMetadata,
+  };
 
   @override
   void dispose() {
@@ -300,145 +305,175 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
     final capabilities = widget.binding.capabilitiesFor(id);
     final downloader = widget.binding.downloaderFor(id);
     final downloadMaximum = capabilities['attachmentDownloadMaximumBytes'];
-    final transcriber =
-        widget.showVoice ? widget.binding.transcriberFor(id) : null;
-    final sending = state['running'] == true ||
+    final transcriber = widget.showVoice
+        ? widget.binding.transcriberFor(id)
+        : null;
+    final sending =
+        state['running'] == true ||
         state['submitting'] == true ||
         drafts.uploadingAttachments;
     final tooLong = drafts.controller.text.length > widget.maxPromptLength;
     Widget history(bool compact) => HandrailConversationHistory(
-        key: widget.historyKey,
-        binding: widget.binding.history,
-        compact: compact,
-        showArchived: widget.showArchived,
-        showUnread: widget.showUnread,
-        newButtonKey: widget.newButtonKey);
-    final conversation = Column(children: [
-      Expanded(
+      key: widget.historyKey,
+      binding: widget.binding.history,
+      compact: compact,
+      showArchived: widget.showArchived,
+      showUnread: widget.showUnread,
+      newButtonKey: widget.newButtonKey,
+    );
+    final conversation = Column(
+      children: [
+        Expanded(
           child: HandrailConversationTranscript(
-              key: widget.transcriptKey,
-              binding: widget.binding.transcript,
-              style: widget.transcriptStyle,
-              onOpenLink: widget.onOpenLink,
-              allowMessageLinks: widget.allowMessageLinks,
-              copyText: widget.copyText,
-              citationLink: widget.citationLink,
-              trailing: [
-                HandrailApprovalDecisionsView(
-                    binding: widget.binding.approvals,
-                    reviewBuilder: widget.approvalReviewBuilder,
-                    titleFor: widget.approvalTitle),
-                ...widget.transcriptTrailing,
-              ],
-              emptyBuilder: widget.emptyBuilder,
-              attachmentBuilder: widget.attachmentBuilder ??
-                  (downloader != null && id != null && downloadMaximum is int
-                      ? (context, attachment) => HandrailSavedAttachment(
-                          attachment: attachment,
-                          scope: (widget.binding.scope, id),
-                          downloader: downloader,
-                          maximumBytes: downloadMaximum,
-                          saveAttachment: widget.saveAttachment)
-                      : null),
-              toolResultBuilder: widget.toolResultBuilder,
-              showToolActivity: widget.showToolActivity,
-              loadingLabel: widget.loadingLabel,
-              workingLabel: widget.workingLabel,
-              failureLabel: widget.failureLabel,
-              errorLabel: widget.errorLabel,
-              errorKey: widget.errorKey)),
-      Padding(
+            key: widget.transcriptKey,
+            binding: widget.binding.transcript,
+            style: widget.transcriptStyle,
+            onOpenLink: widget.onOpenLink,
+            allowMessageLinks: widget.allowMessageLinks,
+            copyText: widget.copyText,
+            citationLink: widget.citationLink,
+            trailing: [
+              HandrailApprovalDecisionsView(
+                binding: widget.binding.approvals,
+                reviewBuilder: widget.approvalReviewBuilder,
+                titleFor: widget.approvalTitle,
+              ),
+              ...widget.transcriptTrailing,
+            ],
+            emptyBuilder: widget.emptyBuilder,
+            attachmentBuilder:
+                widget.attachmentBuilder ??
+                (downloader != null && id != null && downloadMaximum is int
+                    ? (context, attachment) => HandrailSavedAttachment(
+                        attachment: attachment,
+                        scope: (widget.binding.scope, id),
+                        downloader: downloader,
+                        maximumBytes: downloadMaximum,
+                        saveAttachment: widget.saveAttachment,
+                      )
+                    : null),
+            toolResultBuilder: widget.toolResultBuilder,
+            showToolActivity: widget.showToolActivity,
+            loadingLabel: widget.loadingLabel,
+            workingLabel: widget.workingLabel,
+            failureLabel: widget.failureLabel,
+            errorLabel: widget.errorLabel,
+            errorKey: widget.errorKey,
+          ),
+        ),
+        Padding(
           padding: widget.composerPadding,
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            if (widget.contextHeader case final header?) header,
-            HandrailComposer(
-              key: widget.composerKey,
-              controller: drafts.controller,
-              maxLength: widget.maxInputLength,
-              maxLines: widget.composerMaxLines,
-              allowExpand: widget.allowExpandedEditor,
-              expandedEditorTitle: widget.expandedEditorTitle,
-              attachKey: widget.attachKey,
-              onAttach: widget.attachmentPicker == null
-                  ? null
-                  : () => unawaited(
-                      drafts.pickAttachmentsUsing(widget.attachmentPicker!)),
-              expandKey: widget.expandKey,
-              expandedInputKey: widget.expandedInputKey,
-              attachmentDrafts: drafts,
-              focusNode: widget.focusNode,
-              contextMenuBuilder: widget.contextMenuBuilder,
-              onPasteImage: widget.onPasteImage,
-              onVoiceBusyChanged: widget.onVoiceBusyChanged,
-              inputKey: widget.inputKey,
-              sendKey: widget.sendKey,
-              placeholder: widget.placeholder,
-              inputTextStyle: widget.inputTextStyle,
-              decoration: widget.composerDecoration,
-              sendButtonStyle: widget.sendButtonStyle,
-              approvalMode: _approvalMode,
-              showApprovalControl: widget.showApprovalControl,
-              onApprovalModeChanged: (mode) {
-                setState(() => _approvalMode = mode);
-                widget.onApprovalModeChanged?.call(mode);
-              },
-              showAttachmentControl: widget.showAttachments,
-              voiceControls: transcriber == null ? const [] : null,
-              transcribeAudio: transcriber,
-              transcriptionScope: (widget.binding.scope, id),
-              transcriptionMaximumBytes:
-                  capabilities['transcriptionMaximumBytes'] as int? ??
-                      25 * 1024 * 1024,
-              transcriptionMaximumDuration: Duration(
-                  milliseconds: (math.min(
-                              (capabilities[
-                                          'transcriptionMaximumDurationSeconds']
-                                      as num?) ??
-                                  60,
-                              60) *
-                          1000)
-                      .floor()),
-              transcriptionMaxDraftLength: widget.maxPromptLength,
-              audioRecorderFactory: widget.audioRecorderFactory,
-              enabled: state['enabled'] == true,
-              canSend: _eligible(state),
-              sending: sending,
-              stopping: state['stopping'] == true,
-              onSend: () => unawaited(_send()),
-              onStop: drafts.uploadingAttachments
-                  ? drafts.cancelUploads
-                  : state['canStop'] == true && id != null
-                      ? () {
-                          unawaited(widget.binding
-                              .stop(id)
-                              .catchError((Object _) {}));
-                        }
-                      : null,
-            ),
-            if (_localError case final error?)
-              Semantics(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (widget.contextHeader case final header?) header,
+              HandrailComposer(
+                key: widget.composerKey,
+                controller: drafts.controller,
+                maxLength: widget.maxInputLength,
+                maxLines: widget.composerMaxLines,
+                allowExpand: widget.allowExpandedEditor,
+                expandedEditorTitle: widget.expandedEditorTitle,
+                attachKey: widget.attachKey,
+                onAttach: widget.attachmentPicker == null
+                    ? null
+                    : () => unawaited(
+                        drafts.pickAttachmentsUsing(widget.attachmentPicker!),
+                      ),
+                expandKey: widget.expandKey,
+                expandedInputKey: widget.expandedInputKey,
+                attachmentDrafts: drafts,
+                focusNode: widget.focusNode,
+                contextMenuBuilder: widget.contextMenuBuilder,
+                onPasteImage: widget.onPasteImage,
+                onVoiceBusyChanged: widget.onVoiceBusyChanged,
+                inputKey: widget.inputKey,
+                sendKey: widget.sendKey,
+                placeholder: widget.placeholder,
+                inputTextStyle: widget.inputTextStyle,
+                decoration: widget.composerDecoration,
+                sendButtonStyle: widget.sendButtonStyle,
+                approvalMode: _approvalMode,
+                showApprovalControl: widget.showApprovalControl,
+                onApprovalModeChanged: (mode) {
+                  setState(() => _approvalMode = mode);
+                  widget.onApprovalModeChanged?.call(mode);
+                },
+                showAttachmentControl: widget.showAttachments,
+                voiceControls: transcriber == null ? const [] : null,
+                transcribeAudio: transcriber,
+                transcriptionScope: (widget.binding.scope, id),
+                transcriptionMaximumBytes:
+                    capabilities['transcriptionMaximumBytes'] as int? ??
+                    25 * 1024 * 1024,
+                transcriptionMaximumDuration: Duration(
+                  milliseconds:
+                      (math.min(
+                                (capabilities['transcriptionMaximumDurationSeconds']
+                                        as num?) ??
+                                    60,
+                                60,
+                              ) *
+                              1000)
+                          .floor(),
+                ),
+                transcriptionMaxDraftLength: widget.maxPromptLength,
+                audioRecorderFactory: widget.audioRecorderFactory,
+                enabled: state['enabled'] == true,
+                canSend: _eligible(state),
+                sending: sending,
+                stopping: state['stopping'] == true,
+                onSend: () => unawaited(_send()),
+                onStop: drafts.uploadingAttachments
+                    ? drafts.cancelUploads
+                    : state['canStop'] == true && id != null
+                    ? () {
+                        unawaited(
+                          widget.binding.stop(id).catchError((Object _) {}),
+                        );
+                      }
+                    : null,
+              ),
+              if (_localError case final error?)
+                Semantics(
                   liveRegion: true,
-                  child: Text(error,
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.error))),
-            if (widget.showPromptCounter)
-              Text(
-                  '${drafts.controller.text.length} / ${widget.maxPromptLength} characters${tooLong ? ' — shorten before sending' : ''}',
+                  child: Text(
+                    error,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              if (widget.showPromptCounter || tooLong)
+                Text(
+                  !widget.showPromptCounter && tooLong
+                      ? 'Message is too long — shorten before sending.'
+                      : '${drafts.controller.text.length} / ${widget.maxPromptLength} characters${tooLong ? ' — shorten before sending' : ''}',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: tooLong
-                          ? Theme.of(context).colorScheme.error
-                          : null)),
-          ])),
-    ]);
+                    color: tooLong ? Theme.of(context).colorScheme.error : null,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
     return LayoutBuilder(
-        builder: (context, constraints) => constraints.maxWidth >=
-                widget.sidebarBreakpoint
-            ? Row(children: [
+      builder: (context, constraints) =>
+          constraints.maxWidth >= widget.sidebarBreakpoint
+          ? Row(
+              children: [
                 SizedBox(width: 260, child: history(false)),
                 const VerticalDivider(width: 1),
                 Expanded(child: conversation),
-              ])
-            : Column(children: [history(true), Expanded(child: conversation)]));
+              ],
+            )
+          : Column(
+              children: [
+                history(true),
+                Expanded(child: conversation),
+              ],
+            ),
+    );
   }
 }

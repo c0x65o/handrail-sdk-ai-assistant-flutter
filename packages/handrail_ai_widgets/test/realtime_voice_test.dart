@@ -283,6 +283,42 @@ void main() {
     expect(find.text('Open voice'), findsOneWidget);
   });
 
+  testWidgets('preflight uses refreshed eligibility after a loading frame',
+      (tester) async {
+    final gate = Completer<bool>();
+    final allowed = ValueNotifier(true);
+    addTearDown(allowed.dispose);
+    final session = _Session();
+    await _show(tester, session, allowed: allowed, beforeStart: (_) async {
+      allowed.value = false;
+      final result = await gate.future;
+      allowed.value = result;
+      return result;
+    });
+    await _tap(tester, 'self');
+    expect(session.starts, isEmpty);
+    gate.complete(true);
+    await tester.pumpAndSettle();
+    expect(session.starts, [('saved-conversation', 'trusted-self')]);
+    expect(session.state.value.phase, HandrailRealtimeVoicePhase.listening);
+  });
+
+  testWidgets('microphone permission dialog does not cancel live startup',
+      (tester) async {
+    final session = _Session()..startGate = Completer<void>();
+    await _show(tester, session);
+    await _tap(tester, 'self');
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump();
+    expect(session.stops, 0);
+    expect(session.state.value.phase, HandrailRealtimeVoicePhase.connecting);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    session.startGate!.complete();
+    await tester.pumpAndSettle();
+    expect(session.starts, hasLength(1));
+    expect(session.state.value.phase, HandrailRealtimeVoicePhase.listening);
+  });
+
   testWidgets('background stops immediately; resumed view never auto-starts',
       (tester) async {
     final gate = Completer<bool>();
@@ -290,8 +326,9 @@ void main() {
     await _show(tester, session, beforeStart: (_) => gate.future);
     await _tap(tester, 'self');
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
-    expect(session.stops, 1);
+    expect(session.stops, 0);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    expect(session.stops, 1);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     gate.complete(true);
     await tester.pump();
@@ -352,8 +389,9 @@ void main() {
     await _tap(tester, 'self');
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     await tester.pumpAndSettle();
-    expect(session.stops, 1);
+    expect(session.stops, 0);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    expect(session.stops, 1);
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     await tester.pump();
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);

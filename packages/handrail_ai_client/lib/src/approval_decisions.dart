@@ -26,8 +26,8 @@ class HandrailApprovalProposal {
         json['proposal_version'] is! int ||
         version < 1 ||
         version >= 9007199254740991 ||
-        json['expires_at'] is! String ||
-        DateTime.tryParse(json['expires_at'] as String) == null ||
+        (json['expires_at'] != null && (json['expires_at'] is! String ||
+          DateTime.tryParse(json['expires_at'] as String) == null)) ||
         !const [
           'pending',
           'confirmed',
@@ -54,8 +54,7 @@ class HandrailApprovalProposal {
   String get id => json['proposal_id'] as String;
   int get version => json['proposal_version'] as int;
   String get status => json['status'] as String;
-  bool get expired => !DateTime.parse(json['expires_at'] as String)
-      .isAfter(DateTime.now().toUtc());
+  bool get expired => status == 'expired';
   Map<String, Object?> get reviewedArguments =>
       Map<String, Object?>.from(json['reviewed_arguments'] as Map);
   String get binding => _approvalHash({

@@ -60,7 +60,7 @@ class HandrailConversationDocument {
   }
 
   HandrailConversationState get runtimeState {
-    final turn = latestTurn;
+    final turn = activeTurnId == null ? latestTurn : turns.firstWhere((turn) => turn['turn_id'] == activeTurnId);
     final turnId = turn?['turn_id'] as String?;
     final outputIds =
         (turn?['output_message_ids'] as List? ?? const []).toSet();
@@ -71,6 +71,7 @@ class HandrailConversationDocument {
     final status = switch (turn?['status']) {
       'queued' || 'running' => HandrailTurnStatus.running,
       'waiting_for_tool_result' => HandrailTurnStatus.waitingForTool,
+      'waiting_for_approval' => HandrailTurnStatus.waitingForApproval,
       'completed' => HandrailTurnStatus.completed,
       'cancelled' => HandrailTurnStatus.cancelled,
       'failed' => HandrailTurnStatus.failed,
@@ -472,7 +473,7 @@ class HandrailConversationSession {
     if (_disposed) throw StateError('Conversation session is disposed');
     // A lost start acknowledgement can arrive after the run finished. Never
     // restart a canonical terminal turn, even if its transport record expired.
-    if (const ['completed', 'cancelled', 'failed'].contains(_document!.turns
+    if (const ['completed', 'cancelled', 'failed', 'waiting_for_approval'].contains(_document!.turns
         .firstWhere((turn) => turn['turn_id'] == submission.turnId)['status']))
       return;
     await _disconnectObservation();
@@ -502,7 +503,7 @@ class HandrailConversationSession {
           .where((value) => value['turn_id'] == turnId)
           .firstOrNull;
       if (turn != null &&
-          const ['completed', 'failed', 'cancelled'].contains(turn['status'])) {
+          const ['completed', 'failed', 'cancelled', 'waiting_for_approval'].contains(turn['status'])) {
         done.complete(turn);
       }
     }
@@ -545,7 +546,7 @@ class HandrailConversationSession {
           .where((turn) => turn['turn_id'] == expectedTurnId)
           .firstOrNull;
       if (known != null &&
-          const ['completed', 'failed', 'cancelled'].contains(known['status']))
+          const ['completed', 'failed', 'cancelled', 'waiting_for_approval'].contains(known['status']))
         return;
       throw const HandrailGatewayException('cancellation_target_changed',
           'The requested turn is not visible. Refresh before retrying cancellation.',

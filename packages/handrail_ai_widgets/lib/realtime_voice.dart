@@ -72,6 +72,8 @@ final class HandrailRealtimeVoiceStartOption<T> {
 /// replacement. The host must also enforce authorization at media admission.
 /// Backgrounding stops the session and keeps its final/uncertain status visible;
 /// returning to the app never starts the microphone automatically.
+/// Temporary focus loss (including a microphone permission dialog) is not
+/// backgrounding. Hidden, paused and detached states stop the session.
 class HandrailRealtimeVoiceSurface<T> extends StatefulWidget {
   const HandrailRealtimeVoiceSurface({
     super.key,
@@ -125,8 +127,7 @@ class _HandrailRealtimeVoiceSurfaceState<T>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _foreground = WidgetsBinding.instance.lifecycleState == null ||
-        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    _foreground = !_isBackground(WidgetsBinding.instance.lifecycleState);
   }
 
   @override
@@ -146,13 +147,18 @@ class _HandrailRealtimeVoiceSurfaceState<T>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final wasForeground = _foreground;
-    _foreground = state == AppLifecycleState.resumed;
+    _foreground = !_isBackground(state);
     if (wasForeground && !_foreground) {
       unawaited(_close(leave: false));
     } else if (mounted) {
       setState(() {});
     }
   }
+
+  bool _isBackground(AppLifecycleState? state) =>
+      state == AppLifecycleState.hidden ||
+      state == AppLifecycleState.paused ||
+      state == AppLifecycleState.detached;
 
   @override
   void dispose() {
@@ -176,6 +182,9 @@ class _HandrailRealtimeVoiceSurfaceState<T>
     bool current() => mounted && generation == _generation;
     try {
       if (await widget.beforeStart?.call(option.context) == false) return;
+      // Preflight can update the host's canStart input. Read it only after the
+      // parent has rendered that result, not from its previous loading frame.
+      await WidgetsBinding.instance.endOfFrame;
       if (!current() || _closing || !_foreground || !widget.canStart) return;
       final phase = widget.session.state.value.phase;
       if (phase != HandrailRealtimeVoicePhase.idle &&

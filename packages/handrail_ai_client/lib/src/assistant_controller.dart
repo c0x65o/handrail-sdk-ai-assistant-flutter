@@ -849,7 +849,7 @@ class HandrailAssistantController {
         current == null ||
         current.document?.activeTurnId != null ||
         latest == null ||
-        !const ['completed', 'failed', 'cancelled'].contains(latest['status']))
+        !const ['completed', 'failed', 'cancelled', 'waiting_for_approval'].contains(latest['status']))
       return;
     final observed = workspace.remoteActivityFor(current.conversationId);
     if (observed?.turnId != null && observed!.turnId != latest['turn_id'])

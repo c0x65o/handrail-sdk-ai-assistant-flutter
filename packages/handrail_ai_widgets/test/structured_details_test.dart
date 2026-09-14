@@ -3,6 +3,69 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:handrail_ai_widgets/handrail_ai_widgets.dart';
 
 void main() {
+  testWidgets('large reviews start closed and retain expansion on refresh', (
+    tester,
+  ) async {
+    final value = {
+      'fields': [
+        for (var i = 0; i < 12; i++)
+          {'label': 'Field $i', 'amount': '0012.3400', 'value': 'Exact $i'},
+      ],
+    };
+    Widget view(Object? data) => MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: HandrailStructuredDetailsDisclosure(
+            value: data,
+            title: 'Saved details',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpWidget(view(value));
+    expect(find.text('Saved details'), findsOneWidget);
+    expect(find.text('Exact 11'), findsNothing);
+    await tester.tap(find.text('Saved details'));
+    await tester.pumpAndSettle();
+    expect(find.text('Exact 11'), findsOneWidget);
+    expect(find.text('0012.3400'), findsNWidgets(12));
+    await tester.pumpWidget(view({...value}));
+    expect(find.text('Exact 11'), findsOneWidget);
+    await tester.tap(find.text('Saved details'));
+    await tester.pumpAndSettle();
+    expect(find.text('Exact 11'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  test(
+    'collapse policy covers many fields, long values, lines and nesting',
+    () {
+      expect(
+        handrailShouldCollapseStructuredDetails({
+          'payee': 'Vendor',
+          'amount': '0012.3400',
+        }),
+        isFalse,
+      );
+      for (final value in [
+        List.filled(9, 0),
+        'x' * 801,
+        'line\n' * 9,
+        {
+          'a': {
+            'b': {
+              'c': {
+                'd': {'e': 0},
+              },
+            },
+          },
+        },
+      ]) {
+        expect(handrailShouldCollapseStructuredDetails(value), isTrue);
+      }
+    },
+  );
+
   for (final width in [320.0, 800.0]) {
     testWidgets('readable complete details fit ${width}px with large text', (
       tester,

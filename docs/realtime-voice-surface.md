@@ -1,5 +1,31 @@
 # Shared realtime voice and media lifecycle
 
+## Pending startup fixes — September 14, 2026
+
+Local source fixes two startup failures reproduced with widget regressions:
+
+- A delayed host preflight can render `canStart: false` while checking saved
+  calls. Startup now waits for the completed preflight to render before reading
+  that input again. Revocation, close, scope replacement and failed checks still
+  prevent capture.
+- Flutter's `inactive` state includes native microphone permission dialogs.
+  Losing focus no longer ends the call. `hidden`, `paused` and `detached` still
+  stop capture and fence late startup; returning never starts a new call.
+
+Mills mobile currently pins public Git revision
+`7ef5795a823b282ee53dc08951ada1817be11c24`. Its local preflight adapter also waits
+for the completed render, fixing that race with the installed SDK. The native
+permission-dialog fix requires adoption of a newly released SDK revision; no
+release, dependency repin or deployment was performed for this change.
+
+The focused surface, WebRTC session/gateway and playback suites pass (22 tests).
+These are local widget/platform-channel fixtures, not device microphone or
+provider playback qualification. Mills Mobile Preview was blocked by
+`preview_browser_access_denied` for this chat's saved project scope; its QA Vault
+profile route also rejected Mills as outside the run's scope. No preview opened.
+
+## Shared surface and earlier adoption
+
 `HandrailRealtimeVoiceSurface<T>` owns the standard native voice controls: startup
 choices and retry, status announcements, mute, playback recovery, Stop, close/Back,
 uncertain-end recovery and background stopping. It inherits `Theme.colorScheme`

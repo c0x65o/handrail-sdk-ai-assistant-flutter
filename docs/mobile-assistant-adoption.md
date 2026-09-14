@@ -7,6 +7,28 @@ Send/Stop, approval settings, pending approval decisions, uploads and authentica
 The host supplies protected transport, encrypted pending storage, business
 request construction and branding.
 
+## September 14 UI normalization — local source
+
+The workspace now hides the routine character counter by default. An overlong
+draft still gets an explanation and remains editable; `showPromptCounter: true`
+opts into a persistent count. This default change is not included in the current
+consumer pin `7ef5795a823b282ee53dc08951ada1817be11c24`.
+
+Local host changes hide routine counters in Mills, Cents and Aegis using the
+existing public option. Cents keeps the standard overlength warning, uses safe
+areas instead of a fixed header spacer, removes invisible corner dismissal
+overlays and the redundant single-mode bar, and uses readable mobile text.
+Mills puts captions, ended-call history and shared-speaker options behind
+disclosures while retaining unfinished-call recovery and business approvals.
+The primary voice action is labeled Start live voice.
+
+No SDK publication, dependency update or deployment is part of this local pass.
+Hitcents still has dictation only: its server needs a protected live-call gateway
+before either client can offer working live voice. The generic gateway does not
+gain a live endpoint from a UI flag. Mills production Mobile Preview returned
+`preview_browser_access_denied` because it is outside this Dev Chat's saved
+preview scope; local fixtures do not establish device audio or provider execution.
+
 ## Current public adoption — September 14, turn 35
 
 Mills, Spartan/Aegis and Hitcents/Cents main mobile checkouts now normally install

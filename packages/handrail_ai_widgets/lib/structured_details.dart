@@ -28,6 +28,57 @@ class HandrailStructuredDetails extends StatelessWidget {
   Widget build(BuildContext context) => _DetailValue(value, depth: 0);
 }
 
+/// Presentation budget only; expanding preserves all authorized data.
+bool handrailShouldCollapseStructuredDetails(Object? value) {
+  var rows = 0;
+  var characters = 0;
+  var lines = 0;
+  bool visit(Object? item, int depth) {
+    if (++rows > 8 || depth > 4) return true;
+    if (item is Map) {
+      for (final entry in item.entries) {
+        characters += (entry.key as String).length;
+        if (characters > 800 || visit(entry.value, depth + 1)) return true;
+      }
+    } else if (item is List) {
+      for (final child in item) {
+        if (visit(child, depth + 1)) return true;
+      }
+    } else {
+      final text = item == null ? '' : '$item';
+      characters += text.length;
+      lines += '\n'.allMatches(text).length;
+    }
+    return characters > 800 || lines > 8;
+  }
+
+  return visit(value, 0);
+}
+
+/// Default SDK review presentation. Host-owned expansion tiles can use the
+/// plain HandrailStructuredDetails widget without nesting disclosures.
+class HandrailStructuredDetailsDisclosure extends StatelessWidget {
+  const HandrailStructuredDetailsDisclosure({
+    super.key,
+    required this.value,
+    this.title = 'Details',
+  });
+  final Object? value;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!handrailShouldCollapseStructuredDetails(value)) {
+      return HandrailStructuredDetails(value: value);
+    }
+    return ExpansionTile(
+      title: Text(title),
+      childrenPadding: const EdgeInsets.all(8),
+      children: [HandrailStructuredDetails(value: value)],
+    );
+  }
+}
+
 class _DetailValue extends StatelessWidget {
   const _DetailValue(this.value, {required this.depth});
   final Object? value;

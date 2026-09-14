@@ -135,7 +135,7 @@ class _ApprovalDecisionsState extends State<HandrailApprovalDecisionsView> {
                           }),
                     if (review) ...[
                       widget.reviewBuilder?.call(context, item) ??
-                          HandrailStructuredDetails(value: item['arguments']),
+                          HandrailStructuredDetailsDisclosure(value: item['arguments'], title: 'Action details'),
                       if (item['complete'] != true)
                         const Text(
                             'This review is incomplete. Approval is unavailable.'),

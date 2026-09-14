@@ -79,6 +79,7 @@ enum HandrailTurnStatus {
   idle,
   running,
   waitingForTool,
+  waitingForApproval,
   completed,
   cancelled,
   failed,
@@ -179,6 +180,8 @@ class HandrailConversationState {
           ? Map<String, Object?>.from(frame.data['result'] as Map)
           : frame.data;
       final terminalStatus = terminal['status'];
+      if (terminalStatus == 'waiting_for_approval')
+        nextStatus = HandrailTurnStatus.waitingForApproval;
       if (terminalStatus == 'completed')
         nextStatus = HandrailTurnStatus.completed;
       if (terminalStatus == 'cancelled')
@@ -269,6 +272,7 @@ class HandrailConversationActivityRecord {
           HandrailTurnStatus.waitingForTool =>
             'running',
           HandrailTurnStatus.failed => 'error',
+          HandrailTurnStatus.waitingForApproval ||
           HandrailTurnStatus.completed ||
           HandrailTurnStatus.cancelled =>
             'completed',

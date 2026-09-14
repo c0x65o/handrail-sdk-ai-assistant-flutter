@@ -68,6 +68,34 @@ class PendingHeadersClient extends http.BaseClient {
 }
 
 void main() {
+  test('approval waits restore without a running observer and leave comments available', () async {
+    final saved = snapshot(running: false);
+    final state = saved['state'] as Map<String, Object?>;
+    (state['turns'] as List).first['status'] = 'waiting_for_approval';
+    state['approval_proposals'] = [{'proposal_id': 'p', 'status': 'pending'}];
+    final requests = <http.Request>[];
+    final client = HandrailAiClient(baseUri: Uri.parse('https://app.example/ai'), httpClient: MockClient((request) async {
+      requests.add(request);
+      if (request.url.path.endsWith('/capabilities')) return ok({
+        'protocolVersion': applicationGatewayProtocolVersion, 'synchronization': true, 'activity': false});
+      expect(request.url.path, endsWith('/synchronization'));
+      final body = jsonDecode(request.body) as Map;
+      return ok(body['operation'] == 'read_since' ? {'status': 'events', 'events': [], 'hasMore': false}
+        : {'status': 'snapshot', 'snapshot': saved});
+    }));
+    final session = HandrailConversationSession(client: client, conversationId: 'c1', pollingInterval: null);
+    try {
+      await session.initialize();
+      expect(session.document!.runtimeState.status, HandrailTurnStatus.waitingForApproval);
+      expect(session.workspace.snapshot.runningCount, 0);
+      expect(session.observationConnected, false);
+      expect((await session.waitForTurn('t1'))['status'], 'waiting_for_approval');
+      expect(session.document!.activeTurnId, isNull);
+      expect(session.document!.runtimeState.approvals.single['status'], 'pending');
+      await session.refresh();
+      expect(requests.any((request) => request.url.path.contains('/turns/')), false);
+    } finally { await session.dispose(); client.close(); }
+  });
   test(
       'disconnect aborts pending response headers without closing the shared HTTP client',
       () async {

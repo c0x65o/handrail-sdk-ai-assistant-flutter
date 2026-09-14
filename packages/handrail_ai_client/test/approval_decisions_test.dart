@@ -322,8 +322,18 @@ void main() {
     expect(f.decisions, hasLength(1));
     expect(await f.pending.loadApprovalDecisions(), isEmpty);
   });
-  test('expired or unavailable approval capability never dispatches', () async {
-    f.proposal = {...f.proposal, 'expires_at': '2000-01-01T00:00:00.000Z'};
+  test('pending approvals have no deadline, including older timestamped proposals', () async {
+    for (final expiry in [null, '2000-01-01T00:00:00.000Z']) {
+      f.proposal = {...f.proposal, 'expires_at': expiry};
+      await c.session!.refresh();
+      await c.approvals.review('p', 1);
+      expect(item(c)['canConfirm'], true);
+      expect(item(c)['canReject'], true);
+      expect(item(c)['expired'], false);
+    }
+  });
+  test('historical expired or unavailable approval capability never dispatches', () async {
+    f.proposal = {...f.proposal, 'status': 'expired', 'expires_at': '2000-01-01T00:00:00.000Z'};
     await c.session!.refresh();
     expect(item(c)['canConfirm'], false);
     expect(item(c)['canReject'], false);
@@ -332,7 +342,7 @@ void main() {
     expect(f.decisions, isEmpty);
     await c.dispose();
     f.enabled = false;
-    f.proposal = {...f.proposal, 'expires_at': '2099-01-01T00:00:00.000Z'};
+    f.proposal = {...f.proposal, 'status': 'pending', 'expires_at': null};
     c = f.controller(autoCreate: false);
     await c.initialize();
     expect(item(c)['canReview'], false);

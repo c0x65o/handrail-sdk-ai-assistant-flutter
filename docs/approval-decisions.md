@@ -42,7 +42,7 @@ adapter and its financial formatting/permission checks are adopted and tested.
 
 `canDecideApproval(proposal, confirm)` is an additional current host permission
 gate. It does not grant authority that the gateway denies. The controller checks
-the current proposal binding/version, lifecycle, expiry and negotiated approval
+the current proposal binding/version, lifecycle and negotiated approval
 capability. Selection changes invalidate an in-flight review. A changed binding
 invalidates a previously loaded review, including changes at the same version.
 The host widget hook `approvalReviewBuilder` formats already validated arguments.
@@ -73,7 +73,7 @@ retries the newest version. A verified confirmation means permission was recorde
 not that a business tool succeeded. Canonical history owns execution status.
 
 Validation: 13 focused controller/journal tests and five new widget/workspace
-tests cover incomplete/opaque review, domain veto, expiry/capabilities, changed
+tests cover incomplete/opaque review, domain veto, historical expiry/capabilities, changed
 arguments, account/selection changes, durable-write failure, competing writers,
 receipt mismatch and lost replies. A real HTTP Dart-to-JS test drops the reply,
 advances synthetic execution state, then restarts and settles the same decision
@@ -81,3 +81,31 @@ without provider execution. The new JS regression checks replay after actual
 fixture tool execution with exactly one invocation. No live provider, financial
 operation, audio, browser or mobile-device acceptance is established by these
 fixtures. See the shared goal handoff for logs and remaining consumer work.
+
+## Compact large reviews
+
+The default review uses `HandrailStructuredDetailsDisclosure`: large payloads
+start closed in an ExpansionTile, and every exact field/value remains available
+when opened. The shared JS/Flutter budget is eight visited values (containers
+included), 800 characters across keys/values, eight embedded newlines or four
+levels of nesting. Short reviews remain inline. Expansion survives binding
+refreshes. Completeness warnings and decision controls stay outside the tile;
+opening a tile never grants confirmation authority.
+
+Custom cards with an existing ExpansionTile should keep it initially closed and
+continue using the plain `HandrailStructuredDetails` inside it, avoiding nested
+tiles. The new default behavior is local SDK source until an authorized release
+and consumer adoption using a full public Git SHA and matching lockfile.
+
+
+## Approval pauses without deadlines (local source)
+
+Pending proposals accept a nullable `expires_at` and ignore timestamps on older
+pending records. Already expired historical records remain terminal. No timer
+turns a pending request into a decision. `waiting_for_approval` is a resting
+conversation state: no active turn or Stop button, no turn stream reconnection,
+and a new message can be sent without deciding the retained proposal.
+`waitForTurn` returns at this human decision boundary as well as completion.
+A later explicit decision resumes server-owned work; the client never executes
+it or creates consent from comments. Adoption requires the coordinated server
+SDK release with durable approval resumption and matching consumer Git pins.
