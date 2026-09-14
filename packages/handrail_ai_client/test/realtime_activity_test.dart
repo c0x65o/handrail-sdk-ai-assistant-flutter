@@ -39,6 +39,34 @@ HandrailRealtimeActivityReadToken token(int completed) =>
         failed: 0);
 
 void main() {
+  test('pending approval is distinct from running and failed voice work', () {
+    final counts = HandrailRealtimeToolCounts.fromJson({
+      'total': 1,
+      'running': 0,
+      'waitingForApproval': 1,
+      'completed': 0,
+      'failed': 0,
+    });
+    expect(counts.waitingForApproval, 1);
+    expect(counts.running, 0);
+    expect(
+        HandrailRealtimeToolActivity.fromJson({
+          'toolCallId': 'saved',
+          'name': 'save',
+          'status': 'waiting_for_approval',
+        }).status,
+        HandrailRealtimeToolStatus.waitingForApproval);
+    expect(
+        () => HandrailRealtimeToolCounts.fromJson({
+              'total': 1,
+              'running': 0,
+              'waitingForApproval': -1,
+              'completed': 0,
+              'failed': 0,
+            }),
+        throwsFormatException);
+  });
+
   test('read tokens must match the displayed call and counts', () {
     final value = {
       'callId': 'voice',

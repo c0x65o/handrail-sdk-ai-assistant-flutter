@@ -40,43 +40,74 @@ class History {
   }
 
   HandrailHistoryUiBinding get binding => (
-        scope: this,
-        changes: changes.stream,
-        read: () => state,
-        create: create,
-        open: (id) async {
-          actions.add('open:$id');
-        },
-        archive: (id) async {
-          actions.add('archive:$id');
-        },
-        restore: (id) async {
-          actions.add('restore:$id');
-        },
-        delete: (id, version) async {
-          actions.add('delete:$id:$version');
-          await deletionResult;
-        },
-        view: (name) async {
-          state['view'] = name;
-          changed();
-        },
-        unread: (value) {
-          state['unreadOnly'] = value;
-          changed();
-        },
-        loadMore: () async {
-          actions.add('more');
-        },
-        refresh: () async {
-          actions.add('refresh');
-          state.remove('error');
-          changed();
-        },
-      );
+    scope: this,
+    changes: changes.stream,
+    read: () => state,
+    create: create,
+    open: (id) async {
+      actions.add('open:$id');
+    },
+    archive: (id) async {
+      actions.add('archive:$id');
+    },
+    restore: (id) async {
+      actions.add('restore:$id');
+    },
+    delete: (id, version) async {
+      actions.add('delete:$id:$version');
+      await deletionResult;
+    },
+    view: (name) async {
+      state['view'] = name;
+      changed();
+    },
+    unread: (value) {
+      state['unreadOnly'] = value;
+      changed();
+    },
+    loadMore: () async {
+      actions.add('more');
+    },
+    refresh: () async {
+      actions.add('refresh');
+      state.remove('error');
+      changed();
+    },
+  );
 }
 
 void main() {
+  testWidgets('desktop sidebar uses its own width for header controls', (
+    tester,
+  ) async {
+    final history = History();
+    addTearDown(history.changes.close);
+    await tester.binding.setSurfaceSize(const Size(1280, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 260,
+              child: HandrailConversationHistory(
+                binding: history.binding,
+                compact: false,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(tester.getSize(find.text('Conversations')).height, lessThan(30));
+    await tester.tap(find.byTooltip('New chat'));
+    await tester.pumpAndSettle();
+    expect(history.actions, contains('create'));
+  });
+
   for (final compact in [false, true]) {
     testWidgets(
       'catalog permission disables creation and saved deletion retry (compact $compact)',
@@ -239,13 +270,13 @@ void main() {
       addTearDown(first.changes.close);
       addTearDown(second.changes.close);
       Widget subject(History history) => MaterialApp(
-            home: Scaffold(
-              body: HandrailConversationHistory(
-                binding: history.binding,
-                compact: false,
-              ),
-            ),
-          );
+        home: Scaffold(
+          body: HandrailConversationHistory(
+            binding: history.binding,
+            compact: false,
+          ),
+        ),
+      );
       await tester.pumpWidget(subject(first));
       await tester.tap(find.byTooltip('Delete conversation'));
       await tester.pumpAndSettle();
@@ -329,13 +360,13 @@ void main() {
         addTearDown(first.changes.close);
         addTearDown(second.changes.close);
         Widget subject(History history) => MaterialApp(
-              home: Scaffold(
-                body: HandrailConversationHistory(
-                  binding: history.binding,
-                  compact: compact,
-                ),
-              ),
-            );
+          home: Scaffold(
+            body: HandrailConversationHistory(
+              binding: history.binding,
+              compact: compact,
+            ),
+          ),
+        );
         await tester.pumpWidget(subject(first));
         if (compact) {
           await tester.tap(find.byKey(const ValueKey('handrail-open-history')));
@@ -458,9 +489,8 @@ void main() {
     addTearDown(first.changes.close);
     addTearDown(second.changes.close);
     Widget subject(History value) => MaterialApp(
-          home: Scaffold(
-              body: HandrailConversationHistory(binding: value.binding)),
-        );
+      home: Scaffold(body: HandrailConversationHistory(binding: value.binding)),
+    );
     await tester.pumpWidget(subject(first));
     await tester.tap(find.byKey(const ValueKey('handrail-open-history')));
     await tester.pumpAndSettle();

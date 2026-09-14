@@ -26,6 +26,8 @@ class Fixture {
   final requests = <http.Request>[],
       creations = <String, Map<String, Object?>>{};
   bool failList = false, loseCreate = false, loseArchive = false;
+  bool titleGeneration = false;
+  List<Map<String, Object?>> messages = [];
   Future<http.Response?> Function(http.Request, Map)? before;
   final storage = <String, String>{};
   late final pending = HandrailKeyValuePendingTurnStore(
@@ -58,7 +60,8 @@ class Fixture {
       return ok({
         'protocolVersion': applicationGatewayProtocolVersion,
         'synchronization': true,
-        'authoritativeCancellation': true
+        'authoritativeCancellation': true,
+        'resources': {'titleGeneration': titleGeneration}
       });
     if (path.endsWith('/conversations/list')) {
       if (failList) return http.Response('unavailable', 503);
@@ -120,7 +123,7 @@ class Fixture {
             'conversation_id': id,
             'revision': null,
             'active_turn_id': null,
-            'messages': [],
+            'messages': messages,
             'turns': [],
             'tool_calls': [],
             'approval_proposals': [],
@@ -136,6 +139,68 @@ class Fixture {
 }
 
 void main() {
+  test('failed server title generation does not race recovery with a fallback rename', () async {
+    final f = Fixture()..titleGeneration = true
+      ..messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'Long first message'}]}];
+    f.before = (request, body) async => request.url.path.endsWith('/titles/generate')
+        ? http.Response('unavailable', 503) : null;
+    final controller = f.controller(autoCreate: false);
+    addTearDown(controller.dispose);
+    addTearDown(f.client.close);
+    await controller.initialize();
+    await controller.openConversation('one');
+    await expectLater(controller.setInitialTitle('one', 'Long first message', 'first'), throwsA(isA<HandrailGatewayException>()));
+    expect(f.rows['one']!['title'], 'New conversation');
+    expect(f.requests.where((r) => r.url.path.endsWith('/conversations/rename')), isEmpty);
+  });
+  for (final generationSupported in [true, false]) {
+    test('initial titles support return-only and legacy servers ($generationSupported)', () async {
+      final f = Fixture()..titleGeneration = generationSupported
+        ..messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'First message'}]}];
+      f.before = (request, body) async {
+        if (request.url.path.endsWith('/titles/generate')) return ok('Generated title');
+        if (request.url.path.endsWith('/conversations/rename')) {
+          expect(body['expectedVersion'], 1);
+          f.rows['one'] = {...f.rows['one']!, 'title': body['title'], 'version': 2};
+          return ok({'descriptor': f.rows['one'], 'status': 'updated'});
+        }
+        return null;
+      };
+      final controller = f.controller(autoCreate: false);
+      addTearDown(controller.dispose);
+      addTearDown(f.client.close);
+      await controller.initialize();
+      await controller.openConversation('one');
+      await controller.setInitialTitle('one', 'First message', 'first');
+      expect(controller.selectedDescriptor!.title, generationSupported ? 'Generated title' : 'First message');
+      expect(f.requests.where((r) => r.url.path.endsWith('/conversations/rename')), hasLength(1));
+    });
+  }
+  for (final manualRename in [false, true]) {
+    test('server title generation preserves saved title (manual: $manualRename)', () async {
+      final f = Fixture()..titleGeneration = true
+        ..messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'A long first message'}]}];
+      f.before = (request, body) async {
+        if (request.url.path.endsWith('/titles/generate')) {
+          f.rows['one'] = {...f.rows['one']!, 'version': 2,
+            'title': manualRename ? 'My chosen title' : 'Concise generated title'};
+          return ok('Concise generated title');
+        }
+        return null;
+      };
+      final controller = f.controller(autoCreate: false);
+      addTearDown(controller.dispose);
+      addTearDown(f.client.close);
+      await controller.initialize();
+      await controller.openConversation('one');
+      await controller.setInitialTitle('one', 'A long first message', 'operation-one');
+      expect(controller.selectedDescriptor!.title,
+          manualRename ? 'My chosen title' : 'Concise generated title');
+      expect(f.requests.where((r) => r.url.path.endsWith('/titles/generate')), hasLength(1));
+      expect(f.requests.where((r) => r.url.path.endsWith('/conversations/rename')), isEmpty);
+    });
+  }
+
   test(
       'configured creation context is sampled once and frozen across lost replies',
       () async {

@@ -112,7 +112,8 @@ class _HistoryState extends State<HandrailConversationHistory> {
             busy = widget.binding.read()['busy'] == true;
         return LayoutBuilder(
           builder: (context, constraints) {
-            final compactNew = constraints.maxWidth /
+            final compactNew =
+                constraints.maxWidth /
                     (MediaQuery.textScalerOf(context).scale(16) / 16) <
                 360;
             Future<void> create() async {
@@ -144,15 +145,17 @@ class _HistoryState extends State<HandrailConversationHistory> {
                     IconButton.outlined(
                       key: widget.newButtonKey,
                       tooltip: widget.newLabel,
-                      onPressed:
-                          busy || state['canCreate'] == false ? null : create,
+                      onPressed: busy || state['canCreate'] == false
+                          ? null
+                          : create,
                       icon: const Icon(Icons.add),
                     )
                   else
                     OutlinedButton.icon(
                       key: widget.newButtonKey,
-                      onPressed:
-                          busy || state['canCreate'] == false ? null : create,
+                      onPressed: busy || state['canCreate'] == false
+                          ? null
+                          : create,
                       icon: const Icon(Icons.add, size: 18),
                       label: Text(widget.newLabel),
                     ),
@@ -216,53 +219,54 @@ class _HistorySurfaceState extends State<_HistorySurface> {
   }
 
   Future<void> _delete(Map row) => _act(() async {
-        final binding = widget.config.binding,
-            id = row['id'] as String,
-            version = row['version'] as int;
-        BuildContext? confirmation;
-        final approved = await showDialog<bool>(
-          context: context,
-          builder: (context) {
-            _confirmationContext = context;
-            confirmation = context;
-            return AlertDialog(
-              title: const Text('Delete this conversation?'),
-              content: Text(
-                'Permanently delete “${row['title'] ?? 'Conversation'}” and its messages? This cannot be undone.',
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('Delete conversation'),
-                ),
-              ],
-            );
-          },
+    final binding = widget.config.binding,
+        id = row['id'] as String,
+        version = row['version'] as int;
+    BuildContext? confirmation;
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        _confirmationContext = context;
+        confirmation = context;
+        return AlertDialog(
+          title: const Text('Delete this conversation?'),
+          content: Text(
+            'Permanently delete “${row['title'] ?? 'Conversation'}” and its messages? This cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Delete conversation'),
+            ),
+          ],
         );
-        if (identical(_confirmationContext, confirmation))
-          _confirmationContext = null;
-        if (!mounted ||
-            approved != true ||
-            !widget.isScopeCurrent() ||
-            !identical(binding.scope, widget.config.binding.scope)) return;
-        final state = binding.read();
-        final current = (state['rows'] as List? ?? const []).cast<Map>().where(
-              (row) => row['id'] == id,
-            );
-        if (current.length != 1 ||
-            current.single['version'] != version ||
-            current.single['running'] == true ||
-            current.single['deletionPending'] == true ||
-            (state['catalogActions'] as Map?)?['permanentDelete'] != true) {
-          _error = 'The conversation changed. Review it before deleting.';
-          return;
-        }
-        await binding.delete(id, version);
-      });
+      },
+    );
+    if (identical(_confirmationContext, confirmation))
+      _confirmationContext = null;
+    if (!mounted ||
+        approved != true ||
+        !widget.isScopeCurrent() ||
+        !identical(binding.scope, widget.config.binding.scope))
+      return;
+    final state = binding.read();
+    final current = (state['rows'] as List? ?? const []).cast<Map>().where(
+      (row) => row['id'] == id,
+    );
+    if (current.length != 1 ||
+        current.single['version'] != version ||
+        current.single['running'] == true ||
+        current.single['deletionPending'] == true ||
+        (state['catalogActions'] as Map?)?['permanentDelete'] != true) {
+      _error = 'The conversation changed. Review it before deleting.';
+      return;
+    }
+    await binding.delete(id, version);
+  });
 
   Future<void> _act(
     Future<void> Function() action, {
@@ -279,7 +283,8 @@ class _HistorySurfaceState extends State<_HistorySurface> {
       if (mounted &&
           generation == _actionGeneration &&
           identical(scope, widget.config.binding.scope) &&
-          close) widget.close?.call();
+          close)
+        widget.close?.call();
     } catch (_) {
       if (mounted &&
           generation == _actionGeneration &&
@@ -298,17 +303,20 @@ class _HistorySurfaceState extends State<_HistorySurface> {
 
   @override
   Widget build(BuildContext context) => StreamBuilder<Object?>(
-        stream: widget.config.binding.changes,
-        builder: (context, _) {
-          final binding = widget.config.binding, state = binding.read();
-          final busy = _acting || state['busy'] == true;
-          final rows = (state['rows'] as List? ?? const []).cast<Map>();
-          final catalogActions = state['catalogActions'] as Map? ?? const {};
-          final pendingDeletions =
-              (state['pendingDeletions'] as List? ?? const []).cast<Map>();
-          final view = state['view'] as String? ?? 'active';
-          final error = state['error'] as String? ?? _error;
-          final compactNew = MediaQuery.sizeOf(context).width /
+    stream: widget.config.binding.changes,
+    builder: (context, _) {
+      final binding = widget.config.binding, state = binding.read();
+      final busy = _acting || state['busy'] == true;
+      final rows = (state['rows'] as List? ?? const []).cast<Map>();
+      final catalogActions = state['catalogActions'] as Map? ?? const {};
+      final pendingDeletions = (state['pendingDeletions'] as List? ?? const [])
+          .cast<Map>();
+      final view = state['view'] as String? ?? 'active';
+      final error = state['error'] as String? ?? _error;
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final compactNew =
+              constraints.maxWidth /
                   (MediaQuery.textScalerOf(context).scale(16) / 16) <
               360;
           return Material(
@@ -327,8 +335,11 @@ class _HistorySurfaceState extends State<_HistorySurface> {
                               Expanded(
                                 child: Text(
                                   widget.config.title,
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
                                 ),
                               ),
                               if (compactNew)
@@ -377,8 +388,9 @@ class _HistorySurfaceState extends State<_HistorySurface> {
                                   selected: view == 'archived',
                                   onSelected: busy
                                       ? null
-                                      : (_) =>
-                                          _act(() => binding.view('archived')),
+                                      : (_) => _act(
+                                          () => binding.view('archived'),
+                                        ),
                                 ),
                               if (widget.config.showUnread)
                                 FilterChip(
@@ -440,8 +452,9 @@ class _HistorySurfaceState extends State<_HistorySurface> {
                                   Text(
                                     error,
                                     style: TextStyle(
-                                      color:
-                                          Theme.of(context).colorScheme.error,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
                                     ),
                                   ),
                                   Align(
@@ -466,23 +479,25 @@ class _HistorySurfaceState extends State<_HistorySurface> {
                         children: [
                           for (final pending in pendingDeletions)
                             ListTile(
-                              title:
-                                  const Text('Conversation deletion pending'),
+                              title: const Text(
+                                'Conversation deletion pending',
+                              ),
                               subtitle: Text(
                                 pending['error'] as String? ??
                                     'Checking the saved deletion result…',
                               ),
                               trailing: TextButton(
-                                onPressed: _acting ||
+                                onPressed:
+                                    _acting ||
                                         pending['busy'] == true ||
                                         state['canManageConversations'] == false
                                     ? null
                                     : () => _act(
-                                          () => binding.delete(
-                                            pending['id'] as String,
-                                            pending['version'] as int,
-                                          ),
+                                        () => binding.delete(
+                                          pending['id'] as String,
+                                          pending['version'] as int,
                                         ),
+                                      ),
                                 child: const Text('Retry deletion'),
                               ),
                             ),
@@ -499,12 +514,12 @@ class _HistorySurfaceState extends State<_HistorySurface> {
                             state['loading'] == true
                                 ? 'Loading conversations…'
                                 : state['unreadOnly'] == true
-                                    ? (state['hasMore'] == true
-                                        ? 'No unread conversations in the loaded history.'
-                                        : 'No unread conversations.')
-                                    : view == 'archived'
-                                        ? 'No archived conversations.'
-                                        : 'No conversations yet.',
+                                ? (state['hasMore'] == true
+                                      ? 'No unread conversations in the loaded history.'
+                                      : 'No unread conversations.')
+                                : view == 'archived'
+                                ? 'No archived conversations.'
+                                : 'No conversations yet.',
                           ),
                         ),
                       ),
@@ -532,17 +547,17 @@ class _HistorySurfaceState extends State<_HistorySurface> {
                               ? const SizedBox(
                                   width: 16,
                                   height: 16,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 )
                               : row['unread'] == true
-                                  ? Icon(
-                                      Icons.circle,
-                                      size: 10,
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
-                                    )
-                                  : null,
+                              ? Icon(
+                                  Icons.circle,
+                                  size: 10,
+                                  color: Theme.of(context).colorScheme.primary,
+                                )
+                              : null,
                           title: Text(
                             row['title'] as String? ?? 'New conversation',
                             maxLines: 2,
@@ -576,22 +591,24 @@ class _HistorySurfaceState extends State<_HistorySurface> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               if (widget.config.showArchived &&
-                                  catalogActions[
-                                          archived ? 'restore' : 'archive'] ==
+                                  catalogActions[archived
+                                          ? 'restore'
+                                          : 'archive'] ==
                                       true)
                                 IconButton(
                                   tooltip: archived
                                       ? 'Restore conversation'
                                       : 'Archive conversation',
-                                  onPressed: busy ||
+                                  onPressed:
+                                      busy ||
                                           row['running'] == true ||
                                           row['deletionPending'] == true
                                       ? null
                                       : () => _act(
-                                            () => archived
-                                                ? binding.restore(id)
-                                                : binding.archive(id),
-                                          ),
+                                          () => archived
+                                              ? binding.restore(id)
+                                              : binding.archive(id),
+                                        ),
                                   icon: Icon(
                                     archived
                                         ? Icons.unarchive_outlined
@@ -601,7 +618,8 @@ class _HistorySurfaceState extends State<_HistorySurface> {
                               if (catalogActions['permanentDelete'] == true)
                                 IconButton(
                                   tooltip: 'Delete conversation',
-                                  onPressed: busy ||
+                                  onPressed:
+                                      busy ||
                                           row['running'] == true ||
                                           row['deletionPending'] == true ||
                                           row['version'] is! int
@@ -629,6 +647,8 @@ class _HistorySurfaceState extends State<_HistorySurface> {
           );
         },
       );
+    },
+  );
 }
 
 // Voice has its own state and read receipts. Never reuse `running` for voice:

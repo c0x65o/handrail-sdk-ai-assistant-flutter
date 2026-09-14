@@ -945,11 +945,28 @@ class HandrailAssistantController {
             .where((message) => message['role'] == 'user')
             .length !=
         1) return;
-    final row = await getDescriptor(id);
+    var row = await getDescriptor(id);
     if (row.title != null && row.title != newConversationTitle) return;
-    final normalized = label.trim().replaceAll(RegExp(r'\s+'), ' ');
-    if (normalized.isEmpty) return;
     _requireConversationManagement();
+    final capabilities = await _getActivityCapabilities();
+    _assertConversationUsable(id);
+    var title = label;
+    if (capabilities.resources['titleGeneration'] == true) {
+      // The server owns generation, persistence and concurrent manual renames.
+      // Never race it with a first-message rename or mask a failed generation.
+      title = await client.generateTitle(
+          conversationId: id, idempotencyKey: 'title:$operationId');
+      _assertConversationUsable(id);
+      row = await getDescriptor(id);
+      if (row.title != null && row.title != newConversationTitle) {
+        _invalidateHistoryRead();
+        await refreshHistory();
+        return;
+      }
+      // Older generation endpoints may return a title without persisting it.
+    }
+    final normalized = title.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (normalized.isEmpty || normalized == newConversationTitle) return;
     final result = await client.renameConversation({
       'conversationId': id,
       'expectedVersion': row.version,

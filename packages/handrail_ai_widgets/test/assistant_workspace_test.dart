@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -156,6 +158,31 @@ Widget surface(
 );
 
 void main() {
+  testWidgets(
+    'default workspace request passes the installed JS protocol parser',
+    (tester) async {
+      final fixture = Fixture();
+      addTearDown(fixture.dispose);
+      await tester.pumpWidget(surface(fixture));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('draft')),
+        'Synthetic protocol check',
+      );
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('send')));
+      await tester.pumpAndSettle();
+      expect(fixture.requests, hasLength(1));
+      final result = await tester.runAsync(
+        () => Process.run('node', [
+          '../../tool/gateway/validate-request.mjs',
+          jsonEncode(fixture.requests.single.request),
+        ]),
+      );
+      expect(result!.exitCode, 0, reason: '${result.stdout}${result.stderr}');
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
   testWidgets('platform editor hooks preserve the shared composer', (
     tester,
   ) async {

@@ -285,7 +285,7 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
     ],
     'tools': [],
     'tool_results': [],
-    'generation': {},
+    'generation': {'max_output_tokens': 2048, 'temperature': 0.2},
     'correlation_hints': <String, Object?>{},
     'metadata': submission.approvalMetadata,
   };

@@ -1,6 +1,11 @@
 part of '../handrail_ai_client.dart';
 
-enum HandrailRealtimeToolStatus { running, completed, failed }
+enum HandrailRealtimeToolStatus {
+  running,
+  waitingForApproval,
+  completed,
+  failed
+}
 
 class HandrailRealtimeToolActivity {
   final String toolCallId;
@@ -16,8 +21,11 @@ class HandrailRealtimeToolActivity {
         (value['name'] as String).isEmpty) {
       throw const FormatException('Invalid voice tool activity.');
     }
-    final statuses = HandrailRealtimeToolStatus.values
-        .where((status) => status.name == value['status']);
+    final statuses = HandrailRealtimeToolStatus.values.where((status) =>
+        (status == HandrailRealtimeToolStatus.waitingForApproval
+            ? 'waiting_for_approval'
+            : status.name) ==
+        value['status']);
     if (statuses.length != 1) {
       throw const FormatException('Invalid voice tool status.');
     }
@@ -29,25 +37,31 @@ class HandrailRealtimeToolActivity {
 }
 
 class HandrailRealtimeToolCounts {
-  final int total, running, completed, failed;
+  final int total, running, completed, failed, waitingForApproval;
   const HandrailRealtimeToolCounts(
       {required this.total,
       required this.running,
+      this.waitingForApproval = 0,
       required this.completed,
       required this.failed});
   factory HandrailRealtimeToolCounts.fromJson(Object? value) {
     if (value is! Map ||
+        (value['waitingForApproval'] != null &&
+            (value['waitingForApproval'] is! int ||
+                (value['waitingForApproval'] as int) < 0)) ||
         ['total', 'running', 'completed', 'failed']
             .any((key) => value[key] is! int || (value[key] as int) < 0) ||
         value['total'] !=
             (value['running'] as int) +
                 (value['completed'] as int) +
-                (value['failed'] as int)) {
+                (value['failed'] as int) +
+                (value['waitingForApproval'] as int? ?? 0)) {
       throw const FormatException('Invalid voice tool counts.');
     }
     return HandrailRealtimeToolCounts(
         total: value['total'] as int,
         running: value['running'] as int,
+        waitingForApproval: value['waitingForApproval'] as int? ?? 0,
         completed: value['completed'] as int,
         failed: value['failed'] as int);
   }
