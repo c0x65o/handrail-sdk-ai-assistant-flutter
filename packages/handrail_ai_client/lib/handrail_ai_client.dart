@@ -5,10 +5,13 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:crypto/crypto.dart' as crypto;
 import 'src/platform_http_client.dart' as platform_http;
 
 part 'src/session.dart';
 part 'src/assistant_controller.dart';
+part 'src/conversation_deletion.dart';
+part 'src/approval_decisions.dart';
 part 'src/assistant_ui.dart';
 part 'src/submission.dart';
 part 'src/protected_http.dart';
@@ -322,6 +325,7 @@ class HandrailConversationWorkspaceSnapshot {
 class HandrailConversationWorkspace {
   final Map<String, HandrailConversationWorkspaceEntry> _entries = {};
   final Map<String, HandrailConversationActivityRecord> _remoteActivity = {};
+  final Set<String> _forgotten = {};
   final StreamController<HandrailConversationWorkspaceSnapshot> _changes =
       StreamController<HandrailConversationWorkspaceSnapshot>.broadcast(
     sync: true,
@@ -332,6 +336,7 @@ class HandrailConversationWorkspace {
   HandrailConversationWorkspaceSnapshot get snapshot => _snapshot();
 
   void open(HandrailConversationState state, {bool select = true}) {
+    if (_forgotten.contains(state.conversationId)) return;
     final current = _entries[state.conversationId];
     _entries[state.conversationId] = HandrailConversationWorkspaceEntry(
       state,
@@ -345,6 +350,9 @@ class HandrailConversationWorkspace {
     String conversationId,
     HandrailStreamFrame frame,
   ) {
+    if (_forgotten.contains(conversationId)) {
+      return HandrailConversationState(conversationId: conversationId);
+    }
     final current = _entries[conversationId] ??
         HandrailConversationWorkspaceEntry(
           HandrailConversationState(conversationId: conversationId),
@@ -365,6 +373,7 @@ class HandrailConversationWorkspace {
   }
 
   void select(String? conversationId) {
+    if (_forgotten.contains(conversationId)) return;
     _selectedConversationId = conversationId;
     final selected = conversationId == null ? null : _entries[conversationId];
     if (conversationId != null && selected != null && selected.unread) {
@@ -382,12 +391,21 @@ class HandrailConversationWorkspace {
     _publish();
   }
 
+  /// Evicts confirmed deleted content and ignores delayed frames/read activity.
+  /// Unlike close(), this identity cannot be reopened in the account workspace.
+  void forget(String conversationId) {
+    _forgotten.add(conversationId);
+    _remoteActivity.remove(conversationId);
+    close(conversationId);
+  }
+
   /// Replaces the server-backed index used for unopened or remotely running chats.
   void replaceRemoteActivity(
     Iterable<HandrailConversationActivityRecord> records,
   ) {
     final next = <String, HandrailConversationActivityRecord>{};
     for (final record in records) {
+      if (_forgotten.contains(record.conversationId)) continue;
       if (record.conversationId.isEmpty || record.conversationId.length > 256)
         throw ArgumentError.value(record.conversationId, 'conversationId');
       if (next.containsKey(record.conversationId))

@@ -18,6 +18,90 @@ HandrailRealtimeWorkspaceCall call(
     );
 
 void main() {
+  test(
+      'oversized scopes fence late reads, retain evidence and recover on a valid scope',
+      () async {
+    final saved = [
+      call('one', 'active'),
+      call('two', 'unread',
+          status: HandrailRealtimeCallStatus.ended, completed: 1, unread: true),
+    ];
+    Completer<HandrailRealtimeWorkspacePage>? pending;
+    var reads = 0, visited = 0;
+    final monitor = HandrailRealtimeWorkspaceMonitor(
+        pollingInterval: const Duration(milliseconds: 250),
+        readPage: (ids, after) {
+          reads++;
+          return pending?.future ??
+              Future.value(HandrailRealtimeWorkspacePage(calls: saved));
+        });
+    addTearDown(monitor.dispose);
+    await monitor.setConversations(['one', 'two']);
+    pending = Completer();
+    final oldRead = monitor.refresh();
+    await Future<void>.delayed(Duration.zero);
+    Iterable<String> oversized() sync* {
+      for (var index = 0; index < 50000; index++) {
+        visited++;
+        yield 'conversation-$index';
+      }
+    }
+
+    await expectLater(
+        monitor.setConversations(oversized()), throwsArgumentError);
+    expect(visited, 10001);
+    expect(monitor.state.failure, HandrailRealtimeWorkspaceFailure.scopeLimit);
+    expect(monitor.state.synchronized, isFalse);
+    expect(monitor.state.loading, isFalse);
+    expect(monitor.state.calls, saved);
+    expect(monitor.state.forConversation('one').activeCalls, 1);
+    expect(monitor.state.forConversation('two').unreadCalls, 1);
+    final before = reads;
+    monitor.startPolling();
+    await monitor.refresh();
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    expect(reads, before);
+    final held = pending;
+    pending = null;
+    held.complete(HandrailRealtimeWorkspacePage(calls: []));
+    await oldRead;
+    expect(monitor.state.calls, saved);
+    expect(monitor.state.failure, HandrailRealtimeWorkspaceFailure.scopeLimit);
+    await monitor.setConversations(['two', 'one']);
+    expect(monitor.state.error, isNull);
+    expect(monitor.state.failure, isNull);
+    expect(monitor.state.synchronized, isTrue);
+    expect(monitor.state.calls, saved);
+    expect(reads, greaterThan(before));
+  });
+
+  test(
+      'invalid references retain stale evidence without leaking rejected values',
+      () async {
+    final saved =
+        call('one', 'voice', status: HandrailRealtimeCallStatus.uncertain);
+    var reads = 0;
+    final monitor =
+        HandrailRealtimeWorkspaceMonitor(readPage: (ids, after) async {
+      reads++;
+      return HandrailRealtimeWorkspacePage(calls: [saved]);
+    });
+    addTearDown(monitor.dispose);
+    for (final invalid in ['', 'private-reference-' * 40]) {
+      await monitor.setConversations(['one']);
+      final before = reads;
+      await expectLater(
+          monitor.setConversations([invalid]), throwsArgumentError);
+      expect(
+          monitor.state.failure, HandrailRealtimeWorkspaceFailure.invalidScope);
+      expect(monitor.state.synchronized, isFalse);
+      expect(monitor.state.forConversation('one').unconfirmedCalls, 1);
+      expect(monitor.state.error, isNot(contains('private-reference')));
+      await monitor.refresh();
+      expect(reads, before);
+    }
+  });
+
   test('parses only valid public workspace records', () {
     final data = {
       'calls': [

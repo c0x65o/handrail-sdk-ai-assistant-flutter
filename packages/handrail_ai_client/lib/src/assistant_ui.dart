@@ -19,6 +19,7 @@ typedef HandrailUiTranscriber
 typedef HandrailAssistantUiBinding = ({
   Object scope,
   Stream<Object?> changes,
+  HandrailApprovalUiBinding approvals,
   Future<void> Function() initialize,
   Map<String, Object?> Function() read,
   ({
@@ -29,6 +30,7 @@ typedef HandrailAssistantUiBinding = ({
     Future<void> Function(String) open,
     Future<void> Function(String) archive,
     Future<void> Function(String) restore,
+    Future<void> Function(String, int) delete,
     Future<void> Function(String) view,
     void Function(bool) unread,
     Future<void> Function() loadMore,
@@ -57,11 +59,15 @@ extension HandrailAssistantOptionalUi on HandrailAssistantController {
         scope: this,
         changes: changes,
         initialize: initialize,
+        approvals: approvals.uiBinding,
         history: historyBinding,
         transcript: transcriptBinding,
         read: () => {
               'conversationId': selectedId,
-              'enabled': document != null && !archived,
+              'enabled': document != null &&
+                  !archived &&
+                  !hasPendingDeletion(selectedId!),
+              'deletedConversationIds': deletedConversationIds.toList(),
               'canSend': canSend,
               'running': running,
               'submitting': submitting,
@@ -86,7 +92,8 @@ extension HandrailAssistantOptionalUi on HandrailAssistantController {
             },
         uploaderFor: (id) {
           final capabilities = sessionFor(id)?.capabilities?.attachments;
-          if (id == null || capabilities == null) return null;
+          if (id == null || capabilities == null || hasPendingDeletion(id))
+            return null;
           return client.attachmentUploader(
               conversationId: id,
               maximumBytes: capabilities['maximumBytesPerFile'] as int? ??
@@ -101,6 +108,7 @@ extension HandrailAssistantOptionalUi on HandrailAssistantController {
         transcriberFor: (id) {
           final capability = sessionFor(id)?.capabilities?.transcription;
           if (id == null ||
+              hasPendingDeletion(id) ||
               capability == null ||
               capability.formats['audio/wav'] != 'wav' ||
               capability.maximumBytes < 46 ||

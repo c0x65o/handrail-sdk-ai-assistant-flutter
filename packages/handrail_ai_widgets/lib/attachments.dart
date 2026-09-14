@@ -15,6 +15,15 @@ typedef HandrailAttachmentUploader = Future<
   required Future<void> cancellation,
 });
 
+/// An explicitly configured host file service. Its limits describe that service,
+/// independently of whether the SDK gateway mounts its default upload route.
+/// Authentication and current conversation authorization remain host obligations.
+typedef HandrailAttachmentProvider = ({
+  HandrailAttachmentLimits? Function(String?) limitsFor,
+  HandrailAttachmentUploader? Function(String?) uploaderFor,
+  void Function(String idempotencyKey) release,
+});
+
 class HandrailAttachmentFile {
   HandrailAttachmentFile(
       {required this.fileName,
@@ -67,9 +76,11 @@ class HandrailAttachmentLimits {
       required this.maximumFiles,
       required this.maximumBytesPerFile,
       this.maximumTotalBytes = 20 * 1024 * 1024,
+      int? maximumImageBytes,
       int? maximumDocumentFiles,
       int? maximumDocumentBytes})
       : acceptedMediaTypes = Set.unmodifiable(acceptedMediaTypes),
+        maximumImageBytes = maximumImageBytes ?? maximumBytesPerFile,
         maximumDocumentFiles = maximumDocumentFiles ?? maximumFiles,
         maximumDocumentBytes = maximumDocumentBytes ?? maximumBytesPerFile {
     if (this.acceptedMediaTypes.isEmpty ||
@@ -79,6 +90,7 @@ class HandrailAttachmentLimits {
         maximumBytesPerFile > 50 * 1024 * 1024 ||
         maximumTotalBytes < 1 ||
         maximumTotalBytes > 100 * 1024 * 1024 ||
+        this.maximumImageBytes < 0 ||
         this.maximumDocumentFiles < 0 ||
         this.maximumDocumentBytes < 0)
       throw ArgumentError('Invalid attachment limits.');
@@ -87,10 +99,11 @@ class HandrailAttachmentLimits {
   final int maximumFiles,
       maximumBytesPerFile,
       maximumTotalBytes,
+      maximumImageBytes,
       maximumDocumentFiles,
       maximumDocumentBytes;
   int maximumBytesFor(String type) => type.startsWith('image/')
-      ? maximumBytesPerFile
+      ? math.min(maximumImageBytes, maximumBytesPerFile)
       : maximumDocumentBytes < maximumBytesPerFile
           ? maximumDocumentBytes
           : maximumBytesPerFile;
@@ -109,6 +122,7 @@ class HandrailAttachmentLimits {
       maximumBytesPerFile:
           math.min(maximumBytesPerFile, other.maximumBytesPerFile),
       maximumTotalBytes: math.min(maximumTotalBytes, other.maximumTotalBytes),
+      maximumImageBytes: math.min(maximumImageBytes, other.maximumImageBytes),
       maximumDocumentFiles:
           math.min(maximumDocumentFiles, other.maximumDocumentFiles),
       maximumDocumentBytes:

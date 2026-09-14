@@ -8,6 +8,125 @@ import 'package:handrail_ai_widgets/attachment_preview.dart';
 void main() {
   final png = base64Decode(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=');
+
+  for (final exit in ['account', 'background', 'dispose']) {
+    testWidgets('shared image zoom reauthorizes and clears on $exit',
+        (tester) async {
+      var loads = 0;
+      Widget subject(String account) => MaterialApp(
+              home: Scaffold(
+                  body: HandrailAttachmentPreview(
+            attachmentId: 'image',
+            scope: account,
+            label: 'Protected photo',
+            mediaType: 'image/png',
+            expectedByteSize: png.length,
+            enableImageZoom: true,
+            presentation: HandrailAttachmentPresentation.inline,
+            openKey: const ValueKey('zoom'),
+            loadBytes: () async {
+              loads++;
+              return png;
+            },
+          )));
+      await tester.pumpWidget(subject('first'));
+      await tester.pumpAndSettle();
+      expect(loads, 1);
+      await tester.tap(find.byKey(const ValueKey('zoom')));
+      await tester.pumpAndSettle();
+      expect(loads, 2, reason: 'Opening reauthorizes through the loader.');
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+      final enlarged = tester.widget<Image>(find.descendant(
+          of: find.byType(InteractiveViewer), matching: find.byType(Image)));
+      final borrowed = (enlarged.image as MemoryImage).bytes;
+      expect(borrowed, png);
+      if (exit == 'account') {
+        await tester.pumpWidget(subject('second'));
+      } else if (exit == 'background') {
+        tester.binding
+            .handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        await tester.pump();
+      } else {
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
+      await tester.pumpAndSettle();
+      if (exit != 'background')
+        expect(find.byType(InteractiveViewer), findsNothing);
+      expect(borrowed.every((b) => b == 0), isTrue);
+      expect(png.any((b) => b != 0), isTrue,
+          reason: 'The loader owns its source buffer.');
+      if (exit == 'background') {
+        tester.binding
+            .handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+        await tester.pumpAndSettle();
+        expect(loads, 3);
+        expect(find.byType(InteractiveViewer), findsNothing);
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
+  testWidgets('a stale image-opening read cannot open on a replacement account',
+      (tester) async {
+    final held = Completer<Uint8List>();
+    var loads = 0;
+    Widget subject(String account) => MaterialApp(
+            home: Scaffold(
+                body: HandrailAttachmentPreview(
+          attachmentId: 'image',
+          scope: account,
+          label: 'Protected photo',
+          mediaType: 'image/png',
+          enableImageZoom: true,
+          presentation: HandrailAttachmentPresentation.inline,
+          openKey: const ValueKey('zoom'),
+          loadBytes: () {
+            loads++;
+            return loads == 2 ? held.future : Future.value(png);
+          },
+        )));
+    await tester.pumpWidget(subject('first'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('zoom')));
+    await tester.pump();
+    await tester.pumpWidget(subject('second'));
+    held.complete(png);
+    await tester.pumpAndSettle();
+    expect(find.byType(InteractiveViewer), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'a saved PDF control returns after resume without an automatic download',
+      (tester) async {
+    var loads = 0;
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: HandrailAttachmentPreview(
+      attachmentId: 'pdf',
+      label: 'Saved PDF',
+      mediaType: 'application/pdf',
+      onOpenBytes: (_) {},
+      presentation: HandrailAttachmentPresentation.inline,
+      loadBytes: () async {
+        loads++;
+        return Uint8List.fromList([1]);
+      },
+    ))));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(find.text('Saved PDF'), findsOneWidget);
+    expect(loads, 0);
+    await tester.tap(find.text('Saved PDF'));
+    await tester.pumpAndSettle();
+    expect(loads, 1);
+  });
   Widget preview(String id, Future<Uint8List> Function() load) => MaterialApp(
       home: Scaffold(
           body: HandrailAttachmentPreview(

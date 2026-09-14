@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show SchedulerPhase;
 
 enum HandrailAttachmentPresentation { card, inline }
 
@@ -17,6 +18,7 @@ class HandrailAttachmentPreview extends StatefulWidget {
     this.scope,
     this.onOpen,
     this.onOpenBytes,
+    this.enableImageZoom = false,
     this.maximumBytes = 20 * 1024 * 1024,
     this.expectedByteSize,
     this.presentation = HandrailAttachmentPresentation.card,
@@ -27,6 +29,7 @@ class HandrailAttachmentPreview extends StatefulWidget {
     this.openLabel,
     this.imageSemanticsLabel,
   })  : assert(loadBytes != null || loadBytesWithCancellation != null),
+        assert(!enableImageZoom || onOpen == null && onOpenBytes == null),
         assert(maximumBytes > 0),
         assert(imageHeight > 0),
         assert(expectedByteSize == null || expectedByteSize > 0);
@@ -46,6 +49,9 @@ class HandrailAttachmentPreview extends StatefulWidget {
   /// Opens freshly authorized bytes. They are borrowed for this callback's
   /// duration; the SDK clears its private copy after completion.
   final FutureOr<void> Function(Uint8List bytes)? onOpenBytes;
+
+  /// Built-in, account-scoped image viewer; use without host open callbacks.
+  final bool enableImageZoom;
   final int maximumBytes;
   final int? expectedByteSize;
   final HandrailAttachmentPresentation presentation;
@@ -57,17 +63,26 @@ class HandrailAttachmentPreview extends StatefulWidget {
   State<HandrailAttachmentPreview> createState() => _AttachmentPreviewState();
 }
 
-class _AttachmentPreviewState extends State<HandrailAttachmentPreview> {
+class _AttachmentPreviewState extends State<HandrailAttachmentPreview>
+    with WidgetsBindingObserver {
   Uint8List? _bytes;
   bool _failed = false, _loading = false, _opening = false, _openFailed = false;
   int _generation = 0;
+  bool _inactive = false;
+  DialogRoute<void>? _previewRoute;
+  NavigatorState? _previewNavigator;
+  Uint8List? _previewBytes;
   Completer<void> _cancellation = Completer<void>();
   bool get _isImage => widget.mediaType.startsWith('image/');
-  bool get _canOpen => widget.onOpenBytes != null || widget.onOpen != null;
+  bool get _canOpen =>
+      widget.onOpenBytes != null ||
+      widget.onOpen != null ||
+      widget.enableImageZoom && _isImage;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     unawaited(_load());
   }
 
@@ -77,6 +92,7 @@ class _AttachmentPreviewState extends State<HandrailAttachmentPreview> {
     if (oldWidget.attachmentId != widget.attachmentId ||
         oldWidget.scope != widget.scope ||
         oldWidget.mediaType != widget.mediaType ||
+        oldWidget.enableImageZoom != widget.enableImageZoom ||
         oldWidget.maximumBytes != widget.maximumBytes ||
         oldWidget.expectedByteSize != widget.expectedByteSize) {
       _invalidate();
@@ -87,9 +103,11 @@ class _AttachmentPreviewState extends State<HandrailAttachmentPreview> {
     }
   }
 
-  bool _current(int generation) => mounted && generation == _generation;
+  bool _current(int generation) =>
+      mounted && !_inactive && generation == _generation;
   void _invalidate() {
     _generation++;
+    _closePreview();
     if (!_cancellation.isCompleted) _cancellation.complete();
   }
 
@@ -104,7 +122,7 @@ class _AttachmentPreviewState extends State<HandrailAttachmentPreview> {
   }
 
   Future<void> _load() async {
-    if (!_isImage || _loading) return;
+    if (!_isImage || _loading || _inactive) return;
     final generation = _generation;
     _loading = true;
     try {
@@ -126,7 +144,7 @@ class _AttachmentPreviewState extends State<HandrailAttachmentPreview> {
   }
 
   Future<void> _open() async {
-    if (!_canOpen || _opening) return;
+    if (!_canOpen || _opening || _inactive) return;
     final generation = _generation;
     final load = widget.loadBytes,
         cancellableLoad = widget.loadBytesWithCancellation,
@@ -139,12 +157,16 @@ class _AttachmentPreviewState extends State<HandrailAttachmentPreview> {
       _openFailed = false;
     });
     try {
-      if (openBytes != null) {
+      if (openBytes != null || widget.enableImageZoom && _isImage) {
         final bytes = await (cancellableLoad?.call(cancellation) ?? load!());
         if (!_current(generation) || ModalRoute.of(context)?.isCurrent == false)
           return;
         copy = _copyChecked(bytes);
-        await openBytes(copy);
+        if (widget.enableImageZoom && _isImage) {
+          await _showImage(copy);
+        } else {
+          await openBytes!(copy);
+        }
       } else {
         open?.call();
       }
@@ -157,7 +179,98 @@ class _AttachmentPreviewState extends State<HandrailAttachmentPreview> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (const [
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.detached
+    ].contains(state)) {
+      if (_inactive) return;
+      _inactive = true;
+      _invalidate();
+      setState(() {
+        _release();
+        _loading = _opening = false;
+      });
+    } else if (state == AppLifecycleState.resumed && _inactive) {
+      setState(() => _inactive = false);
+      _cancellation = Completer<void>();
+      unawaited(_load());
+    }
+  }
+
+  Future<void> _showImage(Uint8List bytes) async {
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final label = widget.label;
+    final route = DialogRoute<void>(
+        context: context,
+        builder: (context) => Dialog.fullscreen(
+                child: Scaffold(
+              appBar: AppBar(
+                  title:
+                      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  leading: IconButton(
+                      tooltip: 'Close image preview',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close))),
+              body: Center(
+                  child: InteractiveViewer(
+                      minScale: .8,
+                      maxScale: 5,
+                      boundaryMargin: const EdgeInsets.all(40),
+                      child: Image.memory(bytes,
+                          semanticLabel: 'Enlarged image $label',
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) =>
+                              const Text('Image unavailable')))),
+            )));
+    setState(() {
+      _previewRoute = route;
+      _previewNavigator = navigator;
+      _previewBytes = bytes;
+    });
+    try {
+      await navigator.push(route);
+    } finally {
+      // Evict decoded pixels as well as clearing our borrowed encoded copy.
+      PaintingBinding.instance.imageCache.evict(MemoryImage(bytes));
+      bytes.fillRange(0, bytes.length, 0);
+      if (identical(_previewRoute, route)) {
+        _previewRoute = null;
+        _previewNavigator = null;
+        _previewBytes = null;
+      }
+    }
+  }
+
+  void _closePreview() {
+    final route = _previewRoute, navigator = _previewNavigator;
+    final bytes = _previewBytes;
+    _previewRoute = null;
+    _previewNavigator = null;
+    _previewBytes = null;
+    if (bytes != null) {
+      PaintingBinding.instance.imageCache.evict(MemoryImage(bytes));
+      bytes.fillRange(0, bytes.length, 0);
+    }
+    if (route == null || navigator == null) return;
+    void remove() {
+      if (navigator.mounted && route.isActive) navigator.removeRoute(route);
+    }
+
+    // Backgrounding disables frames. Remove immediately outside build so this
+    // route cannot survive until the first frame of a resumed/replaced account.
+    if (WidgetsBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => remove());
+    } else {
+      remove();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _invalidate();
     _release();
     super.dispose();
@@ -192,7 +305,7 @@ class _AttachmentPreviewState extends State<HandrailAttachmentPreview> {
                           : null,
                       errorBuilder: (_, __, ___) => _unavailable())));
 
-  Widget get _openIcon => _opening
+  Widget get _openIcon => _opening && _previewRoute == null
       ? const SizedBox.square(
           dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
       : Icon(widget.mediaType == 'application/pdf'
@@ -201,6 +314,7 @@ class _AttachmentPreviewState extends State<HandrailAttachmentPreview> {
 
   @override
   Widget build(BuildContext context) {
+    if (_inactive) return const SizedBox.shrink();
     final inline = widget.presentation == HandrailAttachmentPresentation.inline;
     final content = Column(mainAxisSize: MainAxisSize.min, children: [
       if (_isImage)

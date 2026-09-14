@@ -50,10 +50,18 @@ class HandrailAssistantWorkspace<T> extends StatefulWidget {
     this.submissionEnabled = true,
     this.sidebarBreakpoint = 720,
     this.focusNode,
+    this.contextMenuBuilder,
+    this.onPasteImage,
+    this.onVoiceBusyChanged,
     this.onDraftChanged,
     this.onApprovalModeChanged,
     this.onOpenLink,
+    this.allowMessageLinks = true,
+    this.copyText,
+    this.attachmentPicker,
     this.toolResultBuilder,
+    this.approvalReviewBuilder,
+    this.approvalTitle,
     this.transcriptTrailing = const [],
     this.emptyBuilder,
     this.citationLink,
@@ -107,10 +115,29 @@ class HandrailAssistantWorkspace<T> extends StatefulWidget {
   final bool submissionEnabled;
   final double sidebarBreakpoint;
   final FocusNode? focusNode;
+
+  /// Platform hooks for the standard editor; shared Send and draft ownership
+  /// remain in this workspace.
+  final EditableTextContextMenuBuilder? contextMenuBuilder;
+  final FutureOr<void> Function(HandrailClipboardImage)? onPasteImage;
+
+  /// Lets a host coordinate a separate live-call surface with dictation.
+  final ValueChanged<bool>? onVoiceBusyChanged;
   final ValueChanged<String>? onDraftChanged, onOpenLink;
+
+  /// Explicit navigation policy; trusted citation resolution stays separate.
+  final bool allowMessageLinks;
+  final Future<void> Function(String)? copyText;
+  final Future<List<HandrailAttachmentFile>> Function(HandrailAttachmentLimits)?
+      attachmentPicker;
   final ValueChanged<HandrailApprovalMode>? onApprovalModeChanged;
+  final String? Function(Map<String, Object?>)? approvalTitle;
   final Widget? Function(BuildContext, Map<String, Object?>)? toolResultBuilder,
       attachmentBuilder;
+
+  /// Display only: complete-review and permission gates remain in the binding.
+  final Widget? Function(BuildContext, Map<String, Object?>)?
+      approvalReviewBuilder;
   final HandrailAttachmentSaver? saveAttachment;
   final List<Widget> transcriptTrailing;
   final WidgetBuilder? emptyBuilder;
@@ -293,8 +320,16 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
               binding: widget.binding.transcript,
               style: widget.transcriptStyle,
               onOpenLink: widget.onOpenLink,
+              allowMessageLinks: widget.allowMessageLinks,
+              copyText: widget.copyText,
               citationLink: widget.citationLink,
-              trailing: widget.transcriptTrailing,
+              trailing: [
+                HandrailApprovalDecisionsView(
+                    binding: widget.binding.approvals,
+                    reviewBuilder: widget.approvalReviewBuilder,
+                    titleFor: widget.approvalTitle),
+                ...widget.transcriptTrailing,
+              ],
               emptyBuilder: widget.emptyBuilder,
               attachmentBuilder: widget.attachmentBuilder ??
                   (downloader != null && id != null && downloadMaximum is int
@@ -325,10 +360,17 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
               allowExpand: widget.allowExpandedEditor,
               expandedEditorTitle: widget.expandedEditorTitle,
               attachKey: widget.attachKey,
+              onAttach: widget.attachmentPicker == null
+                  ? null
+                  : () => unawaited(
+                      drafts.pickAttachmentsUsing(widget.attachmentPicker!)),
               expandKey: widget.expandKey,
               expandedInputKey: widget.expandedInputKey,
               attachmentDrafts: drafts,
               focusNode: widget.focusNode,
+              contextMenuBuilder: widget.contextMenuBuilder,
+              onPasteImage: widget.onPasteImage,
+              onVoiceBusyChanged: widget.onVoiceBusyChanged,
               inputKey: widget.inputKey,
               sendKey: widget.sendKey,
               placeholder: widget.placeholder,

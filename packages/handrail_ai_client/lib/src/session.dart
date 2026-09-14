@@ -491,7 +491,9 @@ class HandrailConversationSession {
   /// Observes the canonical terminal state without starting or cancelling work.
   /// Closing the account releases waiters; a view change does not interrupt them.
   /// Failed and cancelled outcomes are returned for host-specific presentation.
-  Future<Map<String, Object?>> waitForTurn(String turnId) async {
+  /// Stops observing on cancellation; it never requests server cancellation.
+  Future<Map<String, Object?>> waitForTurn(String turnId,
+      {Future<void>? cancellation}) async {
     if (_disposed) throw StateError('Conversation session is disposed');
     final done = Completer<Map<String, Object?>>();
     void inspect() {
@@ -505,6 +507,13 @@ class HandrailConversationSession {
       }
     }
 
+    if (cancellation != null)
+      unawaited(cancellation.then((_) {
+        if (!done.isCompleted)
+          done.completeError(const HandrailGatewayException(
+              'observation_cancelled', 'Stopped waiting for this response.',
+              retryable: true));
+      }));
     final subscription = changes.listen((_) => inspect(), onDone: () {
       if (!done.isCompleted) {
         done.completeError(const HandrailGatewayException(
@@ -576,6 +585,19 @@ class HandrailConversationSession {
 
   void _publish() {
     if (!_disposed) _changes.add(this);
+  }
+
+  Future<void> _forgetAfterDeletion() async {
+    final closing = dispose();
+    _document = null;
+    _error = null;
+    _submittingJson = null;
+    _checkpoint = const {
+      'lastAppliedEventId': null,
+      'lastAppliedCursor': null,
+      'lastAppliedRevision': null
+    };
+    await closing;
   }
 
   Future<void> dispose() async {

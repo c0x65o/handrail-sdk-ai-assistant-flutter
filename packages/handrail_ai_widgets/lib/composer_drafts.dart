@@ -15,13 +15,19 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
       this.attachmentForFile,
       this.limitsForConversation,
       this.uploaderForConversation,
-      this.filePicker});
+      this.filePicker,
+      this.onUploadReleased});
   final HandrailAttachmentFile Function(TAttachment)? fileForAttachment;
   final TAttachment Function(HandrailAttachmentFile)? attachmentForFile;
   final HandrailAttachmentLimits? Function(String?)? limitsForConversation;
   final HandrailAttachmentUploader? Function(String?)? uploaderForConversation;
   final Future<List<HandrailAttachmentFile>> Function(HandrailAttachmentLimits)?
       filePicker;
+
+  /// Releases a host upload's retained local state after removal, admission or
+  /// account disposal. Stop retains the identity for retry and does not release
+  /// it. This callback must not delete remote business or attachment objects.
+  final void Function(String idempotencyKey)? onUploadReleased;
   HandrailAttachmentLimits? get attachmentLimits =>
       limitsForConversation?.call(_selectedId);
   @override
@@ -93,7 +99,7 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
     if (_disposed) return;
     final draft = _drafts.remove(conversationId);
     if (draft != null) {
-      _cancelDraft(draft);
+      _releaseDraft(draft);
       draft.controller.dispose();
     }
     _changed();
@@ -103,7 +109,7 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
   void clear() {
     if (_disposed) return;
     for (final draft in _drafts.values) {
-      _cancelDraft(draft);
+      _releaseDraft(draft);
       draft.controller.dispose();
     }
     _drafts.clear();
@@ -123,7 +129,7 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
 
   void removeAttachmentAt(int index) {
     if (_disposed || index < 0 || index >= _selected.files.length) return;
-    _selected.files.removeAt(index).cancel();
+    _releaseFile(_selected.files.removeAt(index));
     _selected.attachmentError = null;
     _changed();
   }
@@ -146,14 +152,21 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
   }
 
   @override
-  Future<void> pickAttachments() async {
+  Future<void> pickAttachments() =>
+      pickAttachmentsUsing(filePicker ?? pickHandrailAttachments);
+
+  /// A view may supply a native source menu without owning selection state or
+  /// admitting a late picker result into another conversation/account.
+  Future<void> pickAttachmentsUsing(
+      Future<List<HandrailAttachmentFile>> Function(HandrailAttachmentLimits)
+          picker) async {
     if (!attachmentsEnabled || isSubmitting || pickingAttachments) return;
     final draft = _selected, limits = attachmentLimits!;
     draft.picking = true;
     draft.attachmentError = null;
     _changed();
     try {
-      final files = await (filePicker ?? pickHandrailAttachments)(limits);
+      final files = await picker(limits);
       if (_disposed || !identical(draft, _selected) || isSubmitting) return;
       addPickedAttachments(files);
     } catch (error) {
@@ -176,6 +189,24 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
     }
   }
 
+  void _releaseFile(_DraftFile<TAttachment> file) {
+    file.cancel();
+    if (file.released) return;
+    file.released = true;
+    try {
+      onUploadReleased?.call(file.uploadKey);
+    } catch (_) {
+      // Local cleanup failures cannot undo durable admission or prevent the
+      // remaining files from being released. The account also owns disposal.
+    }
+  }
+
+  void _releaseDraft(_ConversationDraft<TAttachment> draft) {
+    for (final file in {...draft.files, ...?draft.pendingFiles}) {
+      _releaseFile(file);
+    }
+  }
+
   /// Uploads a host-rendered selection through the same retained queue.
   /// Reuse the immutable selection objects on retry; discard this conversation
   /// after admission. Replacing a selection creates a new upload identity.
@@ -195,7 +226,7 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
       selected.add(index < 0 ? _DraftFile(value) : remaining.removeAt(index));
     }
     for (final file in remaining) {
-      file.cancel();
+      _releaseFile(file);
     }
     draft.files
       ..clear()
@@ -356,7 +387,7 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
       draft.pendingFiles = null;
       if (files != null) {
         for (final file in files) {
-          file.cancel();
+          _releaseFile(file);
         }
         draft.files.removeWhere(files.contains);
       }
@@ -390,7 +421,7 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
       // Remove exact selections. A removed/re-added identical file is a new
       // selection and must survive, just like an identical later text edit.
       for (final file in files) {
-        file.cancel();
+        _releaseFile(file);
       }
       draft.files.removeWhere(files.contains);
       draft.attachmentError = null;
@@ -407,7 +438,7 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
     if (_disposed) return;
     _disposed = true;
     for (final draft in _drafts.values) {
-      _cancelDraft(draft);
+      _releaseDraft(draft);
       draft.controller.dispose();
     }
     _drafts.clear();
@@ -434,6 +465,7 @@ class _DraftFile<T> {
   HandrailAttachmentStatus status = HandrailAttachmentStatus.selected;
   HandrailAttachmentException? error;
   bool retryable = true;
+  bool released = false;
   Completer<void>? abort;
   void cancel() {
     if (abort?.isCompleted == false) abort!.complete();
@@ -465,7 +497,8 @@ class HandrailComposerController
   HandrailComposerController(
       {required super.limitsForConversation,
       required super.uploaderForConversation,
-      super.filePicker})
+      super.filePicker,
+      super.onUploadReleased})
       : super(
             fileForAttachment: (file) => file,
             attachmentForFile: (file) => file);
@@ -475,23 +508,44 @@ class HandrailComposerController
   factory HandrailComposerController.forAssistant(
       HandrailWorkspaceBinding binding,
       {HandrailAttachmentLimits? attachmentLimits,
+      HandrailAttachmentProvider? attachmentProvider,
+      void Function(String idempotencyKey)? onUploadReleased,
       Future<List<HandrailAttachmentFile>> Function(HandrailAttachmentLimits)?
           filePicker}) {
     final drafts = HandrailComposerController(
       limitsForConversation: (id) {
         final capabilities = binding.capabilitiesFor(id);
-        final negotiated = HandrailAttachmentLimits.fromCapabilities(
-            capabilities['attachments'] as Map<String, Object?>?,
-            capabilities['documentInput'] as Map<String, Object?>?);
+        final negotiated = attachmentProvider != null
+            ? attachmentProvider.limitsFor(id)
+            : HandrailAttachmentLimits.fromCapabilities(
+                capabilities['attachments'] as Map<String, Object?>?,
+                capabilities['documentInput'] as Map<String, Object?>?);
         return attachmentLimits == null
             ? negotiated
             : negotiated?.intersect(attachmentLimits);
       },
-      uploaderForConversation: binding.uploaderFor,
+      uploaderForConversation:
+          attachmentProvider?.uploaderFor ?? binding.uploaderFor,
       filePicker: filePicker,
+      onUploadReleased: (key) {
+        try {
+          attachmentProvider?.release(key);
+        } finally {
+          onUploadReleased?.call(key);
+        }
+      },
     );
-    void select() => drafts.select(binding.read()['conversationId'] as String?,
-        adoptUnassignedDraft: true);
+    final removed = <String>{};
+    void select() {
+      final state = binding.read();
+      for (final id in (state['deletedConversationIds'] as List? ?? const [])
+          .cast<String>()) {
+        if (removed.add(id)) drafts.discard(id);
+      }
+      drafts.select(state['conversationId'] as String?,
+          adoptUnassignedDraft: true);
+    }
+
     drafts._assistantSubscription = binding.changes.listen((_) => select());
     select();
     return drafts;

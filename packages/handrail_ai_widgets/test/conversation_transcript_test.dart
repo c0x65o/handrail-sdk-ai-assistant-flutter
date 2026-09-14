@@ -84,6 +84,156 @@ Widget surface(Fixture fixture,
                     toolResultBuilder: toolResultBuilder))));
 
 void main() {
+  for (final showAuthor in [false, true]) {
+    testWidgets('branding preserves operational message identity ($showAuthor)',
+        (tester) async {
+      final semantics = tester.ensureSemantics();
+      for (final role in ['user', 'assistant', 'system', 'tool', 'unknown']) {
+        final label = switch (role) {
+          'user' => 'Family member',
+          'assistant' => 'Mills',
+          'system' => 'System',
+          'tool' => 'Tool result',
+          _ => 'Message',
+        };
+        await tester.pumpWidget(MaterialApp(
+            home: Scaffold(
+                body: HandrailTranscriptMessage(
+                    message: message(role, 'Saved content', role: role),
+                    style: HandrailTranscriptStyle(
+                        showAuthor: showAuthor,
+                        userLabel: 'Family member',
+                        assistantLabel: 'Mills',
+                        assistantAvatar: const Icon(Icons.auto_awesome))))));
+        expect(
+            find.text(label),
+            showAuthor || !['user', 'assistant'].contains(role)
+                ? findsOneWidget
+                : findsNothing);
+        expect(find.byIcon(Icons.auto_awesome),
+            role == 'assistant' ? findsOneWidget : findsNothing);
+        expect(
+            find.bySemanticsLabel(role == 'unknown'
+                ? 'Message, message.'
+                : '$label, $role message.'),
+            findsOneWidget);
+      }
+      semantics.dispose();
+    });
+  }
+  for (final allow in [false, true]) {
+    testWidgets(
+        'message-link policy is independent of a citation resolver veto ($allow)',
+        (tester) async {
+      final links = <String>[];
+      await tester.pumpWidget(MaterialApp(
+          home: Scaffold(
+              body: HandrailTranscriptMessage(
+        message: message('answer', '[Raw message](/home)'),
+        allowMessageLinks: allow,
+        onOpenLink: links.add,
+        citationLink: (source) =>
+            source['source_id'] == 'trusted' ? '/review' : null,
+        citations: const [
+          {
+            'source_id': 'trusted',
+            'label': 'Trusted reference',
+            'locator': '/raw'
+          },
+          {
+            'source_id': 'untrusted',
+            'label': 'Rejected reference',
+            'locator': '/home'
+          },
+        ],
+      ))));
+      tester.widget<HandrailMarkdown>(find.byType(HandrailMarkdown)).onTapLink!(
+          'Raw message', '/home', null);
+      expect(links, allow ? ['/home'] : isEmpty);
+      expect(
+          tester
+              .widget<ActionChip>(
+                  find.widgetWithText(ActionChip, 'Rejected reference'))
+              .onPressed,
+          isNull);
+      await tester.tap(find.text('Trusted reference'));
+      expect(links.last, '/review');
+      expect(links.length, allow ? 2 : 1);
+    });
+  }
+  testWidgets('user, system and tool message text stays literal',
+      (tester) async {
+    for (final role in ['user', 'system', 'tool']) {
+      await tester.pumpWidget(MaterialApp(
+          home: Scaffold(
+              body: HandrailTranscriptMessage(
+                  message: message(role, '**Literal** [link](/home)',
+                      role: role)))));
+      expect(find.text('**Literal** [link](/home)'), findsOneWidget);
+    }
+  });
+
+  testWidgets(
+      'protected copy reports an accessible failure and retries exact visible text',
+      (tester) async {
+    var fail = true;
+    final copied = <String>[];
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: HandrailTranscriptMessage(
+      message: message('copy', 'A **complete** household answer'),
+      copyText: (text) async {
+        copied.add(text);
+        if (fail) throw StateError('Private clipboard details');
+      },
+    ))));
+    await tester.tap(find.text('Copy'));
+    await tester.pump();
+    expect(find.textContaining('The message was not copied.'), findsOneWidget);
+    expect(find.textContaining('Private clipboard'), findsNothing);
+    expect(
+        tester
+            .widget<Semantics>(find
+                .ancestor(
+                    of: find.textContaining('The message was not copied.'),
+                    matching: find.byType(Semantics))
+                .first)
+            .properties
+            .liveRegion,
+        isTrue);
+    fail = false;
+    await tester.tap(find.text('Copy'));
+    await tester.pump();
+    expect(find.text('Copied'), findsOneWidget);
+    expect(find.textContaining('The message was not copied.'), findsNothing);
+    expect(copied,
+        ['A **complete** household answer', 'A **complete** household answer']);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+  testWidgets('a stale copy failure cannot replace a later success',
+      (tester) async {
+    final pending = Completer<void>();
+    var calls = 0;
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: HandrailTranscriptMessage(
+      message: message('copy', 'Answer'),
+      copyText: (_) {
+        calls++;
+        return calls == 1 ? pending.future : Future<void>.value();
+      },
+    ))));
+    await tester.tap(find.text('Copy'));
+    await tester.pump();
+    await tester.tap(find.text('Copy'));
+    await tester.pump();
+    pending.completeError(StateError('Delayed clipboard failure'));
+    await tester.pump();
+    expect(find.text('Copied'), findsOneWidget);
+    expect(find.textContaining('The message was not copied.'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets(
       'minimal transcript supplies Markdown, safe citations, copy, results and private activity',
       (tester) async {

@@ -14,17 +14,20 @@ typedef HandrailTranscriptUiBinding = ({
 
 /// Host branding for the standard bubbles; behavior remains in the SDK.
 class HandrailTranscriptStyle {
-  const HandrailTranscriptStyle(
-      {this.userBackground,
-      this.userForeground,
-      this.assistantBackground,
-      this.assistantForeground,
-      this.textStyle,
-      this.maximumMessageWidth = 760,
-      this.assistantAvatar,
-      this.showAuthor = false,
-      this.userLabel = 'You',
-      this.assistantLabel = 'Assistant'});
+  const HandrailTranscriptStyle({
+    this.userBackground,
+    this.userForeground,
+    this.assistantBackground,
+    this.assistantForeground,
+    this.textStyle,
+    this.maximumMessageWidth = 760,
+    this.assistantAvatar,
+    this.showAuthor = false,
+    this.userLabel = 'You',
+    this.assistantLabel = 'Assistant',
+    this.systemLabel = 'System',
+    this.toolLabel = 'Tool result',
+  });
   final Color? userBackground,
       userForeground,
       assistantBackground,
@@ -32,37 +35,47 @@ class HandrailTranscriptStyle {
   final TextStyle? textStyle;
   final double maximumMessageWidth;
   final Widget? assistantAvatar;
+
+  /// Show normal chat author labels. System/tool labels remain visible so
+  /// operational messages cannot be mistaken for an assistant answer.
   final bool showAuthor;
-  final String userLabel, assistantLabel;
+  final String userLabel, assistantLabel, systemLabel, toolLabel;
 }
 
 /// Standard transcript, scrolling, read acknowledgement and error recovery.
 /// Domain renderers add business results; hosts supply safe application routing.
 class HandrailConversationTranscript extends StatefulWidget {
-  const HandrailConversationTranscript(
-      {super.key,
-      required this.binding,
-      this.style = const HandrailTranscriptStyle(),
-      this.onOpenLink,
-      this.citationLink,
-      this.attachmentBuilder,
-      this.toolResultBuilder,
-      this.contentBuilder,
-      this.trailing = const [],
-      this.emptyBuilder,
-      this.showCopy = true,
-      this.showCitations = true,
-      this.showToolActivity = true,
-      this.loadingLabel = 'Loading conversation',
-      this.workingLabel = 'Working…',
-      this.failureLabel = 'The request could not be completed.',
-      this.errorLabel,
-      this.errorKey,
-      this.retryKey,
-      this.padding = const EdgeInsets.all(16)});
+  const HandrailConversationTranscript({
+    super.key,
+    required this.binding,
+    this.style = const HandrailTranscriptStyle(),
+    this.onOpenLink,
+    this.allowMessageLinks = true,
+    this.copyText,
+    this.citationLink,
+    this.attachmentBuilder,
+    this.toolResultBuilder,
+    this.contentBuilder,
+    this.trailing = const [],
+    this.emptyBuilder,
+    this.showCopy = true,
+    this.showCitations = true,
+    this.showToolActivity = true,
+    this.loadingLabel = 'Loading conversation',
+    this.workingLabel = 'Working…',
+    this.failureLabel = 'The request could not be completed.',
+    this.errorLabel,
+    this.errorKey,
+    this.retryKey,
+    this.padding = const EdgeInsets.all(16),
+  });
   final HandrailTranscriptUiBinding binding;
   final HandrailTranscriptStyle style;
   final ValueChanged<String>? onOpenLink;
+
+  /// Host navigation policy for raw message links, independent of citations.
+  final bool allowMessageLinks;
+  final Future<void> Function(String)? copyText;
   final String? Function(Map<String, Object?> source)? citationLink;
   final Widget? Function(BuildContext context, Map<String, Object?> attachment)?
       attachmentBuilder;
@@ -219,8 +232,11 @@ class _TranscriptState extends State<HandrailConversationTranscript>
       return;
     final turns = _records(document['turns']);
     if (turns.isEmpty ||
-        !const ['completed', 'failed', 'cancelled']
-            .contains(turns.last['status'])) return;
+        !const [
+          'completed',
+          'failed',
+          'cancelled',
+        ].contains(turns.last['status'])) return;
     final revision = '$_conversationId:${document['revision']}';
     if (_readRevision == revision) return;
     _readRevision = revision;
@@ -278,7 +294,7 @@ class _TranscriptState extends State<HandrailConversationTranscript>
     final tools = _records(document['tool_calls']);
     final sources = {
       for (final source in _records(document['citation_sources']))
-        source['source_id']: source
+        source['source_id']: source,
     };
     final citations = _records(document['citations']);
     final renderedTools = <Object?>{};
@@ -307,20 +323,22 @@ class _TranscriptState extends State<HandrailConversationTranscript>
         ..sort((a, b) =>
             ((a['order'] as num?) ?? 0).compareTo((b['order'] as num?) ?? 0));
       children.add(HandrailTranscriptMessage(
-        key: ValueKey((widget.binding.scope, _conversationId, id)),
-        message: message,
-        style: widget.style,
-        showCopy: widget.showCopy,
-        citations: widget.showCitations
-            ? [
-                for (final citation in attachedCitations)
-                  if (sources[citation['source_id']] case final source?) source
-              ]
-            : const [],
-        citationLink: widget.citationLink,
-        onOpenLink: widget.onOpenLink,
-        attachmentBuilder: widget.attachmentBuilder,
-      ));
+          key: ValueKey((widget.binding.scope, _conversationId, id)),
+          message: message,
+          style: widget.style,
+          showCopy: widget.showCopy,
+          citations: widget.showCitations
+              ? [
+                  for (final citation in attachedCitations)
+                    if (sources[citation['source_id']] case final source?)
+                      source,
+                ]
+              : const [],
+          citationLink: widget.citationLink,
+          onOpenLink: widget.onOpenLink,
+          allowMessageLinks: widget.allowMessageLinks,
+          copyText: widget.copyText,
+          attachmentBuilder: widget.attachmentBuilder));
       for (final turn in turns) {
         final outputs = turn['output_message_ids'] as List? ?? const [];
         final inputs = turn['input_message_ids'] as List? ?? const [];
@@ -428,21 +446,28 @@ class _TranscriptState extends State<HandrailConversationTranscript>
 
 /// Reusable message presentation for hosts with a custom business transcript.
 class HandrailTranscriptMessage extends StatefulWidget {
-  const HandrailTranscriptMessage(
-      {super.key,
-      required this.message,
-      this.style = const HandrailTranscriptStyle(),
-      this.citations = const [],
-      this.showCopy = true,
-      this.onOpenLink,
-      this.citationLink,
-      this.citationKey,
-      this.attachmentBuilder});
+  const HandrailTranscriptMessage({
+    super.key,
+    required this.message,
+    this.style = const HandrailTranscriptStyle(),
+    this.citations = const [],
+    this.showCopy = true,
+    this.onOpenLink,
+    this.allowMessageLinks = true,
+    this.copyText,
+    this.citationLink,
+    this.citationKey,
+    this.attachmentBuilder,
+  });
   final Map<String, Object?> message;
   final HandrailTranscriptStyle style;
   final List<Map<String, Object?>> citations;
   final bool showCopy;
   final ValueChanged<String>? onOpenLink;
+
+  /// Host navigation policy for raw message links, independent of citations.
+  final bool allowMessageLinks;
+  final Future<void> Function(String)? copyText;
   final String? Function(Map<String, Object?> source)? citationLink;
   final Key Function(Map<String, Object?> source)? citationKey;
   final Widget? Function(BuildContext, Map<String, Object?>)? attachmentBuilder;
@@ -452,7 +477,8 @@ class HandrailTranscriptMessage extends StatefulWidget {
 
 class _MessageState extends State<HandrailTranscriptMessage> {
   Timer? _copiedTimer;
-  bool _copied = false;
+  bool _copied = false, _copyFailed = false;
+  int _copyGeneration = 0;
   String get _text => _records(widget.message['content'])
       .where((part) => part['type'] == 'text')
       .map((part) => part['text'] as String? ?? '')
@@ -469,20 +495,39 @@ class _MessageState extends State<HandrailTranscriptMessage> {
     if (oldWidget.message['message_id'] != widget.message['message_id']) {
       _copiedTimer?.cancel();
       _copied = false;
+      _copyFailed = false;
+      _copyGeneration++;
     }
   }
 
   Future<void> _copy() async {
     final id = widget.message['message_id'];
+    final generation = ++_copyGeneration;
+    _copiedTimer?.cancel();
+    setState(() {
+      _copied = false;
+      _copyFailed = false;
+    });
     try {
-      await Clipboard.setData(ClipboardData(text: _text));
-      if (!mounted || widget.message['message_id'] != id) return;
+      if (widget.copyText case final copy?) {
+        await copy(_text);
+      } else {
+        await Clipboard.setData(ClipboardData(text: _text));
+      }
+      if (!mounted ||
+          widget.message['message_id'] != id ||
+          generation != _copyGeneration) return;
       setState(() => _copied = true);
       _copiedTimer?.cancel();
       _copiedTimer = Timer(const Duration(seconds: 2), () {
         if (mounted) setState(() => _copied = false);
       });
-    } catch (_) {/* Clipboard may be unavailable on a platform. */}
+    } catch (_) {
+      if (!mounted ||
+          widget.message['message_id'] != id ||
+          generation != _copyGeneration) return;
+      setState(() => _copyFailed = true);
+    }
   }
 
   @override
@@ -490,6 +535,18 @@ class _MessageState extends State<HandrailTranscriptMessage> {
     final theme = Theme.of(context),
         style = widget.style,
         user = widget.message['role'] == 'user';
+    final role = widget.message['role'];
+    final author = switch (role) {
+      'user' => style.userLabel,
+      'assistant' => style.assistantLabel,
+      'system' => style.systemLabel,
+      'tool' => style.toolLabel,
+      _ => 'Message',
+    };
+    final semanticRole = switch (role) {
+      'user' || 'assistant' || 'system' || 'tool' => '$role message',
+      _ => 'message',
+    };
     final foreground = user
         ? style.userForeground ?? theme.colorScheme.onPrimaryContainer
         : style.assistantForeground ?? theme.colorScheme.onSurface;
@@ -509,18 +566,19 @@ class _MessageState extends State<HandrailTranscriptMessage> {
                 : Border.all(color: theme.colorScheme.outlineVariant),
             borderRadius: BorderRadius.circular(14)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          if (style.showAuthor)
+          if (style.showAuthor || (role != 'user' && role != 'assistant'))
             Padding(
                 padding: const EdgeInsets.only(bottom: 4),
-                child: Text(user ? style.userLabel : style.assistantLabel,
+                child: Text(author,
                     style: textStyle.copyWith(fontWeight: FontWeight.w700))),
           HandrailMarkdown(
               data: _text,
-              isUserMessage: user,
+              isUserMessage: widget.message['role'] != 'assistant',
               selectable: true,
               styleSheet: MarkdownStyleSheet(p: textStyle),
               onTapLink: (text, href, title) {
-                if (handrailSafeConversationLink(href))
+                if (widget.allowMessageLinks &&
+                    handrailSafeConversationLink(href))
                   widget.onOpenLink?.call(href);
               }),
           for (final attachment in attachments)
@@ -536,8 +594,11 @@ class _MessageState extends State<HandrailTranscriptMessage> {
                 child: Wrap(spacing: 6, runSpacing: 4, children: [
                   for (final source in widget.citations)
                     Builder(builder: (context) {
-                      final href = widget.citationLink?.call(source) ??
-                          source['locator'] as String?;
+                      // A configured resolver returning null vetoes navigation.
+                      // Falling back here would bypass host source validation.
+                      final href = widget.citationLink != null
+                          ? widget.citationLink!(source)
+                          : source['locator'] as String?;
                       return ActionChip(
                           key: widget.citationKey?.call(source),
                           label: Text(source['label'] as String? ?? 'Source',
@@ -547,22 +608,13 @@ class _MessageState extends State<HandrailTranscriptMessage> {
                                   handrailSafeConversationLink(href)
                               ? () => widget.onOpenLink!(href!)
                               : null);
-                    })
+                    }),
                 ])),
-          if (widget.showCopy && _text.isNotEmpty)
-            TextButton.icon(
-                onPressed: _copy,
-                icon:
-                    Icon(_copied ? Icons.check : Icons.copy_outlined, size: 15),
-                label: Text(_copied ? 'Copied' : 'Copy'),
-                style: TextButton.styleFrom(foregroundColor: foreground)),
         ]));
     return Semantics(
         container: true,
         explicitChildNodes: true,
-        label: user
-            ? '${style.userLabel}, user message.'
-            : '${style.assistantLabel}, assistant message.',
+        label: '$author, $semanticRole.',
         child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 5),
             child: Row(
@@ -570,23 +622,60 @@ class _MessageState extends State<HandrailTranscriptMessage> {
                 mainAxisAlignment:
                     user ? MainAxisAlignment.end : MainAxisAlignment.start,
                 children: [
-                  if (!user && style.assistantAvatar != null) ...[
+                  if (role == 'assistant' && style.assistantAvatar != null) ...[
                     style.assistantAvatar!,
-                    const SizedBox(width: 8)
+                    const SizedBox(width: 8),
                   ],
-                  Flexible(child: bubble)
+                  Flexible(
+                      child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                              maxWidth: style.maximumMessageWidth),
+                          child: Column(
+                              crossAxisAlignment: user
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
+                              children: [
+                                bubble,
+                                // Actions sit on the conversation surface,
+                                // outside the content bubble. Keep full touch
+                                // targets without extending the user color
+                                // behind an unrelated action row.
+                                if (widget.showCopy && _text.isNotEmpty)
+                                  Align(
+                                      alignment: AlignmentDirectional.centerEnd,
+                                      child: TextButton.icon(
+                                          onPressed: _copy,
+                                          icon: Icon(
+                                              _copied
+                                                  ? Icons.check
+                                                  : Icons.copy_outlined,
+                                              size: 15),
+                                          label:
+                                              Text(_copied ? 'Copied' : 'Copy'),
+                                          style: TextButton.styleFrom(
+                                              foregroundColor: theme.colorScheme
+                                                  .onSurfaceVariant))),
+                                if (_copyFailed)
+                                  Semantics(
+                                      liveRegion: true,
+                                      child: Text(
+                                          'The message was not copied. Try Copy again.',
+                                          style: textStyle.copyWith(
+                                              color: theme.colorScheme.error))),
+                              ]))),
                 ])));
   }
 }
 
 class HandrailTranscriptNotice extends StatelessWidget {
-  const HandrailTranscriptNotice(
-      {super.key,
-      required this.message,
-      this.isError = false,
-      this.actionLabel,
-      this.onAction,
-      this.actionKey});
+  const HandrailTranscriptNotice({
+    super.key,
+    required this.message,
+    this.isError = false,
+    this.actionLabel,
+    this.onAction,
+    this.actionKey,
+  });
   final String message;
   final bool isError;
   final String? actionLabel;
@@ -632,7 +721,7 @@ class _ToolActivity extends StatelessWidget {
                     ? 'Failed'
                     : tool['result'] == null
                         ? 'Working'
-                        : 'Completed'))
+                        : 'Completed')),
         ]);
   }
 }

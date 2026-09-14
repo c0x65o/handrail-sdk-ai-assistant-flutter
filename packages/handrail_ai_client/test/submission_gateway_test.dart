@@ -132,6 +132,104 @@ void main() {
     expect(errors.toString(), isEmpty);
   });
 
+  test('deletion replays a lost real-gateway receipt after controller restart',
+      () async {
+    final storage = <String, String>{};
+    final pending = HandrailKeyValuePendingTurnStore(
+        namespace: 'deletion-wire-test',
+        read: (key) async => storage[key],
+        write: (key, value) async {
+          storage[key] = value;
+        },
+        delete: (key) async {
+          storage.remove(key);
+        });
+    final before = await stats();
+    var controller = HandrailAssistantController(
+        client: client(loseResponse: 'controller:delete'),
+        pendingStore: pending,
+        pollingInterval: null,
+        autoCreate: false);
+    addTearDown(() => controller.dispose());
+    await controller.newConversation();
+    final id = controller.selectedId!,
+        version = controller.selectedDescriptor!.version;
+    await expectLater(controller.permanentlyDelete(id, version),
+        throwsA(isA<http.ClientException>()));
+    expect(await pending.loadDeletions(), hasLength(1));
+    expect(controller.document, isNotNull);
+    await controller.dispose();
+    controller = HandrailAssistantController(
+        client: client(loseResponse: 'controller:delete'),
+        pendingStore: pending,
+        pollingInterval: null,
+        autoCreate: false);
+    await controller.initialize();
+    expect(controller.deletedConversationIds, contains(id));
+    expect(controller.sessionFor(id), isNull);
+    expect(controller.history.map((row) => row.id), isNot(contains(id)));
+    expect(await pending.loadDeletions(), isEmpty);
+    final after = await stats();
+    expect(after['deletions'], (before['deletions'] as int) + 2);
+    expect(after['starts'], before['starts']);
+    expect(after['invocations'], before['invocations']);
+  });
+
+  test(
+      'approval lost reply recovers exact decision after execution advances through the real JS gateway',
+      () async {
+    final before = await stats(), storage = <String, String>{};
+    final api = client(loseResponse: 'controller:approval');
+    final id = await conversation(api);
+    final seeded = await http.post(origin.resolve('/test/propose'),
+        body: jsonEncode({'conversationId': id}));
+    expect(seeded.statusCode, 200);
+    final proposalId =
+        (jsonDecode(seeded.body) as Map)['proposal_id'] as String;
+    final pending = HandrailKeyValuePendingTurnStore(
+        namespace: 'wire-approval',
+        read: (key) async => storage[key],
+        write: (key, value) async {
+          storage[key] = value;
+        },
+        delete: (key) async {
+          storage.remove(key);
+        });
+    var controller = HandrailAssistantController(
+        client: api,
+        pendingStore: pending,
+        pollingInterval: null,
+        autoCreate: false);
+    addTearDown(() => controller.dispose());
+    await controller.openConversation(id);
+    await controller.approvals.review(proposalId, 1);
+    final row =
+        (controller.approvals.presentation['items'] as List).single as Map;
+    await expectLater(
+        controller.approvals
+            .decide(proposalId, 1, row['binding'] as String, true),
+        throwsA(isA<http.ClientException>()));
+    final saved = (await pending.loadApprovalDecisions()).single.toJson();
+    expect(
+        (await http.post(origin.resolve('/test/advance-approval'),
+                body: jsonEncode({'proposalId': proposalId})))
+            .statusCode,
+        200);
+    await controller.dispose();
+    controller = HandrailAssistantController(
+        client: client(loseResponse: 'controller:approval'),
+        pendingStore: pending,
+        pollingInterval: null,
+        autoCreate: false);
+    await controller.initialize();
+    expect(await pending.loadApprovalDecisions(), isEmpty,
+        reason:
+            'Exact version ${saved['expectedVersion']} must settle after execution advances.');
+    final after = await stats();
+    expect(after['decisions'], (before['decisions'] as int) + 2);
+    expect(after['invocations'], before['invocations']);
+  });
+
   test(
       'shared assistant controller creates, sends, archives and restores through the real gateway',
       () async {
@@ -248,6 +346,29 @@ void main() {
       expect(after['invocations'], before['invocations']);
     });
   }
+
+  test(
+      'cancelling a completion wait leaves the server turn running and reusable',
+      () async {
+    final api = client(), id = await conversation(api), view = session(api, id);
+    await view.initialize();
+    final submission = await view.prepareTurn(
+        operationId: 'wait-cancel-${identity++}',
+        clientId: 'dart-test',
+        request: request('Keep server work running'));
+    await view.submitTurn(submission);
+    final cancelled = Completer<void>();
+    final outcome = expectLater(
+        view.waitForTurn(submission.turnId, cancellation: cancelled.future),
+        throwsA(isA<HandrailGatewayException>()
+            .having((e) => e.code, 'code', 'observation_cancelled')));
+    cancelled.complete();
+    await outcome;
+    expect(view.document!.activeTurnId, submission.turnId);
+    await finish();
+    await completed(view);
+    expect((await view.waitForTurn(submission.turnId))['status'], 'completed');
+  });
 
   test(
       'closing the account settles terminal observers without cancelling server work',
@@ -474,6 +595,57 @@ void main() {
     expect((await stats())['invocations'], before['invocations'] + 1);
     await finish();
     await completed(recovered);
+  });
+
+  test('lost local journal acknowledgement cannot replace the saved request',
+      () async {
+    final values = <String, String>{};
+    var failAcknowledgement = false;
+    final journal = HandrailKeyValuePendingTurnStore(
+        namespace: 'uncertain-local-journal',
+        read: (key) async => values[key],
+        write: (key, value) async {
+          values[key] = value;
+          if (failAcknowledgement)
+            throw StateError('Local acknowledgement lost');
+        },
+        delete: (key) async {
+          values.remove(key);
+        });
+    var controller = HandrailAssistantController(
+        client: client(), pendingStore: journal, autoCreate: false);
+    try {
+      await controller.newConversation();
+      final id = controller.selectedId!, before = await stats();
+      failAcknowledgement = true;
+      final original = {
+        ...request('Saved household question'),
+        'metadata': {'draft_marker': 'original'},
+      };
+      await expectLater(controller.sendMessage(original), throwsStateError);
+      final saved = (await journal.load(id))!;
+      expect((saved.toJson()['start'] as Map)['request'], original);
+      expect((await stats())['admissions'], before['admissions']);
+      expect((await stats())['starts'], before['starts']);
+      expect(controller.canSend, isFalse);
+      expect(
+          await controller.sendMessage(request('Different question')), isNull);
+      expect((await journal.load(id))!.toJson(), saved.toJson());
+      await controller.dispose();
+      failAcknowledgement = false;
+      controller = HandrailAssistantController(
+          client: client(), pendingStore: journal, autoCreate: false);
+      await controller.openConversation(id);
+      expect(await journal.load(id), isNull);
+      expect((await stats())['invocations'], before['invocations'] + 1);
+      expect(controller.document!.activeTurnId, saved.turnId);
+      await finish();
+      await completed(controller.session!);
+      expect(controller.document!.messages.where((m) => m['role'] == 'user'),
+          hasLength(1));
+    } finally {
+      await controller.dispose();
+    }
   });
 
   for (final loss in ['admission', 'start']) {

@@ -12,7 +12,11 @@ abstract interface class HandrailPendingTurnStore {
 /// this Dart isolate, including separate adapter instances using the same scope.
 /// Hosts with multiple processes/isolates must implement the atomic store above
 /// through their database instead. Namespace must include API realm and account.
-class HandrailKeyValuePendingTurnStore implements HandrailPendingTurnStore {
+class HandrailKeyValuePendingTurnStore
+    implements
+        HandrailPendingTurnStore,
+        HandrailConversationDeletionStore,
+        HandrailApprovalDecisionStore {
   final String namespace;
   final Future<String?> Function(String key) read;
   final Future<void> Function(String key, String value) write;
@@ -32,8 +36,11 @@ class HandrailKeyValuePendingTurnStore implements HandrailPendingTurnStore {
             conversationId
           ])))}';
   Future<T> _exclusive<T>(
-      String conversationId, Future<T> Function(String key) action) async {
-    final key = _key(conversationId), previous = _locks[_key(conversationId)];
+          String conversationId, Future<T> Function(String key) action) =>
+      _exclusiveKey(_key(conversationId), action);
+  Future<T> _exclusiveKey<T>(
+      String key, Future<T> Function(String key) action) async {
+    final previous = _locks[key];
     final released = Completer<void>();
     _locks[key] = released.future;
     try {
@@ -77,5 +84,136 @@ class HandrailKeyValuePendingTurnStore implements HandrailPendingTurnStore {
         if (previous != null &&
             jsonEncode(previous.toJson()) == jsonEncode(submission.toJson()))
           await delete(key);
+      });
+
+  String get _deletionKey =>
+      'handrail.deletions.v1.${base64Url.encode(utf8.encode(namespace))}';
+  Future<List<HandrailConversationDeletionRequest>> _readDeletions(
+      String key) async {
+    final raw = await read(key);
+    if (raw == null) return [];
+    if (raw.length > 1000000)
+      throw const FormatException('Invalid pending deletion journal');
+    final value = _object(jsonDecode(raw));
+    if (value['version'] != 1 ||
+        value['requests'] is! List ||
+        (value['requests'] as List).length > 100) {
+      throw const FormatException('Invalid pending deletion journal');
+    }
+    final requests = (value['requests'] as List)
+        .map((item) =>
+            HandrailConversationDeletionRequest.fromJson(_object(item)))
+        .toList();
+    if (requests.map((request) => request.conversationId).toSet().length !=
+        requests.length) {
+      throw const FormatException('Duplicate pending deletion identity');
+    }
+    return requests;
+  }
+
+  Future<void> _writeDeletions(
+      String key, List<HandrailConversationDeletionRequest> requests) async {
+    if (requests.isEmpty)
+      await delete(key);
+    else
+      await write(
+          key,
+          jsonEncode({
+            'version': 1,
+            'requests': requests.map((value) => value.toJson()).toList()
+          }));
+  }
+
+  @override
+  Future<List<HandrailConversationDeletionRequest>> loadDeletions() =>
+      _exclusiveKey(_deletionKey,
+          (key) async => List.unmodifiable(await _readDeletions(key)));
+  @override
+  Future<void> retainDeletion(HandrailConversationDeletionRequest request) =>
+      _exclusiveKey(_deletionKey, (key) async {
+        final requests = await _readDeletions(key);
+        for (final current in requests) {
+          if (current.conversationId != request.conversationId) continue;
+          if (current._same(request)) return;
+          throw const HandrailGatewayException('pending_deletion_exists',
+              'Resolve the saved deletion before deleting another version.');
+        }
+        if (requests.length >= 100)
+          throw const HandrailGatewayException('deletion_queue_full',
+              'Resolve pending conversation deletions before deleting more conversations.');
+        await _writeDeletions(key, [...requests, request]);
+      });
+  @override
+  Future<void> acknowledgeDeletion(
+          HandrailConversationDeletionRequest request) =>
+      _exclusiveKey(_deletionKey, (key) async {
+        final requests = await _readDeletions(key);
+        final retained =
+            requests.where((current) => !current._same(request)).toList();
+        if (retained.length != requests.length)
+          await _writeDeletions(key, retained);
+      });
+  String get _approvalKey =>
+      'handrail.approvals.v1.${base64Url.encode(utf8.encode(namespace))}';
+  Future<List<HandrailApprovalDecisionRequest>> _readApprovalDecisions(
+      String key) async {
+    final raw = await read(key);
+    if (raw == null) return [];
+    if (raw.length > 1000000)
+      throw const FormatException('Invalid approval journal');
+    final value = _object(jsonDecode(raw));
+    if (value['version'] != 1 ||
+        value['requests'] is! List ||
+        (value['requests'] as List).length > 100)
+      throw const FormatException('Invalid approval journal');
+    final requests = (value['requests'] as List)
+        .map((item) => HandrailApprovalDecisionRequest.fromJson(_object(item)))
+        .toList();
+    if (requests.map((r) => r.key).toSet().length != requests.length)
+      throw const FormatException('Duplicate approval decision identity');
+    return requests;
+  }
+
+  Future<void> _writeApprovalDecisions(
+      String key, List<HandrailApprovalDecisionRequest> requests) async {
+    if (requests.isEmpty)
+      await delete(key);
+    else
+      await write(
+          key,
+          jsonEncode({
+            'version': 1,
+            'requests': requests.map((r) => r.toJson()).toList()
+          }));
+  }
+
+  @override
+  Future<List<HandrailApprovalDecisionRequest>> loadApprovalDecisions() =>
+      _exclusiveKey(_approvalKey,
+          (key) async => List.unmodifiable(await _readApprovalDecisions(key)));
+  @override
+  Future<void> retainApprovalDecision(
+          HandrailApprovalDecisionRequest request) =>
+      _exclusiveKey(_approvalKey, (key) async {
+        final requests = await _readApprovalDecisions(key);
+        for (final previous in requests) {
+          if (previous.key != request.key) continue;
+          if (previous._same(request)) return;
+          throw const HandrailGatewayException('pending_approval_exists',
+              'Check the saved decision before making a different choice.');
+        }
+        if (requests.length >= 100)
+          throw const HandrailGatewayException('approval_queue_full',
+              'Resolve saved decisions before approving more changes.');
+        await _writeApprovalDecisions(key, [...requests, request]);
+      });
+  @override
+  Future<void> acknowledgeApprovalDecision(
+          HandrailApprovalDecisionRequest request) =>
+      _exclusiveKey(_approvalKey, (key) async {
+        final requests = await _readApprovalDecisions(key);
+        final retained = requests.where((r) => !r._same(request)).toList();
+        if (retained.length != requests.length)
+          await _writeApprovalDecisions(key, retained);
       });
 }

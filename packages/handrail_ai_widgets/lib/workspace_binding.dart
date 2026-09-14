@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'approval_decisions.dart';
 
 /// Matches HandrailAssistantController.uiBinding without a package dependency.
 typedef HandrailWorkspaceUploader
@@ -19,6 +20,7 @@ typedef HandrailWorkspaceBinding = ({
   Object scope,
   Stream<Object?> changes,
   Future<void> Function() initialize,
+  HandrailApprovalBinding approvals,
   Map<String, Object?> Function() read,
   ({
     Object scope,
@@ -28,6 +30,7 @@ typedef HandrailWorkspaceBinding = ({
     Future<void> Function(String) open,
     Future<void> Function(String) archive,
     Future<void> Function(String) restore,
+    Future<void> Function(String, int) delete,
     Future<void> Function(String) view,
     void Function(bool) unread,
     Future<void> Function() loadMore,
@@ -58,3 +61,27 @@ typedef HandrailWorkspaceDownloader
   int? byteSize,
   required Future<void> cancellation,
 });
+
+/// Replaces only protected host services. Catalog, admission, cancellation,
+/// approvals and account identity continue to use the original SDK binding.
+extension HandrailWorkspaceServiceAdapters on HandrailWorkspaceBinding {
+  HandrailWorkspaceBinding withServices({
+    HandrailWorkspaceTranscriber? Function(String?)? transcriberFor,
+    HandrailWorkspaceDownloader? Function(String?)? downloaderFor,
+  }) =>
+      (
+        scope: scope,
+        changes: changes,
+        initialize: initialize,
+        read: read,
+        history: history,
+        transcript: transcript,
+        approvals: approvals,
+        capabilitiesFor: capabilitiesFor,
+        uploaderFor: uploaderFor,
+        transcriberFor: transcriberFor ?? this.transcriberFor,
+        downloaderFor: downloaderFor ?? this.downloaderFor,
+        send: send,
+        stop: stop,
+      );
+}

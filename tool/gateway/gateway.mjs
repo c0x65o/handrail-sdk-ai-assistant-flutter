@@ -2,12 +2,18 @@
 // qualifies the cross-language protocol without credentials or billable usage.
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import { createHandrailAssistant, createProviderToolLoopTransport } from '@handrail/ai-assistant/server/assistant';
-import {
+import { pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
+// Optional explicit cross-revision fixture. Default checks always use the
+// installed public Git dependency; a local path never establishes adoption.
+const dist = process.env.HANDRAIL_TEST_JS_SDK_DIST;
+const { createHandrailAssistant, createProviderToolLoopTransport } = await import(dist
+  ? pathToFileURL(resolve(dist, 'server/assistant.js')).href : '@handrail/ai-assistant/server/assistant');
+const {
   InMemoryConversationEventStore, InMemoryApprovalProposalStore,
   InMemoryConversationCatalog, InMemoryDurableApplicationTurnStore,
-  InMemoryToolExecutionLedger,
-} from '@handrail/ai-assistant';
+  InMemoryToolExecutionLedger, parseConversationEvent,
+} = await import(dist ? pathToFileURL(resolve(dist, 'index.js')).href : '@handrail/ai-assistant');
 
 const required = (id) => ({ id, source: 'server_derived', trust: 'authoritative' });
 const attribution = { organization: required('org'), project: required('project'),
@@ -24,7 +30,7 @@ const bundle = { events: new InMemoryConversationEventStore(),
     async markRead(conversationId) { const record = records.get(conversationId); if (!record) return null;
       const read = { ...record, unread: false }; records.set(conversationId, read); return read; } },
   usageReceiptSink: null, usageAdmissions: null };
-const stats = { invocations: 0, starts: 0, resumes: 0, admissions: 0 };
+const stats = { invocations: 0, starts: 0, resumes: 0, admissions: 0, deletions: 0, decisions: 0 };
 const release = new Map();
 const adapter = { metadata: { provider_id: 'test', model_id: 'test', capabilities: {
   streaming: true, text: true, tool_calls: false, parallel_tool_calls: false, reasoning: false,
@@ -61,18 +67,55 @@ const server = createServer(async (request, response) => {
     if (request.url === '/test/stats') {
       response.setHeader('content-type', 'application/json'); response.end(JSON.stringify(stats)); return;
     }
+    if (request.url === '/test/propose') {
+      const { conversationId } = JSON.parse(body);
+      const proposalId = randomUUID(), turnId = randomUUID(), toolCallId = randomUUID();
+      const occurredAt = new Date().toISOString(), expiresAt = new Date(Date.now() + 60000).toISOString();
+      const reviewedArguments = { type: 'redacted_json', value: { amount: 42 } };
+      const eventAttribution = { actor: { type: 'system' }, source: { type: 'runtime' } };
+      const proposal = await bundle.approvals.create({ permissionContext: context, proposalId,
+        groupId: conversationId, turnId, toolCallId, toolName: 'fixture_review', reviewedArguments,
+        expiresAt, attribution: eventAttribution, idempotencyKey: proposalId, idempotencyFingerprint: proposalId });
+      const payloads = [
+        { type: 'tool_call.requested', turn_id: turnId, tool_call_id: toolCallId,
+          name: 'fixture_review', arguments: { amount: 42 } },
+        { type: 'approval.proposal_created', proposal_id: proposalId, group_id: conversationId,
+          turn_id: turnId, tool_call_id: toolCallId, tool_name: 'fixture_review',
+          reviewed_arguments: reviewedArguments, expires_at: expiresAt, status: 'pending', proposal_version: 1 },
+      ];
+      await bundle.events.append({ conversationId, expectedRevision: null,
+        events: payloads.map((payload, index) => parseConversationEvent({ version: 1,
+          event_id: randomUUID(), conversation_id: conversationId, revision: index + 1,
+          occurred_at: occurredAt, ...eventAttribution, payload })) });
+      response.setHeader('content-type', 'application/json'); response.end(JSON.stringify(proposal)); return;
+    }
+    if (request.url === '/test/advance-approval') {
+      // Test-only execution-state advancement; no business tool is invoked.
+      const { proposalId } = JSON.parse(body);
+      for (const [status, expectedVersion] of [['executing', 2], ['executed', 3]]) {
+        await bundle.approvals.transition({ permissionContext: context, proposalId, expectedVersion, status,
+          attribution: { actor: { type: 'system' }, source: { type: 'runtime' } },
+          idempotencyKey: `${proposalId}-${status}`, idempotencyFingerprint: `${proposalId}-${status}` });
+      }
+      response.end('{}'); return;
+    }
     if (request.url === '/test/finish') {
       for (const finish of release.values()) finish(); release.clear(); response.end('{}'); return;
     }
+    if (request.url.endsWith('/approvals/transition')) stats.decisions++;
     if (request.url.endsWith('/turns/start')) stats.starts++;
     if (request.url.endsWith('/turns/resume')) stats.resumes++;
+    if (request.url.endsWith('/conversations/permanent-delete')) stats.deletions++;
     const admission = request.url.endsWith('/synchronization') && JSON.parse(body).operation === 'append_mutations';
     if (admission) stats.admissions++;
     const result = await assistant.handle(new Request(`http://127.0.0.1${request.url}`, {
       method: request.method, headers: request.headers, ...(body ? { body } : {}) }));
     const loss = request.headers['x-test-lose-response'];
     const stage = typeof loss === 'string' ? loss.split(':').at(-1) : null;
-    const matches = stage === 'admission' ? admission : stage === 'start' && request.url.endsWith('/turns/start');
+    const matches = stage === 'approval' ? request.url.endsWith('/approvals/transition')
+      : stage === 'admission' ? admission : stage === 'delete'
+      ? request.url.endsWith('/conversations/permanent-delete')
+      : stage === 'start' && request.url.endsWith('/turns/start');
     if (matches && !dropped.has(loss)) {
       dropped.add(loss); await result.body?.cancel(); response.destroy(); return;
     }

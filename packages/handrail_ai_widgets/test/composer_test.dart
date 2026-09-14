@@ -4,6 +4,97 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:handrail_ai_widgets/handrail_ai_widgets.dart';
 
 void main() {
+  for (final brightness in Brightness.values) {
+    testWidgets('minimal composer inherits host colors and font ($brightness)',
+        (tester) async {
+      final controller = TextEditingController(text: 'Review before sending');
+      addTearDown(controller.dispose);
+      final colors = ColorScheme.fromSeed(
+          seedColor: Colors.deepOrange, brightness: brightness);
+      final theme = ThemeData(colorScheme: colors, fontFamily: 'HostFont');
+      var sent = 0, attached = 0;
+      await tester.pumpWidget(MaterialApp(
+          theme: theme,
+          home: Scaffold(
+              body: HandrailComposer(
+                  controller: controller,
+                  sendKey: const ValueKey('themed-send'),
+                  canSend: true,
+                  onSend: () => sent++,
+                  onAttach: () => attached++,
+                  voiceControls: const []))));
+      final input = tester.widget<TextField>(find.byType(TextField));
+      expect(input.style!.color, colors.onSurface);
+      expect(input.style!.fontFamily, 'HostFont');
+      expect(input.decoration!.filled, isFalse);
+      final shell = tester
+          .widgetList<Container>(find.ancestor(
+              of: find.byType(TextField), matching: find.byType(Container)))
+          .firstWhere((w) => w.decoration is BoxDecoration);
+      expect((shell.decoration! as BoxDecoration).color, colors.surface);
+      final send =
+          tester.widget<IconButton>(find.byKey(const ValueKey('themed-send')));
+      expect(send.style!.backgroundColor!.resolve({}), colors.primary);
+      expect(send.style!.foregroundColor!.resolve({}), colors.onPrimary);
+      expect(find.byTooltip('Approval settings'), findsOneWidget);
+      await tester.tap(find.byTooltip('Add files and images'));
+      expect(attached, 1);
+      await tester.tap(find.byTooltip('Send message'));
+      expect(sent, 1);
+    });
+  }
+  testWidgets('host form constraints do not stretch or clip the shared editor',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    var sent = 0;
+    await tester.pumpWidget(MaterialApp(
+        theme: ThemeData(
+            inputDecorationTheme: const InputDecorationThemeData(
+                constraints: BoxConstraints.tightFor(width: 500, height: 120),
+                filled: true,
+                disabledBorder: OutlineInputBorder())),
+        home: Scaffold(
+            body: HandrailComposer(
+                controller: controller,
+                inputKey: const ValueKey('theme-constrained-draft'),
+                onAttach: () {},
+                canSend: true,
+                onSend: () => sent++,
+                voiceControls: [
+                  IconButton(
+                      onPressed: () {},
+                      tooltip: 'Dictate',
+                      icon: const Icon(Icons.mic_none))
+                ]))));
+    final field = find.byKey(const ValueKey('theme-constrained-draft'));
+    final emptyHeight = tester.getSize(field).height;
+    expect(emptyHeight, lessThan(48));
+    for (final tooltip in [
+      'Add files and images', 'Approval settings', 'Dictate', 'Send message'
+    ]) {
+      final control = find.byTooltip(tooltip).hitTestable();
+      expect(control, findsOneWidget);
+      expect(tester.getSize(control).shortestSide, greaterThanOrEqualTo(40));
+    }
+    await tester.enterText(field, 'first line\nsecond line\nthird line');
+    await tester.pump();
+    expect(tester.getSize(field).height, greaterThan(emptyHeight));
+    final fieldRect = tester.getRect(field);
+    final toolbarRect = tester.getRect(
+        find.byKey(const ValueKey('handrail-composer-toolbar')));
+    expect(fieldRect.bottom, lessThan(toolbarRect.top));
+    expect(fieldRect.right, lessThanOrEqualTo(320));
+    await tester.tap(find.byTooltip('Send message'));
+    expect(sent, 1);
+    expect(controller.text, 'first line\nsecond line\nthird line');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
       'expanded editor keeps the draft and closes on account scope change',
       (tester) async {

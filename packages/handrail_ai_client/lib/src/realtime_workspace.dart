@@ -75,15 +75,23 @@ class HandrailRealtimeConversationSummary {
       this.unresolvedTools = 0});
 }
 
+enum HandrailRealtimeWorkspaceFailure {
+  refreshFailed,
+  invalidScope,
+  scopeLimit
+}
+
 class HandrailRealtimeWorkspaceState {
   final List<HandrailRealtimeWorkspaceCall> calls;
   final bool loading, synchronized;
   final String? error;
+  final HandrailRealtimeWorkspaceFailure? failure;
   HandrailRealtimeWorkspaceState(
       {Iterable<HandrailRealtimeWorkspaceCall> calls = const [],
       this.loading = false,
       this.synchronized = false,
-      this.error})
+      this.error,
+      this.failure})
       : calls = List.unmodifiable(calls);
   HandrailRealtimeConversationSummary forConversation(String id) {
     var active = 0, unconfirmed = 0, unread = 0, unresolved = 0;
@@ -127,6 +135,7 @@ class HandrailRealtimeWorkspaceMonitor {
   Timer? _timer;
   int _generation = 0;
   bool _disposed = false;
+  bool _invalidScope = false;
   HandrailRealtimeWorkspaceMonitor(
       {required this.readPage,
       this.pollingInterval = const Duration(seconds: 3),
@@ -145,22 +154,52 @@ class HandrailRealtimeWorkspaceMonitor {
     _changes.add(state);
   }
 
+  /// Invalid or oversized scopes retain stale evidence and suspend reads until
+  /// a valid scope is supplied. Direct callers still receive an ArgumentError.
   Future<void> setConversations(Iterable<String> ids) async {
     if (_disposed) return;
-    final next = ids.toSet().toList()..sort();
-    if (next.length > 10000 ||
-        next.any((id) => id.isEmpty || id.length > 512)) {
-      throw ArgumentError('Invalid voice workspace conversations.');
+    final next = <String>{};
+    for (final id in ids) {
+      if (id.isEmpty || id.length > 512) {
+        _rejectScope(
+            HandrailRealtimeWorkspaceFailure.invalidScope,
+            'Voice activity could not be checked for this history. '
+            'Existing activity is still shown.');
+      }
+      next.add(id);
+      if (next.length > 10000) {
+        _rejectScope(
+            HandrailRealtimeWorkspaceFailure.scopeLimit,
+            'Voice history is too large to refresh. '
+            'Existing activity is still shown.');
+      }
     }
-    if (jsonEncode(next) == jsonEncode(_ids)) return refresh();
+    final ordered = next.toList()..sort();
+    final recovering = _invalidScope;
+    _invalidScope = false;
+    if (!recovering && jsonEncode(ordered) == jsonEncode(_ids))
+      return refresh();
     _generation++;
-    _ids = List.unmodifiable(next);
+    _ids = List.unmodifiable(ordered);
     _emit(HandrailRealtimeWorkspaceState(
         calls: _state.calls
             .where((call) => next.contains(call.call.conversationId)),
         synchronized: next.isEmpty));
     await _reading;
     if (!_disposed) await refresh();
+  }
+
+  Never _rejectScope(HandrailRealtimeWorkspaceFailure failure, String message) {
+    // Fence an in-flight response before reporting failure. Polling must not
+    // turn a read of the previous valid subset into a healthy full-scope state.
+    _generation++;
+    _invalidScope = true;
+    _emit(HandrailRealtimeWorkspaceState(
+        calls: _state.calls,
+        synchronized: false,
+        error: message,
+        failure: failure));
+    throw ArgumentError('Invalid voice workspace conversations.');
   }
 
   void startPolling() {
@@ -170,7 +209,7 @@ class HandrailRealtimeWorkspaceMonitor {
   }
 
   Future<void> refresh() {
-    if (_disposed) return Future.value();
+    if (_disposed || _invalidScope) return Future.value();
     if (_reading != null) return _reading!;
     final generation = _generation, ids = _ids;
     final operation = Future<void>.microtask(() async {
@@ -180,7 +219,8 @@ class HandrailRealtimeWorkspaceMonitor {
           calls: before.calls,
           loading: true,
           synchronized: before.synchronized,
-          error: before.error));
+          error: before.error,
+          failure: before.failure));
       try {
         final calls = <String, HandrailRealtimeWorkspaceCall>{};
         var pages = 0;
@@ -235,7 +275,8 @@ class HandrailRealtimeWorkspaceMonitor {
           _emit(HandrailRealtimeWorkspaceState(
               calls: before.calls,
               synchronized: before.synchronized,
-              error: 'Could not refresh voice activity. Retrying…'));
+              error: 'Could not refresh voice activity. Retrying…',
+              failure: HandrailRealtimeWorkspaceFailure.refreshFailed));
         }
       }
     });

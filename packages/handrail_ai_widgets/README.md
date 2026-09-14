@@ -45,6 +45,9 @@ Pass the shared composer controller, an authenticated SDK session adapter, and c
 Use `contextMenuBuilder` for a native platform context-menu adapter while keeping
 the standard editor, keyboard handling and Send focus behavior. An app does not
 need to replace the whole `input` just to customize its native Paste menu.
+The combined `HandrailAssistantWorkspace` exposes the same `contextMenuBuilder`
+and `onPasteImage` hooks, plus `onVoiceBusyChanged` for coordinating a separate
+live-call surface with shared dictation.
 
 `showApprovalControl` only changes visibility. Default `approvalMode` is required. Wire `onApprovalModeChanged` to the per-message preference and include `handrailApprovalMetadata(mode)` in the retained gateway ChatRequest metadata. The server must validate and resolve this preference before executing tools, while enforcing account permissions. Never implement automatic mode by confirming old proposal cards in the client. Changes to the preference apply to the next submitted request; retained retries preserve their original preference.
 
@@ -85,6 +88,15 @@ admission. A background callback only affects its originating conversation.
 workspace on account changes. Prefer `HandrailComposerController` below for complete
 file intake and upload behavior; the generic controller supports existing host
 attachment models without requiring another upload implementation.
+
+For a staged host uploader, pass `onUploadReleased` to either composer controller
+or `HandrailComposerController.forAssistant`. It receives the exact upload key
+once when its selection is removed, admitted, discarded or disposed. Stop keeps
+the key available for retry and does not release it. Use the callback to erase
+the adapter's retained local state; remote storage deletion belongs to the
+authorized retention/deletion protocol. Dispose the adapter with the account as
+well. A failed local release callback cannot reverse an accepted message or
+prevent other selections from being released.
 
 ```dart
 // Account-owned; retain this across closing/reopening the assistant surface.
@@ -181,6 +193,11 @@ Use `HandrailConversationHistory(binding: assistant.historyBinding)` with the
 headless SDK's account-owned `HandrailAssistantController`. The compact control
 opens an SDK-owned, scrollable history sheet with New, Active/Archived, Unread,
 previews, dates, running indicators, archive/restore and retry/pagination.
+The local candidate adds negotiated permanent deletion and durable Retry deletion
+controls, including after a lost response removes the row from catalog history.
+The shared confirmation captures the displayed version, closes on account
+replacement and refuses changed versions until reviewed again. It never presents
+permanent deletion as Clear/reset.
 `compact: false` renders that same history as a bounded sidebar.
 `showArchived`/`showUnread` are presentation settings; they never change server
 permissions. `title`, `newButtonKey` and the inherited Material theme customize
@@ -192,6 +209,12 @@ and enlarged text, New becomes a labelled icon and header/error controls scroll
 with history. The client binding is structural, so the widgets package remains
 independent of the headless package. See
 [minimal mobile adoption](../../docs/mobile-assistant-adoption.md).
+
+The candidate history binding adds `delete(String id, int reviewedVersion)`;
+custom structural bindings must implement that member. Standard controller
+bindings supply it automatically. Install both packages from the same reviewed
+Flutter repository SHA. The SDK reads archive/restore/delete support from the
+negotiated gateway capabilities; branding does not grant these permissions.
 
 
 ## Authenticated microphone input
@@ -337,3 +360,26 @@ Existing host-rendered selections can use `HandrailComposerDrafts<T>` with
 Keep immutable selection objects across retry, select the originating chat before
 preparation, and call `discard(originId)` only when its message is accepted.
 Hosts should supply formatting and business limits, not another upload loop.
+
+## Pending approval decisions
+
+The workspace includes `HandrailApprovalDecisionsView` through
+`binding.approvals`; approval preference is a separate control. Use
+`approvalReviewBuilder` to format validated domain arguments while retaining
+standard review/decision/retry controls. It cannot enable an incomplete review or
+an unauthorized decision. See [the source contract](../../docs/approval-decisions.md)
+for the required matching client/server revisions and qualification limits.
+
+
+## Realtime voice controls (local source)
+
+`HandrailRealtimeVoiceSurface<T>` supplies themed voice status and standard
+startup, mute/playback, Stop/Back and uncertain-end controls with optional host
+identity choices and financial-review content. Backgrounding stops the session;
+late preflight work cannot start capture after closure or scope replacement.
+The host owns/disposes `HandrailWebRtcVoiceSession<T>` and supplies its trusted
+`HandrailRealtimeVoiceGateway<T>` for authenticated SDP and exact end receipts.
+Capture, peer/data-channel setup, playback, identity and teardown belong to the
+SDK. See
+[the contract and qualification boundary](../../docs/realtime-voice-surface.md).
+This API is newer than the current public Flutter pin.

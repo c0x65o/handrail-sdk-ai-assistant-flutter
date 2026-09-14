@@ -24,6 +24,7 @@ class Fixture {
     'canStop': false,
     'stopping': false,
   };
+  final approvalItems = <Map<String, Object?>>[];
   final requests = <({String id, Map<String, Object?> request})>[];
   final stops = <String>[];
   Completer<UploadResult>? upload;
@@ -35,6 +36,17 @@ class Fixture {
         scope: this,
         changes: events.stream,
         initialize: () async {},
+        approvals: (
+          scope: this,
+          changes: events.stream,
+          read: () => <String, Object?>{
+                'conversationId': state['conversationId'],
+                'items': approvalItems
+              },
+          review: (_, __) async {},
+          decide: (_, __, ___, ____) async {},
+          retry: (_) async {}
+        ),
         read: () => state,
         history: catalog.binding,
         transcript: timeline.binding,
@@ -140,6 +152,99 @@ Widget surface(
                 ))));
 
 void main() {
+  testWidgets('platform editor hooks preserve the shared composer',
+      (tester) async {
+    final fixture = Fixture();
+    addTearDown(fixture.dispose);
+    Widget menu(BuildContext context, EditableTextState editor) =>
+        const Text('Native menu');
+    void paste(HandrailClipboardImage image) {}
+    void voiceBusy(bool busy) {}
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: HandrailAssistantWorkspace(
+      binding: fixture.binding,
+      drafts: fixture.drafts,
+      contextMenuBuilder: menu,
+      onPasteImage: paste,
+      onVoiceBusyChanged: voiceBusy,
+      sendKey: const ValueKey('native-send'),
+    ))));
+    await tester.pumpAndSettle();
+    final composer =
+        tester.widget<HandrailComposer>(find.byType(HandrailComposer));
+    expect(composer.contextMenuBuilder, same(menu));
+    expect(composer.onPasteImage, same(paste));
+    expect(composer.onVoiceBusyChanged, same(voiceBusy));
+    expect(composer.input, isNull);
+    await tester.enterText(find.byType(TextField).first, 'Native editor send');
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('native-send')));
+    await tester.pumpAndSettle();
+    expect(fixture.requests, hasLength(1));
+  });
+
+  testWidgets(
+      'pending approval remains visible without messages or tool activity',
+      (tester) async {
+    final f = Fixture();
+    addTearDown(f.dispose);
+    f.approvalItems.add({
+      'proposal_id': 'p',
+      'proposal_version': 1,
+      'tool_name': 'Review transfer',
+      'status': 'pending',
+      'canReview': true,
+      'canConfirm': false,
+      'canReject': true,
+      'binding': 'review'
+    });
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: HandrailAssistantWorkspace(
+                binding: f.binding,
+                drafts: f.drafts,
+                showToolActivity: false,
+                transcriptTrailing: const [Text('Business display')]))));
+    await tester.pumpAndSettle();
+    expect(find.text('Review transfer'), findsOneWidget);
+    expect(find.text('Review change'), findsOneWidget);
+    expect(find.text('Approve'), findsOneWidget);
+    expect(find.text('Business display'), findsOneWidget);
+  });
+
+  testWidgets(
+      'confirmed deletion discards only that conversation’s drafts and files',
+      (tester) async {
+    final fixture = Fixture();
+    addTearDown(fixture.dispose);
+    final drafts = fixture.drafts;
+    drafts.controller.text = 'Deleted private draft';
+    drafts.addAttachments([
+      HandrailAttachmentFile(
+          fileName: 'delete.png', mediaType: 'image/png', bytes: [1])
+    ]);
+    fixture.state['conversationId'] = 'two';
+    fixture.publish();
+    await tester.pump();
+    drafts.controller.text = 'Other private draft';
+    drafts.addAttachments([
+      HandrailAttachmentFile(
+          fileName: 'keep.png', mediaType: 'image/png', bytes: [2])
+    ]);
+    fixture.state['deletedConversationIds'] = ['one'];
+    fixture.publish();
+    await tester.pump();
+    expect(drafts.controller.text, 'Other private draft');
+    expect(drafts.attachments.single.displayName, 'keep.png');
+    expect(drafts.draftConversationIds, {'two'});
+    fixture.publish();
+    await tester.pump();
+    expect(drafts.controller.text, 'Other private draft');
+    drafts.select('one');
+    expect(drafts.controller.text, isEmpty);
+    expect(drafts.attachments, isEmpty);
+  });
   testWidgets(
       'clearing account drafts while expanded detaches the old editor safely',
       (tester) async {

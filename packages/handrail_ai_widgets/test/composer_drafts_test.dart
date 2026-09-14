@@ -3,6 +3,97 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:handrail_ai_widgets/handrail_ai_widgets.dart';
 
 void main() {
+  test('Stop retains the upload key; removal and admission release it once',
+      () async {
+    final keys = <String>[], released = <String>[];
+    final pending = Completer<
+        ({
+          Map<String, Object?>? reference,
+          String? errorCode,
+          bool retryable
+        })>();
+    var first = true;
+    final drafts = HandrailComposerController(
+      limitsForConversation: (_) => HandrailAttachmentLimits(
+          acceptedMediaTypes: ['image/png'],
+          maximumFiles: 3,
+          maximumBytesPerFile: 1024),
+      uploaderForConversation: (_) => (
+          {required bytes,
+          required filename,
+          required mediaType,
+          required idempotencyKey,
+          required cancellation}) async {
+        keys.add(idempotencyKey);
+        if (first) {
+          first = false;
+          return pending.future;
+        }
+        return (
+          reference: <String, Object?>{
+            'attachment_id': 'att_test',
+            'content_ref': 'ref_test',
+            'media_type': mediaType,
+            'byte_size': bytes.length,
+          },
+          errorCode: null,
+          retryable: false
+        );
+      },
+      onUploadReleased: released.add,
+    );
+    addTearDown(drafts.dispose);
+    drafts.select('one');
+    final file = HandrailAttachmentFile(
+        fileName: 'a.png', mediaType: 'image/png', bytes: [1]);
+    final upload = drafts.prepareAttachments([file]);
+    final cancelled =
+        expectLater(upload, throwsA(isA<HandrailAttachmentException>()));
+    drafts.cancelUploads();
+    await cancelled;
+    expect(released, isEmpty);
+    pending
+        .complete((reference: null, errorCode: 'cancelled', retryable: true));
+    await drafts.prepareAttachments([file]);
+    expect(keys, [keys.first, keys.first]);
+    drafts.controller.text = 'send';
+    late void Function() accepted;
+    final admission = Completer<void>();
+    final sending = drafts.submitWithAttachments((_, __, callback) {
+      accepted = callback;
+      return admission.future;
+    });
+    await Future<void>.value();
+    await Future<void>.value();
+    drafts.removeAttachmentAt(0);
+    expect(released, [keys.first]);
+    accepted();
+    expect(released, [keys.first]);
+    admission.complete();
+    await sending;
+    drafts.dispose();
+    expect(released, [keys.first]);
+  });
+
+  test('discard, replacement and account disposal release separate drafts',
+      () async {
+    final released = <String>[];
+    final drafts =
+        HandrailComposerDrafts<String>(onUploadReleased: released.add);
+    drafts.select('one');
+    drafts.addAttachments(['a', 'b']);
+    drafts.select('two');
+    drafts.addAttachments(['c']);
+    drafts.discard('one');
+    expect(released.toSet(), hasLength(2));
+    drafts.clear();
+    expect(released.toSet(), hasLength(3));
+    drafts.addAttachments(['d']);
+    drafts.dispose();
+    expect(released, hasLength(4));
+    expect(released.toSet(), hasLength(4));
+  });
+
   test(
       'reopening a saved send acknowledges only its captured conversation draft',
       () async {

@@ -15,6 +15,9 @@ dependencies:
   pasteboard: ^0.5.0
   record: 6.2.1
   file_picker: 12.1.1
+  flutter_webrtc: 1.5.2
+  dart_webrtc: 1.8.1
+  web: ^1.1.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

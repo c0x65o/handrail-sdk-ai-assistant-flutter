@@ -11,6 +11,8 @@ The TypeScript SDK supplies React presentation, while the sibling widgets packag
 `HandrailAssistantController(client: client, pendingStore: accountStore)` owns
 catalog paging, active/archived views, selection, conversation sessions, pending
 send recovery, versioned archive/restore and stable cancellation identities.
+The local deletion candidate also owns reviewed permanent deletion, durable
+receipt retries and local transcript eviction; see the contract below.
 Retain it across closing a sheet; dispose it on logout/account changes. Host
 code supplies authenticated transport, encrypted storage, business request
 construction and feature settings. `clientId`, `newConversationTitle`,
@@ -24,6 +26,39 @@ into observation. `refreshObservations()` performs the same cycle manually;
 `pollingInterval: null` disables its timer. Activity failures retain prior unread
 evidence in `activityError` without changing send authorization or hiding a valid
 catalog. Account disposal stops the loop and ignores late replies.
+
+### Permanent deletion candidate
+
+`assistant.permanentlyDelete(conversationId, reviewedVersion)` deletes exactly the
+reviewed version. `HandrailKeyValuePendingTurnStore` also implements
+`HandrailConversationDeletionStore`, with a separate bounded account journal.
+Custom atomic persistence supplies that interface through `deletionStore`.
+The namespace must contain the authenticated account and API realm; dispose the
+controller on account changes. The key-value adapter serializes instances in one
+Dart isolate; multi-process stores must supply their own atomic implementation.
+
+Only IDs, versions and request keys enter the deletion journal. The request is
+saved before dispatch and reused after a lost reply or app restart. Receipt
+validation requires the exact ID and removed descriptor version. A conflict
+reloads history for another review; it never automatically deletes a newer
+version. Failed local cleanup keeps the receipt replayable. Pending deletion
+blocks that conversation's sending/recovery, while other conversations remain
+usable. No deletion is inferred from an empty or missing catalog.
+
+Confirmed deletion evicts sessions, descriptors, activity, saved send intent and
+the shared composer's draft/files. Delayed catalog reads, frames and activity
+cannot restore that account-local identity. Backend authorization, active/voice
+work checks, retention and permanent fences remain authoritative. No client
+receipt proves physical external-file removal or business-effect settlement.
+
+`client.deleteReviewedConversation(HandrailConversationDeletionRequest(...))`
+provides the same exact receipt check for a retained domain adapter; it does not
+own that adapter's local state or replace the account controller.
+
+The default PostgreSQL SDK does not yet support reusable Clear/reset. Permanent
+deletion is irreversible and does not recycle the conversation identity.
+The full JS/Flutter qualification and publication limits are recorded in
+[`docs/conversation-deletion.md`](../../docs/conversation-deletion.md).
 
 The optional `HandrailConversationHistory(binding: assistant.historyBinding)`
 consumes its standard history presentation directly. Hosts do not need a catalog
@@ -277,7 +312,8 @@ policy; an expired or consumed file is not silently restaged.
 Uploads through the standard gateway need the originating conversation. Use
 `attachmentUploader(conversationId: id)` for custom queue bindings, or the
 default `uiBinding.uploaderFor(id)`, which captures that identity before a user
-switches conversations. Legacy endpoints can still omit the optional argument.
+switches conversations. Host-managed file endpoints must define their own trusted
+binding contract; the standard SDK upload route requires the conversation ID.
 
 The cross-repository attachment test requires an explicit local candidate build:
 `HANDRAIL_TEST_JS_SDK_DIST=/absolute/path/to/handrail-sdk-ai-assistant-js/dist make check`.
@@ -286,3 +322,32 @@ conversation isolation, and expiry against a synthetic standard JS gateway.
 Without the variable this one candidate test is skipped; the existing locked
 gateway fixture is unchanged. This is test-only resolution, not a dependency
 installation or a substitute for a reviewed public SDK SHA and matching locks.
+
+## Shared pending approval decisions
+
+`assistant.approvals` and `assistant.uiBinding.approvals` own review, exact-version
+Approve/Reject, durable saved-decision retries and restart recovery. The standard
+encrypted account pending store also journals decisions. Supply
+`loadApprovalReview` for validated opaque financial/business reviews and
+`canDecideApproval` for additional domain permission checks. See
+[the contract and publication boundary](../../docs/approval-decisions.md).
+
+`session.waitForTurn(turnId, cancellation: cancelled)` can stop local completion
+observation without disposing the account or cancelling server work. Explicit
+Stop remains `assistant.requestCancellation()`. The observer removes its stream
+subscription when the wait ends; the same session can observe completion later.
+
+## Bounded voice-history observation (local source)
+
+The shared controller owns its optional `readVoiceWorkspace` monitor. Catalog
+growth beyond 10,000 known conversation IDs is a visible stale-history state,
+not an unhandled async failure or a silently truncated observation. The monitor
+retains active, uncertain and unread evidence and fences any outstanding reply.
+`HandrailRealtimeWorkspaceState.failure` classifies refresh, invalid-scope and
+scope-limit failures; the history binding exposes the safe `voiceErrorCode`.
+
+Direct monitor callers catch the existing `ArgumentError` from an invalid scope.
+Reads remain suspended until `setConversations` receives a valid list, which also
+recovers when it matches the previous valid list. These changes are local source
+beyond the public c22 baseline. See
+[shared voice-history guidance](../../docs/mobile-assistant-adoption.md#shared-voice-history-and-navigation-policy-local-source).

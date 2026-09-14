@@ -8,7 +8,11 @@ import 'audio_recorder.dart';
 import 'transcription_control.dart';
 import 'attachments.dart';
 
+export 'realtime_voice.dart';
+export 'realtime_voice_gateway.dart';
+export 'webrtc_voice_session.dart';
 export 'approval_mode.dart';
+export 'approval_decisions.dart';
 export 'draft_controller.dart';
 export 'composer_drafts.dart';
 export 'conversation_history.dart';
@@ -471,6 +475,7 @@ class _HandrailComposerState extends State<HandrailComposer> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     Widget input = widget.input ??
         TextField(
           key: widget.inputKey,
@@ -488,8 +493,10 @@ class _HandrailComposerState extends State<HandrailComposer> {
           onSubmitted: widget.sendOnEnter ? (_) => _send() : null,
           textCapitalization: TextCapitalization.sentences,
           style: widget.inputTextStyle ??
-              const TextStyle(
-                  color: Color(0xff202124), fontSize: 15, height: 1.4),
+              theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontSize: 15,
+                  height: 1.4),
           decoration: InputDecoration(
               hintText: widget.placeholder,
               suffixIcon: widget.allowExpand
@@ -505,6 +512,10 @@ class _HandrailComposerState extends State<HandrailComposer> {
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
+              // A host form theme may impose a fixed height or width. The
+              // shared editor grows with its text inside the composer instead.
+              constraints: const BoxConstraints(),
               isCollapsed: true,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 4, vertical: 2)),
@@ -545,8 +556,8 @@ class _HandrailComposerState extends State<HandrailComposer> {
       padding: const EdgeInsets.all(8),
       decoration: widget.decoration ??
           BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: const Color(0xffe9e9e9)),
+              color: theme.colorScheme.surface,
+              border: Border.all(color: theme.colorScheme.outlineVariant),
               borderRadius: BorderRadius.circular(16),
               boxShadow: const [
                 BoxShadow(
@@ -674,8 +685,8 @@ class _HandrailComposerState extends State<HandrailComposer> {
                           fixedSize: const Size.square(40),
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           shape: const CircleBorder(),
-                          backgroundColor: const Color(0xff55b653),
-                          foregroundColor: Colors.white)),
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary)),
                   onPressed: widget.stopping
                       ? null
                       : widget.sending && widget.onStop != null

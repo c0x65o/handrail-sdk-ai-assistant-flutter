@@ -40,7 +40,16 @@ class HandrailAssistantController {
       this.pollingInterval = const Duration(seconds: 1),
       String Function()? createId,
       this.newConversationMetadata,
-      this.beforePendingRecovery})
+      this.deletionStore,
+      this.approvalStore,
+      this.loadApprovalReview,
+      this.canDecideApproval,
+      this.beforePendingRecovery,
+      this.allowConversationManagement,
+      Future<HandrailRealtimeWorkspacePage> Function(
+              List<String>, HandrailRealtimeWorkspaceCursor?)?
+          readVoiceWorkspace,
+      this.voicePollingInterval = const Duration(seconds: 3)})
       : _createId = createId ?? _assistantIdentity {
     if (pageSize < 1 || pageSize > 100)
       throw ArgumentError.value(pageSize, 'pageSize');
@@ -48,9 +57,45 @@ class HandrailAssistantController {
         pollingInterval! < const Duration(milliseconds: 100))
       throw ArgumentError.value(pollingInterval, 'pollingInterval');
     _workspaceSubscription = workspace.changes.listen((_) => _publish());
+    if (readVoiceWorkspace != null) {
+      _voiceWorkspace = HandrailRealtimeWorkspaceMonitor(
+          readPage: readVoiceWorkspace,
+          pollingInterval: voicePollingInterval ?? const Duration(seconds: 3));
+      _voiceSubscription = voiceWorkspace!.changes.listen((_) => _publish());
+    }
   }
+
+  /// Host-authorized voice observation belongs to this account, not a screen.
+  /// Reading catalog/text never acknowledges calls or settles their effects.
+  HandrailRealtimeWorkspaceMonitor? get voiceWorkspace => _voiceWorkspace;
+  HandrailRealtimeWorkspaceMonitor? _voiceWorkspace;
+  final Duration? voicePollingInterval;
+  StreamSubscription<HandrailRealtimeWorkspaceState>? _voiceSubscription;
+  String? _voiceIdentity;
+
+  /// Additional live host permission gate for catalog mutations. Reads stay
+  /// available; the gateway always performs authoritative authorization.
+  final bool Function()? allowConversationManagement;
+  bool get canManageConversations =>
+      !_disposed && (allowConversationManagement?.call() ?? true);
+  void _requireConversationManagement() {
+    _assertActive();
+    if (!canManageConversations) throw _conversationManagementDenied;
+  }
+
   final HandrailAiClient client;
   final HandrailPendingTurnStore pendingStore;
+  final HandrailConversationDeletionStore? deletionStore;
+  final HandrailApprovalDecisionStore? approvalStore;
+
+  /// Trusted host adapter must validate opaque argument references and identity.
+  final Future<HandrailApprovalReview> Function(HandrailApprovalProposal)?
+      loadApprovalReview;
+
+  /// Additional domain permission gate; the gateway always reauthorizes.
+  final bool Function(HandrailApprovalProposal, bool confirm)?
+      canDecideApproval;
+  late final approvals = HandrailApprovalDecisions._(this);
   final String clientId, newConversationTitle;
   final bool autoCreate;
   final int pageSize;
@@ -78,6 +123,10 @@ class HandrailAssistantController {
   final _lifecycleRequests = <String, Map<String, Object?>>{};
   final _lifecycleOperations = <String, Future<void>>{};
   final _lifecycleDirections = <String, bool>{};
+  final _deletions = <String, HandrailConversationDeletionRequest>{};
+  final _deletionOperations = <String, Future<void>>{};
+  final _deletedIds = <String>{};
+  HandrailGatewayCapabilities? _knownCatalogCapabilities;
   List<HandrailConversationDescriptor> _history = const [];
   HandrailHistoryView _view = HandrailHistoryView.active;
   String? _selectedId, _nextCursor;
@@ -114,6 +163,7 @@ class HandrailAssistantController {
       !busy &&
       !running &&
       !hasPendingMessage &&
+      !_deletions.containsKey(_selectedId) &&
       document != null &&
       !archived &&
       _selectionError == null;
@@ -129,7 +179,8 @@ class HandrailAssistantController {
       _selecting ||
       _creating != null ||
       _sending.contains(_selectedId) ||
-      _lifecycleOperations.containsKey(_selectedId);
+      _lifecycleOperations.containsKey(_selectedId) ||
+      _deletionOperations.containsKey(_selectedId);
 
   /// Account-wide work, including an unselected conversation's submission.
   bool get workingAnywhere =>
@@ -137,16 +188,21 @@ class HandrailAssistantController {
       _creating != null ||
       _sending.isNotEmpty ||
       _lifecycleOperations.isNotEmpty ||
+      _deletionOperations.isNotEmpty ||
+      approvals.hasPending ||
       _sessions.values.any((value) => value.document?.activeTurnId != null) ||
       workspace.snapshot.runningCount > 0;
   HandrailGatewayException? get historyError => _historyError ?? _activityError;
   HandrailGatewayException? get activityError => _activityError;
   HandrailGatewayException? get error =>
       _selectionError ?? _operationErrors[_selectedId];
-  bool isUnread(String id) =>
+  bool _isTextUnread(String id) =>
       workspace.snapshot.conversations
           .any((entry) => entry.state.conversationId == id && entry.unread) ||
       workspace.remoteActivityFor(id)?.unread == true;
+  bool isUnread(String id) =>
+      _isTextUnread(id) ||
+      (voiceWorkspace?.state.forConversation(id).unreadCalls ?? 0) > 0;
   int get unreadCount => _history.where((row) => isUnread(row.id)).length;
   List<HandrailConversationDescriptor> get visibleHistory => List.unmodifiable(
       _history.where((row) => !_unreadOnly || isUnread(row.id)));
@@ -175,6 +231,7 @@ class HandrailAssistantController {
     Future<void> Function(String) open,
     Future<void> Function(String) archive,
     Future<void> Function(String) restore,
+    Future<void> Function(String, int) delete,
     Future<void> Function(String) view,
     void Function(bool) unread,
     Future<void> Function() loadMore,
@@ -187,10 +244,17 @@ class HandrailAssistantController {
         open: openConversation,
         archive: archive,
         restore: restore,
+        delete: permanentlyDelete,
         view: (name) => setHistoryView(HandrailHistoryView.values.byName(name)),
         unread: setUnreadOnly,
         loadMore: () => refreshHistory(more: true),
-        refresh: refreshHistory
+        refresh: () async {
+          try {
+            await refreshHistory();
+          } finally {
+            await voiceWorkspace?.refresh();
+          }
+        }
       );
   Map<String, Object?> get historyPresentation => {
         'view': historyView.name,
@@ -199,18 +263,45 @@ class HandrailAssistantController {
         'selectedId': selectedId,
         'selectedTitle': selectedDescriptor?.title ?? newConversationTitle,
         'busy': busy,
+        'canCreate': canManageConversations,
+        'canManageConversations': canManageConversations,
+        'catalogActions': {
+          'archive': canManageConversations &&
+              _supportsCatalogAction(_knownCatalogCapabilities, 'archive'),
+          'restore': canManageConversations &&
+              _supportsCatalogAction(_knownCatalogCapabilities, 'restore'),
+          'permanentDelete': canManageConversations &&
+              _deletionJournal != null &&
+              _supportsCatalogAction(
+                  _knownCatalogCapabilities, 'permanentDelete'),
+        },
+        'pendingDeletions': [
+          for (final request in _deletions.values)
+            {
+              'id': request.conversationId,
+              'version': request.expectedVersion,
+              'busy': isDeleting(request.conversationId),
+              'error': _operationErrors[request.conversationId]?.message,
+            }
+        ],
         'loading': loadingHistory,
         'hasMore': hasMoreHistory,
         'error': historyError?.message ?? error?.message,
+        'voiceError': voiceWorkspace?.state.error,
+        'voiceErrorCode': voiceWorkspace?.state.failure?.name,
         'rows': [
           for (final row in visibleHistory)
             {
               'id': row.id,
+              'version': row.version,
+              'deletionPending': hasPendingDeletion(row.id),
               'title': row.title ?? newConversationTitle,
               'preview': previewFor(row.id),
               'lifecycle': row.lifecycle,
               'updatedAt': row.json['updatedAt'],
               'unread': isUnread(row.id),
+              'textUnread': _isTextUnread(row.id),
+              if (voiceWorkspace != null) 'voice': _voicePresentation(row.id),
               'running': sessionFor(row.id)?.document?.activeTurnId != null ||
                   const [
                     HandrailTurnStatus.running,
@@ -255,13 +346,53 @@ class HandrailAssistantController {
     if (_disposed) throw StateError('Assistant account is closed');
   }
 
+  Map<String, Object?> _voicePresentation(String id) {
+    final state = voiceWorkspace!.state, summary = state.forConversation(id);
+    return {
+      'activeCalls': summary.activeCalls,
+      'unconfirmedCalls': summary.unconfirmedCalls,
+      'unreadCalls': summary.unreadCalls,
+      'unresolvedTools': summary.unresolvedTools,
+      'stale': !state.synchronized || state.error != null,
+    };
+  }
+
+  Future<void> _setVoiceConversations(
+      HandrailRealtimeWorkspaceMonitor monitor, List<String> ids) async {
+    try {
+      await monitor.setConversations(ids);
+    } on ArgumentError {
+      // The monitor publishes a stale, recoverable failure with retained
+      // evidence. Catalog growth must not escape as an unhandled async error.
+    }
+  }
+
   void _publish() {
-    if (!_disposed) _changes.add(this);
+    if (_disposed) return;
+    final monitor = voiceWorkspace;
+    if (monitor != null) {
+      final ids = _descriptors.keys
+          .where((id) => !_deletedIds.contains(id))
+          .toList()
+        ..sort();
+      final identity = jsonEncode(ids);
+      if (identity != _voiceIdentity) {
+        // Set before the monitor emits synchronously; text deltas must not
+        // restart voice reads. Keep known archived/unselected rows observable.
+        _voiceIdentity = identity;
+        unawaited(_setVoiceConversations(monitor, ids));
+        if (voicePollingInterval != null) monitor.startPolling();
+      }
+    }
+    _changes.add(this);
   }
 
   Future<void> initialize() {
     _assertActive();
-    if (_loadedHistory && document != null) return Future.value();
+    if (_loadedHistory &&
+        document != null &&
+        _deletions.isEmpty &&
+        !approvals.hasPending) return Future.value();
     return _initializing ??= _initialize().whenComplete(() {
       _initializing = null;
     });
@@ -269,16 +400,24 @@ class HandrailAssistantController {
 
   Future<void> _initialize() async {
     try {
+      await approvals.resume();
+      await resumePendingDeletions();
       await refreshHistory();
       _assertActive();
-      if (_createRequest != null) {
+      if (_createRequest != null && canManageConversations) {
         await newConversation();
         return;
       }
-      final id = _selectedId ?? _history.firstOrNull?.id;
+      final id = _selectedId != null && !hasPendingDeletion(_selectedId!)
+          ? _selectedId
+          : _history
+              .where((row) => !hasPendingDeletion(row.id))
+              .firstOrNull
+              ?.id;
       if (id != null) {
         await openConversation(id);
       } else if (autoCreate &&
+          canManageConversations &&
           !_initialCreateAttempted &&
           _view == HandrailHistoryView.active) {
         _initialCreateAttempted = true;
@@ -332,6 +471,7 @@ class HandrailAssistantController {
             for (final row in _history) row.id: row
         };
         for (final row in rows) {
+          if (_deletedIds.contains(row.id)) continue;
           final previous = _descriptors[row.id];
           final current = previous != null && previous.version > row.version
               ? previous
@@ -398,7 +538,7 @@ class HandrailAssistantController {
   }
 
   Future<HandrailConversationSession> ensureSession(String id) async {
-    _assertActive();
+    _assertConversationUsable(id);
     final existing = _sessions[id];
     if (existing?.document != null) return existing!;
     final value = _sessions.putIfAbsent(id, () {
@@ -422,7 +562,8 @@ class HandrailAssistantController {
       return session;
     });
     await value.initialize();
-    _assertActive();
+    _assertConversationUsable(id);
+    _knownCatalogCapabilities = value.capabilities ?? _knownCatalogCapabilities;
     _startPolling();
     return value;
   }
@@ -439,10 +580,10 @@ class HandrailAssistantController {
   }
 
   Future<HandrailConversationDescriptor> getDescriptor(String id) async {
-    _assertActive();
+    _assertConversationUsable(id);
     final value = HandrailConversationDescriptor.fromJson(_object(
         _object((await client.getConversation(id))['value'])['descriptor']));
-    _assertActive();
+    _assertConversationUsable(id);
     if (value.id != id)
       throw const FormatException('Conversation identity mismatch');
     final previous = _descriptors[id];
@@ -453,6 +594,7 @@ class HandrailAssistantController {
   }
 
   void _rememberDescriptor(HandrailConversationDescriptor row) {
+    if (_deletedIds.contains(row.id)) return;
     _descriptors[row.id] = row;
     _history = List.unmodifiable([
       for (final existing in _history)
@@ -474,7 +616,7 @@ class HandrailAssistantController {
   }
 
   Future<void> openConversation(String id) async {
-    _assertActive();
+    _assertConversationUsable(id);
     final generation = ++_selectionGeneration;
     _selectedId = id;
     _selecting = true;
@@ -486,9 +628,10 @@ class HandrailAssistantController {
       final alreadyOpen = _sessions.containsKey(id);
       final session = await ensureSession(id);
       if (alreadyOpen) await session.refresh();
+      _assertConversationUsable(id);
       _pending.add(id);
       final saved = await pendingStore.load(id);
-      _assertActive();
+      _assertConversationUsable(id);
       if (saved != null) {
         _pending.add(id);
         final accepted = beforePendingRecovery?.call(id);
@@ -521,6 +664,8 @@ class HandrailAssistantController {
       Future<void> Function(String conversationId)? onReady}) {
     _assertActive();
     if (_creating != null) return _creating!;
+    if (!canManageConversations)
+      return Future.error(_conversationManagementDenied);
     final creationMetadata = _createRequest == null
         ? metadata ??
             newConversationMetadata?.call() ??
@@ -532,10 +677,11 @@ class HandrailAssistantController {
       if (creationMetadata.isNotEmpty) 'metadata': creationMetadata
     }) as Map<String, Object?>;
     late final Future<void> operation;
-    operation = (() async {
+    operation = Future<void>.microtask(() async {
       try {
         _selectionError = null;
         if (_createdDescriptor == null) {
+          _requireConversationManagement();
           final result = await client.createConversation(_createRequest!);
           _assertActive();
           _createdDescriptor = HandrailConversationDescriptor.fromJson(
@@ -564,7 +710,7 @@ class HandrailAssistantController {
         if (identical(_creating, operation)) _creating = null;
         _publish();
       }
-    })();
+    });
     _creating = operation;
     _publish();
     return operation;
@@ -578,6 +724,7 @@ class HandrailAssistantController {
     final id = conversationId ?? _selectedId;
     if (id == null || _sending.contains(id) || id == _selectedId && !canSend)
       return null;
+    _assertConversationUsable(id);
     final current = _sessions[id];
     if (current == null ||
         current.document == null ||
@@ -623,6 +770,7 @@ class HandrailAssistantController {
     _assertActive();
     final id = conversationId ?? _selectedId;
     if (id == null || _sending.contains(id)) return null;
+    _assertConversationUsable(id);
     _sending.add(id);
     _operationErrors.remove(id);
     _selectionError = null;
@@ -712,14 +860,15 @@ class HandrailAssistantController {
   void _startPolling() {
     if (_disposed || _pollTimer != null || pollingInterval == null) return;
     _pollTimer = Timer.periodic(pollingInterval!, (_) {
-      unawaited(refreshObservations());
+      unawaited(refreshObservations(refreshVoice: false));
     });
   }
 
   /// One account observation cycle. Active/selected sessions stay current;
   /// closed idle transcripts do not each poll the gateway or global activity.
-  Future<void> refreshObservations() {
+  Future<void> refreshObservations({bool refreshVoice = true}) {
     _assertActive();
+    if (refreshVoice) unawaited(voiceWorkspace?.refresh());
     return _observing ??= (() async {
       try {
         await refreshActivity();
@@ -767,6 +916,7 @@ class HandrailAssistantController {
       try {
         final capability = await _getActivityCapabilities();
         if (_disposed) return;
+        _knownCatalogCapabilities = capability;
         if (capability.activity) {
           final records = await client.listActivity();
           if (_disposed) return;
@@ -799,6 +949,7 @@ class HandrailAssistantController {
     if (row.title != null && row.title != newConversationTitle) return;
     final normalized = label.trim().replaceAll(RegExp(r'\s+'), ' ');
     if (normalized.isEmpty) return;
+    _requireConversationManagement();
     final result = await client.renameConversation({
       'conversationId': id,
       'expectedVersion': row.version,
@@ -808,8 +959,9 @@ class HandrailAssistantController {
           : '${normalized.substring(0, 79)}…'
     });
     _assertActive();
-    _descriptors[id] = HandrailConversationDescriptor.fromJson(
-        _object(_object(result['value'])['descriptor']));
+    if (_deletedIds.contains(id)) return;
+    _rememberDescriptor(HandrailConversationDescriptor.fromJson(
+        _object(_object(result['value'])['descriptor'])));
     _invalidateHistoryRead();
     await refreshHistory();
   }
@@ -817,7 +969,9 @@ class HandrailAssistantController {
   Future<void> archive(String id) => _changeLifecycle(id, true);
   Future<void> restore(String id) => _changeLifecycle(id, false);
   Future<void> _changeLifecycle(String id, bool archive) {
-    _assertActive();
+    _assertConversationUsable(id);
+    if (!canManageConversations)
+      return Future.error(_conversationManagementDenied);
     if (_lifecycleDirections.containsKey(id) &&
         _lifecycleDirections[id] != archive) {
       return Future.error(const HandrailGatewayException(
@@ -830,12 +984,13 @@ class HandrailAssistantController {
     if (_lifecycleOperations[id] != null) return _lifecycleOperations[id]!;
     _lifecycleDirections[id] = archive;
     late final Future<void> operation;
-    operation = (() async {
+    operation = Future<void>.microtask(() async {
       try {
         final target = archive ? 'archived' : 'active';
         final row = _descriptors[id] ?? await getDescriptor(id);
         if (row.lifecycle == target && !_lifecycleRequests.containsKey(id))
           return;
+        _requireConversationManagement();
         final request = _lifecycleRequests.putIfAbsent(
             id,
             () => {
@@ -870,7 +1025,7 @@ class HandrailAssistantController {
           _lifecycleDirections.remove(id);
         _publish();
       }
-    })();
+    });
     _lifecycleOperations[id] = operation;
     _publish();
     return operation;
@@ -882,8 +1037,12 @@ class HandrailAssistantController {
     _pollTimer?.cancel();
     _historyGeneration++;
     _selectionGeneration++;
+    // Stop the account-owned voice timer before the first asynchronous await.
+    final closingVoice = voiceWorkspace?.dispose();
     final sessions =
         _sessions.values.map((session) => session.dispose()).toList();
+    await _voiceSubscription?.cancel();
+    await closingVoice;
     await _workspaceSubscription.cancel();
     for (final subscription in _sessionSubscriptions) {
       await subscription.cancel();
@@ -905,3 +1064,8 @@ HandrailGatewayException _assistantFailure(
         ? cause
         : HandrailGatewayException(code, message,
             retryable: cause is! FormatException && cause is! TypeError);
+
+const _conversationManagementDenied = HandrailGatewayException(
+    'conversation_management_forbidden',
+    'Your current access does not allow conversation changes.',
+    retryable: false);
