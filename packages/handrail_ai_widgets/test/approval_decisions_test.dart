@@ -69,6 +69,8 @@ void main() {
         isNull);
     await tester.tap(find.text('Review change'));
     await tester.pumpAndSettle();
+    expect(find.text('Amount'), findsOneWidget);
+    expect(find.byType(HandrailStructuredDetails), findsOneWidget);
     expect(find.textContaining('42'), findsOneWidget);
     await tester.tap(find.text('Approve'));
     await tester.pumpAndSettle();

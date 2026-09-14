@@ -13,6 +13,7 @@ export 'realtime_voice_gateway.dart';
 export 'webrtc_voice_session.dart';
 export 'approval_mode.dart';
 export 'approval_decisions.dart';
+export 'structured_details.dart';
 export 'draft_controller.dart';
 export 'composer_drafts.dart';
 export 'conversation_history.dart';

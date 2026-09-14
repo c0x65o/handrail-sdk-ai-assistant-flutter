@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'structured_details.dart';
 
 /// Structural binding supplied by the account-owned SDK approval controller.
 typedef HandrailApprovalBinding = ({
@@ -118,8 +118,8 @@ class _ApprovalDecisionsState extends State<HandrailApprovalDecisionsView> {
                       Text('Group: ${item['group_id']}'),
                     Text(
                         widget.titleFor?.call(item) ??
-                            item['tool_name'] as String? ??
-                            'Proposed change',
+                            handrailStructuredDetailLabel(
+                                item['tool_name'] as String? ?? 'Proposed change'),
                         style: Theme.of(context).textTheme.titleSmall),
                     Text(pending
                         ? 'Checking saved decision'
@@ -135,8 +135,7 @@ class _ApprovalDecisionsState extends State<HandrailApprovalDecisionsView> {
                           }),
                     if (review) ...[
                       widget.reviewBuilder?.call(context, item) ??
-                          SelectableText(const JsonEncoder.withIndent('  ')
-                              .convert(item['arguments'])),
+                          HandrailStructuredDetails(value: item['arguments']),
                       if (item['complete'] != true)
                         const Text(
                             'This review is incomplete. Approval is unavailable.'),
