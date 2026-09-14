@@ -129,10 +129,13 @@ button and system Back then use shared account-safe confirmation. Closing never
 cancels remote work. Business file bounds use the draft factory's
 `attachmentLimits` intersection with negotiated gateway limits.
 
-Mills' existing screen and protected-operation integration remains compatible;
-its household history reconciliation and business authorization must survive
-further adoption. This candidate does not establish complete mobile or deployed
-parity across all consumers.
+Mills' retained host integrations supply household/user ownership, protected
+attachments and financial business authorization. Preserve those behaviors
+during further adoption. The owner discarded old chats, and the Mills source
+cleanup removed legacy history import/reconciliation and its recovery gate;
+do not restore them as an adoption prerequisite. New SDK history and normal
+turn recovery remain required. This candidate does not establish complete mobile
+or deployed parity across all consumers.
 
 Current qualification uses temporary test-only package resolution against local
 SDK source. Application manifests and locks retain their existing committed
