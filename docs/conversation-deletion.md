@@ -1,5 +1,33 @@
 # Shared conversation deletion qualification
 
+## Current installed qualification — September 14, turn 35
+
+The JS receipt correction is public in
+`15a3806c2595a3f93a87a768ad13293113f41b58`; the Flutter implementation is public
+at `50fe566d73f68b2beacc2a874dc9a038363b1509`. All three main mobile consumers
+now normally install the Flutter revision with matching locks. Mills brought its
+shared workspace/controller implementation into main, preserving domain review,
+files, voice and dictation adapters. Its 312 selected tests and full analysis/build
+pass; Cents passes 96 selected tests including its unchanged visual gate; Aegis
+passes 179 selected cases including shell and presentation coverage.
+
+The Flutter gateway fixture normally installs the public JS revision via npm 12.
+All 138 client tests and full analysis pass with no local SDK override, including
+real HTTP deletion/restart, durable approval decisions and protected attachment
+ownership/expiry. The attachment gateway test now runs in the default suite
+instead of being skipped without a candidate override. Its stores and provider
+are deterministic fixtures; this is protocol qualification, not production SQL
+retention, real provider or audio execution. Logs:
+`/tmp/flutter-client-turn35-{analysis,tests}.log`.
+
+The newer JS terminal-approval response fix remains unpublished. Actual rollout,
+live/native qualification and approved production cleanup remain open.
+
+## Historical source-candidate evidence
+
+Earlier pending-publication and alias statements below describe historical
+revisions and are superseded by the installed qualification above.
+
 September 13–14, 2026 source candidate for goal
 `06b47a97-7cd6-41b7-9040-6b88761094ce`. This document does not establish consumer
 installation, rollout or physical production deletion.

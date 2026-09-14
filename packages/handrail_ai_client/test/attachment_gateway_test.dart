@@ -8,11 +8,13 @@ import 'package:test/test.dart';
 void main() {
   final candidate = Platform.environment['HANDRAIL_TEST_JS_SDK_DIST'];
   test(
-      'candidate JS gateway: UI binding uploads to the original conversation, admits the file, downloads and preserves ownership/expiry',
+      'JS gateway: UI binding uploads to the original conversation, admits the file, downloads and preserves ownership/expiry',
       () async {
-    final server = await Process.start(
-        'node', ['../../tool/gateway/attachments.mjs'],
-        environment: {'HANDRAIL_TEST_JS_SDK_DIST': candidate!});
+    final server = await Process.start('node', [
+      '../../tool/gateway/attachments.mjs'
+    ], environment: {
+      if (candidate != null) 'HANDRAIL_TEST_JS_SDK_DIST': candidate,
+    });
     final errors = StringBuffer();
     server.stderr.transform(utf8.decoder).listen(errors.write);
     final origin = Uri.parse(await server.stdout
@@ -132,8 +134,5 @@ void main() {
     expect(jsonEncode(assistant.document!.messages), contains(fileId));
     await http.post(origin.resolve('/test/expire'));
     expect((await read(download)).errorCode, 'attachment_expired');
-  },
-      skip: candidate == null
-          ? 'Set HANDRAIL_TEST_JS_SDK_DIST for explicit local cross-revision qualification; installed dependency stays locked.'
-          : false);
+  });
 }

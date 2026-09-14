@@ -1,12 +1,13 @@
-// Explicit cross-revision qualification; never replaces the locked SDK install.
+// Real installed SDK gateway with deterministic storage/provider seams.
+// An explicit local build may qualify source, but never establishes adoption.
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 const dist = process.env.HANDRAIL_TEST_JS_SDK_DIST;
-if (!dist) throw new Error('Set HANDRAIL_TEST_JS_SDK_DIST to the reviewed local JS build for candidate qualification.');
-const sdk = await import(pathToFileURL(resolve(dist, 'index.js')).href);
-const { createHandrailAssistant, createProviderToolLoopTransport } = await import(pathToFileURL(resolve(dist, 'server/assistant.js')).href);
+const sdk = await import(dist ? pathToFileURL(resolve(dist, 'index.js')).href : '@handrail/ai-assistant');
+const { createHandrailAssistant, createProviderToolLoopTransport } = await import(dist
+  ? pathToFileURL(resolve(dist, 'server/assistant.js')).href : '@handrail/ai-assistant/server/assistant');
 const limits = { maximumBytes: 1024, acceptedMediaTypes: ['application/pdf'], ttlMilliseconds: 60_000 };
 const bundles = new Map();
 let clock = Date.now();

@@ -41,7 +41,10 @@ JS SHA as the Flutter repository revision. See
 
 The client requires Dart >=3.4; widgets require Dart >=3.10 and Flutter >=3.38.
 The shared file picker requires iOS 14 or newer when targeting iOS.
-Gateway integration tests additionally require Node >=20 and npm.
+Gateway integration tests additionally require Node 22.23.1 or later within
+Node 22, and npm 12. The fixture declares its public, full-SHA JS dependency
+and opts in to root Git dependencies in `tool/gateway/.npmrc`; its exact SDK
+prepare script is permitted so normal installation compiles the SDK.
 
 ```sh
 make setup
@@ -53,6 +56,14 @@ test gateway's JS SDK from its locked public HTTPS Git commit; that dependency's
 normal `prepare` hook compiles it. The Node fixture is test tooling only and is
 not a Dart dependency. Integration tests exercise a real SDK gateway with
 in-memory stores and a deterministic provider, without credentials or paid API
-calls. They do not need an adjacent JavaScript checkout or its `dist` directory.
+calls. Upload/download ownership and expiry run in the default suite alongside
+submission, cancellation, deletion and approval recovery. They do not need an
+adjacent JavaScript checkout or its `dist` directory.
+
+The gateway fixture currently locks public JS
+`15a3806c2595a3f93a87a768ad13293113f41b58`. Turn-35 normal public-install
+qualification passes full client analysis and all 138 client tests. An explicitly
+set `HANDRAIL_TEST_JS_SDK_DIST` is only a source qualification override; unset it
+for installed-dependency acceptance.
 
 Each Dart package retains its own lockfile for reproducible SDK development.

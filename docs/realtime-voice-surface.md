@@ -6,10 +6,11 @@ uncertain-end recovery and background stopping. It inherits `Theme.colorScheme`
 and text styles. Host content appears alongside these controls; branding and
 financial review do not replace them.
 
-This API is local source beyond public Flutter commit
-`c22b5ac97b0bcabd99b2d96995a0ed85c49ec124`. Mills' isolated source candidate uses it;
-its normal installed consumer has not adopted it. A generated package alias is
-not a release or adoption receipt.
+This API is included in public Flutter commit
+`50fe566d73f68b2beacc2a874dc9a038363b1509`. Mills' main mobile checkout now uses
+it through a normal public Git install and matching lock. Full main analysis,
+312 selected cases and the release web build pass. Device microphone, actual
+provider/audio playback and native builds remain separately unqualified.
 
 ```dart
 HandrailRealtimeVoiceSurface<SpeakerContext>(
@@ -96,7 +97,7 @@ waits up to 10 seconds for ICE and 15 seconds for the started control event; the
 host enforces the request timeout. SDK cancellation invokes all registered cleanup
 listeners even if one fails.
 
-Mills' source candidate now uses this implementation. Its 95-line adapter provides
+Mills' main checkout now uses this implementation. Its 95-line adapter provides
 protected SDP/end requests, explicit shared-speaker context and authentication
 handling. The host WebRTC engine and native/browser playback implementations have
 been removed. Saved-call and activity monitors remain SDK client services; Mills
@@ -107,10 +108,10 @@ The widgets package declares `flutter_webrtc` 1.5.2, `dart_webrtc` 1.8.1 and `we
 with a matching normal SDK lock; these match Mills' already installed media
 baseline. A normal SDK `flutter pub get --offline` resolved the cached packages.
 No packaging/publishing step is needed. Host platform microphone permissions and
-native build requirements still apply. Mills' public c22 SDK pin/lock remains
-unchanged: remove its now-redundant direct WebRTC dependencies only with actual
-adoption of a published SDK revision that includes this engine and a matching
-normal host lock. Temporary source aliases do not establish that adoption.
+native build requirements still apply. Mills now normally adopts public 50fe;
+its redundant direct WebRTC dependencies are removed and the matching host lock
+resolves the SDK-owned media dependencies. Historical source-alias checks below
+are separate from current installed adoption and live qualification.
 
 Qualification: 20 SDK cases cover the 12 surface scenarios plus native playback,
 delayed capture/joined disposal, real WebRTC Dart platform-channel startup,

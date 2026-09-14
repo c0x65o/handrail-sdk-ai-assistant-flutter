@@ -7,55 +7,41 @@ Send/Stop, approval settings, pending approval decisions, uploads and authentica
 The host supplies protected transport, encrypted pending storage, business
 request construction and branding.
 
-Publication boundary: Mills' main mobile checkout now resolves both packages from
-public Flutter SHA `c22b5ac97b0bcabd99b2d96995a0ed85c49ec124`, with a matching
-normal lock and installed Git cache, and passes 164 scoped tests, full analysis
-and a release web build. The shared deletion and approval-decision controllers
-in this working tree are newer local source. The approval receipt correction is
-also local in the JS sibling. See [approval decisions](approval-decisions.md)
-and [conversation deletion](conversation-deletion.md) before adopting those APIs.
-A local package alias does not establish installed-consumer adoption.
+## Current public adoption — September 14, turn 35
 
+Mills, Spartan/Aegis and Hitcents/Cents main mobile checkouts now normally install
+both packages from public Flutter commit
+`50fe566d73f68b2beacc2a874dc9a038363b1509`, with matching locks and actual public
+Git-cache roots (client 0.1.8/widgets 0.1.1). The shared deletion, approval-decision,
+workspace, protected-file and voice APIs described here are included. No local
+alias or edited installed package is needed. See [approval decisions](approval-decisions.md)
+and [conversation deletion](conversation-deletion.md) for safety contracts.
 
-Cents mobile also now resolves the same public c22 revision through a normal
-public Git install and matching lock. It removes generic host controller wrappers,
-duplicate workspace initialization/listeners, the Clear-to-New action and the
-import-only result display gate. Full analysis and a normal release web build
-pass. Its normal combined test run passes 94 cases but fails two visual-reference
-checks measuring 0.142436092633 against the unchanged 0.123000 maximum. This is
-installed dependency evidence, not full visual/runtime qualification.
+Mills' reviewed shared workspace/controller source is now in main, preserving
+financial review, files, dictation and voice adapters. Full analysis, 312 selected
+tests and the release web build pass. Aegis passes full analysis, 179 selected
+assistant/shell/presentation cases and the release web build. Cents passes full
+analysis, release web build and 96 selected tests, including its visual gate at
+0.12282185395988604 against the unchanged 0.123000 bound. Its six active goldens
+are installed-SDK captures; the bundled test-font Greek-glyph limitation remains.
+Passing that aggregate threshold is not pixel parity or live qualification.
 
-A local SDK presentation follow-up places Copy at the trailing edge below each
-bubble, with full touch targets and surface contrast, while preserving exact-text
-copy, retry and account isolation. Thirteen SDK transcript tests and 42 Cents
-source-candidate tests passed in turn 27. Turn 31 additionally isolates the shared
-editor from host form width/height constraints and disabled borders. The candidate
-now measures 0.122821853960 and passes the unchanged 0.123000 bound, both reference
-checks and all six phone-state captures. This is a regression-bound result, not
-pixel-identical design or live qualification. It remains local beyond c22; Cents'
-normal package resolution and active goldens retain the installed-public state.
-See its `docs/cents-shared-composer-candidate.md` for the separate evidence.
+The Flutter test gateway normally installs public JS
+`15a3806c2595a3f93a87a768ad13293113f41b58`; full client analysis and all 138 client
+cases pass, including real HTTP deletion/restart, approval recovery and protected
+attachment ownership/expiry. This public revision contains the removed-version
+receipt correction. A newer JS terminal-approval response fix remains unpublished;
+Aegis's unchanged installed server assertion still exposes that regression.
 
-Spartan mobile now normally installs public c22 with a matching lock as well.
-Its 58 current installed-consumer cases, six offline captures using the real app
-theme, shell launcher test and full app analysis pass. Removed the unused duplicate
-catalog/filter, message/citation, title/preview and selected-workspace models;
-`AegisConversationActions` retains only business action/result cards. The domain
-projection excludes stale success/failure across selection changes. Its shared
-transcript now resolves Spartan citation locators through the host navigation
-adapter, and the host's action status wraps at 320 pixels/double text.
-This does not qualify the newer local deletion/decision/voice baseline. An explicit
-Spartan development Mobile Preview call was rejected as outside this Dev Chat's
-saved scope (`preview_browser_access_denied`); no app failure was reproduced.
-See its current `docs/assistant-sdk-qualification.md` for exact receipts and limits.
-
-Realtime voice also has a [shared surface](realtime-voice-surface.md) for status,
+Realtime voice has a [shared surface](realtime-voice-surface.md) for status,
 identity choices, mute/playback, Stop/Back, uncertain-end retry and backgrounding.
-Mills supplies trusted speaker context and its financial review alongside these
-controls. `HandrailWebRtcVoiceSession<T>` now owns capture, peer/data-channel
-setup, playback and teardown; hosts provide an authenticated SDP/end gateway.
-These additions are local beyond public c22. Saved-call/activity presentation,
-actual public consumer adoption and live/native qualification remain open.
+`HandrailWebRtcVoiceSession<T>` owns capture, peer/data-channel setup, playback
+and teardown. Mills supplies trusted speaker context, financial review and its
+authenticated SDP/end gateway. Local tests do not establish actual provider/audio
+or native-device execution. Development Mobile Preview access was denied for
+all three projects as outside this Dev Chat's saved scope; no app failure was
+reproduced by those attempts. Authorized live qualification, deployment and
+approved production cleanup remain open.
 
 ```dart
 import 'package:handrail_ai_client/handrail_ai_client.dart';
@@ -101,14 +87,14 @@ admission and Stop unchanged. The workspace's `attachmentPicker` accepts a nativ
 source menu; the SDK rejects results belonging to a replaced draft/account.
 `copyText` supplies a platform clipboard operation while the SDK owns Copied,
 accessible failure feedback, retries and stale completion protection. These
-hooks are local source newer than the public install receipt above.
+hooks are included in the public Flutter baseline above.
 
 Use `approvalTitle` on the workspace (or `titleFor` on
 `HandrailApprovalDecisionsView`) to supply business action names. This changes
 only the heading; complete-review checks, trusted permission, proposal version,
 saved-decision recovery and the Approve/Reject controls remain SDK-owned. Mills
 uses it for labels such as deleting a manual education fund. The display hook
-is local source beyond the public install receipt above.
+is included in the public Flutter baseline above.
 
 For business context, snapshot an immutable route/account value at activation:
 
@@ -177,7 +163,7 @@ individually. Their lower-level APIs are documented in the package READMEs.
 
 | Feature | Shared SDK ownership | Host ownership |
 | --- | --- | --- |
-| Catalog/history | Paging, selection, archive/restore, stable retries, remote unread/preview state, picker/sidebar; local candidate adds reviewed permanent deletion and its account journal | Theme, labels, visibility flags; custom atomic deletion store when not using the shared key-value adapter |
+| Catalog/history | Paging, selection, archive/restore, stable retries, remote unread/preview state, picker/sidebar, reviewed permanent deletion and its account journal | Theme, labels, visibility flags; custom atomic deletion store when not using the shared key-value adapter |
 | Sending | Immutable pending journal, admission, retry, draft revision and file identity, canonical cancellation | Domain request, authenticated storage and transport, prompt bounds |
 | Voice/files | Capture, negotiated limits, protected upload/transcription, insertion, cancellation, retry | Permissions/platform setup, authenticated gateway and business limits |
 | Approval | Preference control and per-request metadata; shared gateway policy mechanisms | Authorized server policy, business review validation and tools |
@@ -225,29 +211,30 @@ attachments and financial business authorization. Preserve those behaviors
 during further adoption. The owner discarded old chats, and the Mills source
 cleanup removed legacy history import/reconciliation and its recovery gate;
 do not restore them as an adoption prerequisite. New SDK history and normal
-turn recovery remain required. This candidate does not establish complete mobile
+turn recovery remain required. Installed checks do not establish complete live/native
 or deployed parity across all consumers.
 
-Current qualification uses temporary test-only package resolution against local
-SDK source. Application manifests and locks retain their existing committed
-HTTPS Git pins. Consumer adoption needs a reviewed public full SHA from this
-Flutter repository and matching normal Flutter resolution/build. No local-path,
-workspace, tarball or registry substitution belongs in consumer dependencies.
+Current consumer qualification uses the normal committed HTTPS Git pins above,
+matching locks and generated public package roots. Consumer adoption requires a
+reviewed full public SHA from this Flutter repository, normal resolution/build
+and application checks. No local-path, workspace, tarball or registry substitution
+belongs in consumer dependencies. An explicit source-only test override remains
+available for developing future unpublished changes; it is not adoption evidence.
 Local widget/gateway tests do not establish OS microphone, Mobile Preview or
 production parity.
 
-The current local [deletion candidate](conversation-deletion.md) extends both
+The shared [deletion implementation](conversation-deletion.md) extends both
 packages' structural history binding with the shared deletion action. The standard
 controller/workspace composition above supplies it without another host callback.
 Custom bindings must adopt that member deliberately. The shared composer removes
 only the confirmed deleted conversation's draft and files; other drafts remain.
 The server's permanent-delete receipt must identify the removed descriptor
 version exactly. The older JS in-memory catalog returned the following version;
-the source correction and its installed-dependency qualification remain separate
-from this Flutter candidate. Do not accept either value as interchangeable.
+public JS 15a includes the correction and the normally installed gateway test
+qualifies it. Do not accept either value as interchangeable.
 
 
-## Shared voice history and navigation policy (local source)
+## Shared voice history and navigation policy
 
 Supply `readVoiceWorkspace` to `HandrailAssistantController` when a host has an
 authorized voice-activity reader. The SDK constructs and disposes its account
@@ -285,11 +272,11 @@ this policy and resolves only exact protected source identities to `/home` and
 `/finance/connections`. Non-assistant message text remains literal. Standard
 Markdown, Copy, activity and citation presentation stay SDK-owned.
 
-These APIs are local beyond public Flutter c22. Source-alias tests are not a
-normal public dependency-adoption receipt or live voice/provider qualification.
+These APIs are in the public Flutter baseline above. Source-alias tests remain
+separate from normal public adoption and live voice/provider qualification.
 
 
-## Protected image viewers (local source)
+## Protected image viewers
 
 `HandrailAttachmentPreview(enableImageZoom: true, ...)` supplies a scoped
 fullscreen image viewer with zoom, close controls and accessible labels. Supply
@@ -315,7 +302,7 @@ are not provider, native-app-switcher, operating-system screenshot, or live
 storage qualification.
 
 
-## Live catalog permissions (local source)
+## Live catalog permissions
 
 `HandrailAssistantController(allowConversationManagement: callback, ...)` accepts
 an additional live host permission check for creation, initial title assignment,
@@ -338,11 +325,11 @@ responses already received still finish their local receipt cleanup. Operation
 tracking is established before asynchronous work begins, including early
 permission failures, so failed work cannot remain stuck as an active operation.
 
-These hooks are local beyond public c22. Mills' obsolete screen/router attachment
-repository and signed-uploader injection parameters are removed from the source
-candidate: the account-owned protected provider supplies uploads to SDK drafts.
+These hooks are in the public Flutter baseline. Mills' obsolete screen/router
+attachment repository and signed-uploader injection parameters are removed from
+main: the account-owned protected provider supplies uploads to SDK drafts.
 
-## Host theme and message identity (local source)
+## Host theme and message identity
 
 The standard composer inherits the host's `ColorScheme.surface`, `onSurface`,
 `outlineVariant`, `primary` and `onPrimary`, plus its text font. It no longer
@@ -353,7 +340,7 @@ The standard editor excludes host `InputDecorationTheme` width/height constraint
 and disabled borders: the SDK owns its single-line minimum, multiline growth and
 surrounding composer border. This prevents ordinary form sizing from reserving
 empty space or clipping draft text; host fonts, hint colors and branding remain.
-The newer layout fix is local beyond public c22.
+The layout fix is included in public Flutter 50fe and now passes Cents’s installed visual gate.
 
 The standard transcript renders user and assistant messages, leaving internal
 system/tool payloads out of normal chat. Hosts using `HandrailTranscriptMessage`
@@ -362,18 +349,18 @@ accurate semantic role labels and visible system/tool labels, even with normal
 chat author labels hidden. `systemLabel` and `toolLabel` can be localized;
 assistant branding and its avatar apply only to assistant messages.
 
-Mills' source candidate uses its real app theme with the standard workspace.
+Mills' main checkout uses its real app theme with the standard workspace.
 Source tests cover narrow Markdown tables, exact Copy and bounded clipboard
 failure, native Photos/Camera/Files, late picker/account isolation, keyboard
 insets and editable/send behavior. The generic read-adapter property, synthetic
 chat/proposal fixtures and quick-prompt models are removed; fixture household,
-calendar and finance data remain separate. See the candidate's
-`docs/shared-assistant-source-candidate.md` for its exact receipts. These newer
-SDK source changes still require public SHA/lock adoption and runtime checks.
+calendar and finance data remain separate. See Mills mobile’s
+`docs/shared-assistant-source-candidate.md` for current installed receipts and
+historical source evidence. Live/native qualification remains separate.
 
-## Mills generic wrapper retirement (local source)
+## Mills generic wrapper retirement
 
-Mills' candidate now calls the shared controller/workspace directly for catalog,
+Mills' main checkout now calls the shared controller/workspace directly for catalog,
 creation, deletion, send/retry/Stop and draft admission. The duplicate generic
 repository wrappers, JSON-chat reply models and old generic UI test runtime are
 removed. Its remaining repository handles protected files/transcription,

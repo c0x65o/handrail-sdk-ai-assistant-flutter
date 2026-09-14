@@ -1,9 +1,14 @@
 # Shared mobile approval decisions
 
-This is local source beyond public Flutter commit
-`c22b5ac97b0bcabd99b2d96995a0ed85c49ec124`. It also requires the local JS server
-decision-receipt correction beyond `5a0ebe520a9e6fde0b3a792f959a7a10e0a3de50`.
-Source qualification does not update an installed consumer or authorize release.
+This API is included in public Flutter commit
+`50fe566d73f68b2beacc2a874dc9a038363b1509`. All three main mobile consumers now
+normally install it with matching locks. The exact-decision receipt correction
+is included in public JS `15a3806c2595a3f93a87a768ad13293113f41b58`, installed
+by the gateway fixture; all 138 client cases pass, including lost-response
+recovery after execution advances. A newer terminal-approval response fix in
+JS source remains unpublished: a different late dismissal currently gets 400
+on the public server, while the executed effect/proposal remain immutable.
+That installed server regression still requires corrected public adoption.
 
 `HandrailAssistantController.approvals` owns canonical proposal review and exact
 version decisions. Its `uiBinding` is included in the standard workspace, which
