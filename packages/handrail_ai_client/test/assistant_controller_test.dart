@@ -42,11 +42,12 @@ class Fixture {
   late final client = HandrailAiClient(
       baseUri: Uri.parse('https://example.test/api/assistant'),
       httpClient: MockClient(handle));
-  HandrailAssistantController controller({bool autoCreate = true}) =>
+  HandrailAssistantController controller({bool autoCreate = true, bool threads = true}) =>
       HandrailAssistantController(
           client: client,
           pendingStore: pending,
           pollingInterval: null,
+          threads: threads,
           autoCreate: autoCreate);
   Future<http.Response> handle(http.Request request) async {
     requests.add(request);
@@ -139,6 +140,48 @@ class Fixture {
 }
 
 void main() {
+  test(
+      'single conversation disables titles and clear retries retain identity and refresh context',
+      () async {
+    final f = Fixture()..titleGeneration = true;
+    f.messages = [{'message_id': 'old', 'role': 'assistant',
+      'content': [{'type': 'text', 'text': 'Old context'}], 'attachments': []}];
+    final controller = f.controller(autoCreate: false, threads: false);
+    final secondDevice = f.controller(autoCreate: false, threads: false);
+    addTearDown(secondDevice.dispose);
+    addTearDown(controller.dispose);
+    addTearDown(f.client.close);
+    await controller.initialize();
+    await controller.openConversation('one');
+    await secondDevice.initialize();
+    await secondDevice.openConversation('one');
+    expect(secondDevice.document!.messages, hasLength(1));
+    await controller.refreshGeneratedTitle('one', 'ended-call');
+    await controller.setInitialTitle('one', 'Unused attachment title', 'attachment');
+    expect(controller.historyPresentation['canCreate'], isFalse);
+    expect(controller.historyPresentation['selectedTitle'], '');
+    expect(f.requests.where((r) => r.url.path.endsWith('/titles/generate')),
+        isEmpty);
+    final clears = <Map>[];
+    f.before = (request, body) async {
+      if (!request.url.path.endsWith('/conversations/clear')) return null;
+      clears.add(body);
+      if (clears.length == 1) return http.Response('lost reply', 503);
+      f.messages = [];
+      f.rows['one'] = {...f.rows['one']!, 'version': 2};
+      return ok({'descriptor': f.rows['one'], 'status': 'idempotent'});
+    };
+    await expectLater(controller.clearCurrentConversation(),
+        throwsA(isA<HandrailGatewayException>()));
+    await controller.clearCurrentConversation();
+    expect(clears[0], equals(clears[1]));
+    expect(controller.selectedId, 'one');
+    expect(controller.selectedDescriptor!.version, 2);
+    expect(controller.document!.messages, isEmpty);
+    await secondDevice.sessionFor('one')!.refresh();
+    expect(secondDevice.document!.messages, isEmpty);
+    expect(controller.busy, isFalse);
+  });
   for (final persisted in [true, false]) {
     test('external activity title refresh uses server state without text turns ($persisted)', () async {
       final f = Fixture()..titleGeneration = true;

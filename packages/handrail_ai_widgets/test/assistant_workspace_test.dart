@@ -134,6 +134,8 @@ Widget surface(
   buildRequest,
   HandrailApprovalMode mode = HandrailApprovalMode.required,
   bool approvals = true,
+  bool threads = true,
+  Future<void> Function()? clear,
 }) => MaterialApp(
   builder: (context, child) => MediaQuery(
     data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(scale)),
@@ -145,6 +147,8 @@ Widget surface(
       height: 800,
       child: HandrailAssistantWorkspace<String>(
         binding: fixture.binding,
+        threads: threads,
+        onClearConversation: clear,
         drafts: fixture.drafts,
         captureContext: captureContext,
         buildRequest: buildRequest,
@@ -158,6 +162,64 @@ Widget surface(
 );
 
 void main() {
+  testWidgets('account replacement excludes a late Clear confirmation', (tester) async {
+    final first = Fixture(), second = Fixture();
+    addTearDown(first.dispose); addTearDown(second.dispose);
+    var oldClears = 0, newClears = 0;
+    await tester.pumpWidget(surface(first, threads: false, clear: () async { oldClears++; }));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Clear conversation'));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(surface(second, threads: false, clear: () async { newClears++; }));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Clear'));
+    await tester.pumpAndSettle();
+    expect(oldClears, 0); expect(newClears, 0);
+    await tester.pumpWidget(const SizedBox());
+  });
+  for (final width in [390.0, 1200.0]) {
+    testWidgets(
+      'single conversation Clear is explicit and preserves drafts at width $width',
+      (tester) async {
+        await tester.binding.setSurfaceSize(Size(width, 900));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final fixture = Fixture();
+        addTearDown(fixture.dispose);
+        var cleared = 0;
+        await tester.pumpWidget(
+          surface(
+            fixture,
+            width: width,
+            threads: false,
+            clear: () async {
+              cleared++;
+            },
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('New'), findsNothing);
+        expect(find.text('Archived'), findsNothing);
+        await tester.enterText(
+          find.byKey(const ValueKey('draft')),
+          'Keep this draft',
+        );
+        await tester.tap(find.text('Clear conversation'));
+        await tester.pumpAndSettle();
+        expect(cleared, 0);
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        expect(cleared, 0);
+        await tester.tap(find.text('Clear conversation'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Clear'));
+        await tester.pumpAndSettle();
+        expect(cleared, 1);
+        expect(fixture.drafts.controller.text, 'Keep this draft');
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
   testWidgets(
     'default workspace request passes the installed JS protocol parser',
     (tester) async {

@@ -45,6 +45,8 @@ class HandrailAssistantWorkspace<T> extends StatefulWidget {
     this.showVoice = true,
     this.showArchived = true,
     this.showUnread = true,
+    this.threads = true,
+    this.onClearConversation,
     this.showToolActivity = true,
     this.showPromptCounter = false,
     this.submissionEnabled = true,
@@ -100,6 +102,8 @@ class HandrailAssistantWorkspace<T> extends StatefulWidget {
   final int? maxInputLength;
   final int composerMaxLines;
   final bool allowExpandedEditor;
+  final bool threads;
+  final Future<void> Function()? onClearConversation;
   final String expandedEditorTitle;
   final String placeholder;
   final String loadingLabel, workingLabel, failureLabel;
@@ -184,6 +188,47 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
     unawaited(widget.binding.initialize().catchError((Object _) {}));
   }
 
+  bool _clearing = false, _clearFailed = false;
+  Future<void> _clearConversation() async {
+    final scope = widget.binding.scope;
+    final id = widget.binding.read()['conversationId'];
+    final clear = widget.onClearConversation;
+    if (_clearing || clear == null || id == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear conversation?'),
+        content: const Text('Clear this conversation and start fresh?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    bool current() =>
+        mounted &&
+        identical(scope, widget.binding.scope) &&
+        widget.binding.read()['conversationId'] == id;
+    if (confirmed != true || !current() || !widget.submissionEnabled) return;
+    setState(() {
+      _clearing = true;
+      _clearFailed = false;
+    });
+    try {
+      await clear();
+    } catch (_) {
+      if (current()) setState(() => _clearFailed = true);
+    } finally {
+      if (current()) setState(() => _clearing = false);
+    }
+  }
+
   void _changed() {
     if (!mounted) return;
     final text = widget.drafts.controller.text;
@@ -205,6 +250,7 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
       _approvalMode = widget.initialApprovalMode;
       _localError = null;
       _lastDraft = null;
+      _clearing = _clearFailed = false;
       _bind();
     }
   }
@@ -458,6 +504,26 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
         ),
       ],
     );
+    if (!widget.threads)
+      return Column(
+        children: [
+          if (widget.onClearConversation != null)
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton(
+                onPressed: sending || !widget.submissionEnabled || _clearing
+                    ? null
+                    : _clearConversation,
+                child: Text(_clearing ? 'Clearing…' : 'Clear conversation'),
+              ),
+            ),
+          if (_clearFailed)
+            const Text(
+              'The conversation could not be cleared. Finish any pending review, response or voice call, then retry.',
+            ),
+          Expanded(child: conversation),
+        ],
+      );
     return LayoutBuilder(
       builder: (context, constraints) =>
           constraints.maxWidth >= widget.sidebarBreakpoint

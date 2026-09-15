@@ -36,6 +36,7 @@ class HandrailAssistantController {
       this.clientId = 'handrail-mobile',
       this.newConversationTitle = 'New conversation',
       this.autoCreate = true,
+      this.threads = true,
       this.pageSize = 50,
       this.pollingInterval = const Duration(seconds: 1),
       String Function()? createId,
@@ -98,6 +99,11 @@ class HandrailAssistantController {
   late final approvals = HandrailApprovalDecisions._(this);
   final String clientId, newConversationTitle;
   final bool autoCreate;
+
+  /// Single-mode servers retain one identity and disable catalog navigation.
+  final bool threads;
+  final _clearRequests = <String, Map<String, Object?>>{};
+  final _clearOperations = <String, Future<void>>{};
   final int pageSize;
   final Duration? pollingInterval;
   final String Function() _createId;
@@ -176,6 +182,7 @@ class HandrailAssistantController {
           submitting ||
           hasPendingMessage && _cancelBeforeStart.contains(_selectedId));
   bool get busy =>
+      _clearOperations.containsKey(_selectedId) ||
       _selecting ||
       _creating != null ||
       _sending.contains(_selectedId) ||
@@ -184,6 +191,7 @@ class HandrailAssistantController {
 
   /// Account-wide work, including an unselected conversation's submission.
   bool get workingAnywhere =>
+      _clearOperations.isNotEmpty ||
       _selecting ||
       _creating != null ||
       _sending.isNotEmpty ||
@@ -261,9 +269,9 @@ class HandrailAssistantController {
         'unreadOnly': unreadOnly,
         'unreadCount': unreadCount,
         'selectedId': selectedId,
-        'selectedTitle': selectedDescriptor?.title ?? newConversationTitle,
+        'selectedTitle': threads ? selectedDescriptor?.title ?? newConversationTitle : '',
         'busy': busy,
-        'canCreate': canManageConversations,
+        'canCreate': threads && canManageConversations,
         'canManageConversations': canManageConversations,
         'catalogActions': {
           'archive': canManageConversations &&
@@ -673,7 +681,7 @@ class HandrailAssistantController {
         : const <String, Object?>{};
     _createRequest ??= _immutableJson({
       'idempotencyKey': _createId(),
-      'title': newConversationTitle,
+      if (threads) 'title': newConversationTitle,
       if (creationMetadata.isNotEmpty) 'metadata': creationMetadata
     }) as Map<String, Object?>;
     late final Future<void> operation;
@@ -849,8 +857,8 @@ class HandrailAssistantController {
         current == null ||
         current.document?.activeTurnId != null ||
         latest == null ||
-        !const ['completed', 'failed', 'cancelled', 'waiting_for_approval'].contains(latest['status']))
-      return;
+        !const ['completed', 'failed', 'cancelled', 'waiting_for_approval']
+            .contains(latest['status'])) return;
     final observed = workspace.remoteActivityFor(current.conversationId);
     if (observed?.turnId != null && observed!.turnId != latest['turn_id'])
       return;
@@ -942,6 +950,7 @@ class HandrailAssistantController {
   /// source text and persists the title. This never renames locally, creates a
   /// message, or resumes media; legacy return-only servers remain unchanged.
   Future<void> refreshGeneratedTitle(String id, String operationId) async {
+    if (!threads) return;
     _assertConversationUsable(id);
     _requireConversationManagement();
     final capabilities = await _getActivityCapabilities();
@@ -957,6 +966,7 @@ class HandrailAssistantController {
 
   Future<void> setInitialTitle(
       String id, String label, String operationId) async {
+    if (!threads) return;
     if (_sessions[id]
             ?.document
             ?.messages
@@ -1002,6 +1012,50 @@ class HandrailAssistantController {
   }
 
   Future<void> archive(String id) => _changeLifecycle(id, true);
+
+  /// Explicit reset; preserves identity and lets canonical synchronization
+  /// deliver the reset to every client. Retain the request after a lost reply.
+  Future<void> clearCurrentConversation() {
+    final id = _selectedId;
+    _requireConversationManagement();
+    if (id == null) return Future.value();
+    _assertConversationUsable(id);
+    if (_clearOperations[id] case final existing?) return existing;
+    if (workingAnywhere) {
+      return Future.error(const HandrailGatewayException('conversation_busy',
+          'Finish the pending response, review or voice call before clearing.'));
+    }
+    final operation = Future<void>.microtask(() async {
+      final row = await getDescriptor(id);
+      _requireConversationManagement();
+      _assertConversationUsable(id);
+      final request = _clearRequests.putIfAbsent(
+          id,
+          () => {
+                'conversationId': id,
+                'expectedVersion': row.version,
+                'idempotencyKey': 'clear:${_createId()}',
+              });
+      try {
+        await client.clearConversation(request);
+      } on HandrailGatewayException catch (error) {
+        if (error.code == 'version_conflict') _clearRequests.remove(id);
+        rethrow;
+      }
+      _assertConversationUsable(id);
+      _clearRequests.remove(id);
+      await _sessions[id]?.refresh();
+      _invalidateHistoryRead();
+      await refreshHistory();
+    }).whenComplete(() {
+      _clearOperations.remove(id);
+      _publish();
+    });
+    _clearOperations[id] = operation;
+    _publish();
+    return operation;
+  }
+
   Future<void> restore(String id) => _changeLifecycle(id, false);
   Future<void> _changeLifecycle(String id, bool archive) {
     _assertConversationUsable(id);
