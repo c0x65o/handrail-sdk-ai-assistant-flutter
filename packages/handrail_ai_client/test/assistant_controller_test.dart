@@ -139,6 +139,66 @@ class Fixture {
 }
 
 void main() {
+  for (final persisted in [true, false]) {
+    test('external activity title refresh uses server state without text turns ($persisted)', () async {
+      final f = Fixture()..titleGeneration = true;
+      f.before = (request, body) async {
+        if (!request.url.path.endsWith('/titles/generate')) return null;
+        expect(body['conversationId'], 'one');
+        expect(body['idempotencyKey'], 'title:ended-call');
+        if (persisted) f.rows['one'] = {...f.rows['one']!, 'title': 'Saved voice title', 'version': 2};
+        return ok('Returned title');
+      };
+      final controller = f.controller(autoCreate: false);
+      addTearDown(controller.dispose);
+      addTearDown(f.client.close);
+      await controller.initialize();
+      await controller.openConversation('one');
+      f.requests.clear();
+      await controller.refreshGeneratedTitle('one', 'ended-call');
+      expect(controller.selectedDescriptor!.title, persisted ? 'Saved voice title' : 'New conversation');
+      expect(f.requests.map((r) => r.url.pathSegments.last), ['generate', 'list']);
+      expect(controller.document!.messages, isEmpty);
+    });
+  }
+  test('external activity title refresh preserves server failure without rename', () async {
+    final f = Fixture()..titleGeneration = true;
+    f.before = (request, body) async => request.url.path.endsWith('/titles/generate')
+        ? http.Response('unavailable', 503) : null;
+    final controller = f.controller(autoCreate: false);
+    addTearDown(controller.dispose);
+    addTearDown(f.client.close);
+    await controller.initialize();
+    f.requests.clear();
+    await expectLater(controller.refreshGeneratedTitle('one', 'ended-call'), throwsA(isA<HandrailGatewayException>()));
+    expect(f.requests.any((r) => r.url.path.endsWith('/conversations/rename')), isFalse);
+  });
+  test('external activity title refresh does not call unsupported servers', () async {
+    final f = Fixture();
+    final controller = f.controller(autoCreate: false);
+    addTearDown(controller.dispose);
+    addTearDown(f.client.close);
+    await controller.initialize();
+    f.requests.clear();
+    await controller.refreshGeneratedTitle('one', 'ended-call');
+    expect(f.requests.any((r) => r.url.path.endsWith('/titles/generate')), isFalse);
+  });
+  test('external activity title refresh rechecks live permission after capability read', () async {
+    final f = Fixture()..titleGeneration = true;
+    var allowed = true;
+    final controller = HandrailAssistantController(client: f.client,
+        pendingStore: f.pending, pollingInterval: null, autoCreate: false,
+        allowConversationManagement: () => allowed);
+    addTearDown(controller.dispose);
+    addTearDown(f.client.close);
+    f.before = (request, body) async {
+      if (request.url.path.endsWith('/capabilities')) allowed = false;
+      return null;
+    };
+    await expectLater(controller.refreshGeneratedTitle('one', 'ended-call'), throwsA(isA<HandrailGatewayException>()));
+    expect(f.requests.any((r) => r.url.path.endsWith('/titles/generate')), isFalse);
+  });
+
   test('failed server title generation does not race recovery with a fallback rename', () async {
     final f = Fixture()..titleGeneration = true
       ..messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'Long first message'}]}];

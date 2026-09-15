@@ -937,6 +937,24 @@ class HandrailAssistantController {
     });
   }
 
+  /// Refresh a server-owned title after saved activity outside a text turn,
+  /// such as an explicitly ended voice call. The server selects authorized
+  /// source text and persists the title. This never renames locally, creates a
+  /// message, or resumes media; legacy return-only servers remain unchanged.
+  Future<void> refreshGeneratedTitle(String id, String operationId) async {
+    _assertConversationUsable(id);
+    _requireConversationManagement();
+    final capabilities = await _getActivityCapabilities();
+    _assertConversationUsable(id);
+    _requireConversationManagement();
+    if (capabilities.resources['titleGeneration'] != true) return;
+    await client.generateTitle(
+        conversationId: id, idempotencyKey: 'title:$operationId');
+    _assertConversationUsable(id);
+    _invalidateHistoryRead();
+    await refreshHistory();
+  }
+
   Future<void> setInitialTitle(
       String id, String label, String operationId) async {
     if (_sessions[id]

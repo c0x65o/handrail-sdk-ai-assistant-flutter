@@ -9,6 +9,7 @@ import 'transcription_control.dart';
 import 'attachments.dart';
 
 export 'realtime_voice.dart';
+export 'caption_blocks.dart';
 export 'realtime_voice_gateway.dart';
 export 'webrtc_voice_session.dart';
 export 'approval_mode.dart';
