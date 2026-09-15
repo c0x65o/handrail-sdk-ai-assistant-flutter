@@ -114,8 +114,6 @@ class _ApprovalDecisionsState extends State<HandrailApprovalDecisionsView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (item['group_id'] is String)
-                      Text('Group: ${item['group_id']}'),
                     Text(
                         widget.titleFor?.call(item) ??
                             handrailStructuredDetailLabel(

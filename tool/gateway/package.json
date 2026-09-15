@@ -7,10 +7,10 @@
     "npm": ">=12.0.2"
   },
   "devDependencies": {
-    "@handrail/ai-assistant": "git+https://github.com/c0x65o/handrail-sdk-ai-assistant-js.git#a8c901a69c08bb18c30e1a3773eaf407d4b228a6"
+    "@handrail/ai-assistant": "git+https://github.com/c0x65o/handrail-sdk-ai-assistant-js.git#6f83df969971f588903ea47dec2ede770b6dfe76"
   },
   "packageManager": "npm@12.0.2",
   "allowScripts": {
-    "git+https://github.com/c0x65o/handrail-sdk-ai-assistant-js.git#a8c901a69c08bb18c30e1a3773eaf407d4b228a6": true
+    "git+https://github.com/c0x65o/handrail-sdk-ai-assistant-js.git#6f83df969971f588903ea47dec2ede770b6dfe76": true
   }
 }
