@@ -170,6 +170,10 @@ class HandrailAttachmentLimits {
     }
     var total = 0;
     for (final file in selected) {
+      if (!acceptedMediaTypes.contains(file.mediaType) &&
+          file.mediaType == 'application/msword') {
+        throw const HandrailAttachmentException('legacy_word_unsupported');
+      }
       if (!acceptedMediaTypes.contains(file.mediaType) || file.byteSize == 0)
         throw const HandrailAttachmentException('unsupported_file');
       if (file.byteSize > maximumBytesFor(file.mediaType))
@@ -185,6 +189,8 @@ class HandrailAttachmentException implements Exception {
   const HandrailAttachmentException(this.code);
   final String code;
   String get message => switch (code) {
+        'legacy_word_unsupported' =>
+          'Legacy Word (.doc) files are not supported. Save the file as .docx or PDF and attach it again.',
         'too_many_files' => 'Choose fewer files for this message.',
         'file_too_large' ||
         'attachment_too_large' =>

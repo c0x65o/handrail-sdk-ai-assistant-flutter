@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:handrail_ai_widgets/handrail_ai_widgets.dart';
@@ -32,6 +34,96 @@ HandrailComposerController controller(
       filePicker: picker,
     )..select('one');
 void main() {
+  test(
+    'negotiated DOCX and PDF intake preserves fixture bytes and upload references',
+    () async {
+      const docx =
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      final negotiated = HandrailAttachmentLimits.fromCapabilities(
+        {
+          'acceptedMediaTypes': ['image/*', 'application/pdf', docx],
+          'maximumFiles': 4,
+          'maximumBytesPerFile': 100000,
+        },
+        {
+          'supported_mime_types': ['application/pdf', docx],
+          'max_document_count': 2,
+          'max_document_bytes': 100000,
+        },
+      )!;
+      expect(negotiated.extensions, contains('docx'));
+      expect(negotiated.extensions, isNot(contains('doc')));
+      final fixtures =
+          jsonDecode(
+                File(
+                  '../../test/fixtures/documents/manifest.json',
+                ).readAsStringSync(),
+              )
+              as List;
+      for (final fixture in fixtures.cast<Map<String, dynamic>>()) {
+        final bytes = File(
+          '../../test/fixtures/documents/${fixture['filename']}',
+        ).readAsBytesSync();
+        final uploaded = Map<String, Object?>.from(fixture['uploaded'] as Map);
+        final drafts = HandrailComposerController(
+          limitsForConversation: (_) => negotiated,
+          uploaderForConversation: (_) =>
+              ({
+                required bytes,
+                required filename,
+                required mediaType,
+                required idempotencyKey,
+                required cancellation,
+              }) async {
+                expect(
+                  bytes,
+                  File(
+                    '../../test/fixtures/documents/$filename',
+                  ).readAsBytesSync(),
+                );
+                expect(mediaType, uploaded['media_type']);
+                return (reference: uploaded, errorCode: null, retryable: false);
+              },
+        )..select('fixture');
+        try {
+          drafts.addPickedAttachments([
+            HandrailAttachmentFile(
+              fileName: fixture['filename'] as String,
+              mediaType: uploaded['media_type'] as String,
+              bytes: bytes,
+            ),
+          ]);
+          await drafts.submitWithAttachments((
+            text,
+            references,
+            accepted,
+          ) async {
+            expect(references, [uploaded]);
+            accepted();
+          });
+          expect(drafts.attachments, isEmpty);
+        } finally {
+          drafts.dispose();
+        }
+      }
+      expect(
+        () => negotiated.validate([
+          HandrailAttachmentFile(
+            fileName: 'legacy.doc',
+            mediaType: 'application/msword',
+            bytes: [1],
+          ),
+        ]),
+        throwsA(
+          isA<HandrailAttachmentException>().having(
+            (error) => error.message,
+            'message',
+            contains('Save the file as .docx or PDF'),
+          ),
+        ),
+      );
+    },
+  );
   test('host file settings only restrict negotiated formats and each bound',
       () {
     final negotiated = HandrailAttachmentLimits(

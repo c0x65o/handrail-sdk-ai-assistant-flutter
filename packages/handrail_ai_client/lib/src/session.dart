@@ -615,11 +615,20 @@ class HandrailConversationSession {
 
 Map<String, Object?> _value(Map<String, Object?> result) =>
     _object(result['value']);
-HandrailGatewayException _syncFailure(Map<String, Object?> result) =>
-    HandrailGatewayException(
+HandrailGatewayException _syncFailure(Map<String, Object?> result) {
+  if (result['status'] == 'rejected') {
+    final message = result['message'];
+    return HandrailGatewayException('synchronization_rejected',
+        message is String && message.isNotEmpty && message.length <= 500
+            ? message
+            : 'This message could not be saved. Review it before sending again.',
+        retryable: false);
+  }
+  return HandrailGatewayException(
         'synchronization_${result['status'] == 'unauthorized' ? 'unauthorized' : 'unavailable'}',
         'The saved conversation is currently unavailable.',
         retryable: result['status'] != 'unauthorized');
+}
 
 Object? _immutableJson(Object? value) {
   if (value is Map)

@@ -260,6 +260,45 @@ void main() {
     client.close();
   });
 
+  test('an expired upload rejects admission without a retry or provider start', () async {
+    var admissions = 0, accepted = 0;
+    final client = HandrailAiClient(
+        baseUri: Uri.parse('https://app.example/api/ai'),
+        httpClient: MockClient((request) async {
+          if (request.url.path.endsWith('/capabilities'))
+            return ok({'protocolVersion': applicationGatewayProtocolVersion, 'synchronization': true});
+          expect(request.url.path, endsWith('/synchronization'));
+          final body = jsonDecode(request.body) as Map;
+          if (body['operation'] == 'append_mutations') {
+            admissions++;
+            return ok({'status': 'rejected', 'code': 'attachment_expired',
+              'message': 'A file upload expired before the message was saved. Select the file again.'});
+          }
+          return ok(body['operation'] == 'pull_snapshot'
+              ? {'status': 'snapshot', 'snapshot': snapshot(running: false)}
+              : {'status': 'events', 'events': [], 'revision': 1, 'latestRevision': 1, 'hasMore': false});
+        }));
+    final session = HandrailConversationSession(client: client, conversationId: 'c1', pollingInterval: null);
+    try {
+      final submission = await session.prepareTurn(operationId: 'expired-file', clientId: 'flutter', request: {
+        'protocol_version': 'handrail.ai-runtime.v1', 'continuation_of': null,
+        'messages': [{'role': 'user', 'content': [
+          {'type': 'text', 'text': 'Read this file'},
+          {'type': 'image', 'attachment': {'attachment_id': 'att_file', 'content_ref': 'ref_file',
+            'media_type': 'image/png', 'byte_size': 4, 'filename': 'file.png'}}]}],
+        'tools': [], 'tool_results': [], 'generation': {'max_output_tokens': 100, 'temperature': 0}, 'correlation_hints': {},
+      });
+      await expectLater(session.submitTurn(submission, onAccepted: (_) { accepted++; }),
+          throwsA(isA<HandrailGatewayException>()
+              .having((error) => error.code, 'code', 'synchronization_rejected')
+              .having((error) => error.retryable, 'retryable', isFalse)
+              .having((error) => error.message, 'message', contains('Select the file again'))));
+      expect(admissions, 1); expect(accepted, 0);
+      expect(session.error?.retryable, isFalse);
+      expect(session.document!.runtimeState.status, HandrailTurnStatus.completed);
+    } finally { await session.dispose(); client.close(); }
+  });
+
   test('a failed synchronization keeps the last known server run', () async {
     var fail = false;
     final client = HandrailAiClient(
