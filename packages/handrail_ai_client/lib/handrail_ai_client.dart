@@ -22,6 +22,8 @@ part 'src/realtime_workspace.dart';
 part 'src/transcription.dart';
 part 'src/attachments.dart';
 part 'src/attachment_download.dart';
+part 'src/display_history.dart';
+part 'src/display_window.dart';
 
 const applicationGatewayProtocolVersion = 'handrail.application-gateway.v1';
 
@@ -37,6 +39,7 @@ class HandrailGatewayCapabilities {
   final bool presence;
   final bool activity;
   final bool synchronization;
+  final HandrailDisplayHistoryCapability? displayHistory;
   final Map<String, Object?> resources;
   const HandrailGatewayCapabilities({
     required this.authoritativeCancellation,
@@ -47,6 +50,7 @@ class HandrailGatewayCapabilities {
     required this.presence,
     this.activity = false,
     required this.synchronization,
+    this.displayHistory,
     this.resources = const {},
   });
   factory HandrailGatewayCapabilities.fromJson(Map<String, Object?> json) =>
@@ -69,6 +73,10 @@ class HandrailGatewayCapabilities {
         presence: json['presence'] == true,
         activity: json['activity'] == true,
         synchronization: json['synchronization'] == true,
+        displayHistory: json['displayHistory'] is Map
+            ? HandrailDisplayHistoryCapability.fromJson(
+                _object(json['displayHistory']))
+            : null,
         resources: json['resources'] is Map
             ? Map<String, Object?>.unmodifiable(json['resources'] as Map)
             : const {},
