@@ -7,7 +7,7 @@ List<Map<String, Object?>> _records(Object? value) =>
         .map((item) => Map<String, Object?>.unmodifiable(_object(item))));
 
 /// The server's canonical transcript and state, independent of any SSE observer.
-class HandrailConversationDocument {
+class HandrailConversationDocument extends HandrailConversationView {
   final String conversationId;
   final int? revision;
   final Map<String, Object?> state;
@@ -49,6 +49,20 @@ class HandrailConversationDocument {
         _records(state['turns']));
   }
 
+  @override
+  bool get isPartial => false;
+}
+
+/// Read-only presentation contract. A view may contain a bounded window; it is
+/// never valid input to canonical synchronization or model context construction.
+abstract class HandrailConversationView {
+  const HandrailConversationView();
+  String get conversationId;
+  int? get revision;
+  Map<String, Object?> get state;
+  List<Map<String, Object?>> get messages;
+  List<Map<String, Object?>> get turns;
+  bool get isPartial;
   Map<String, Object?>? get latestTurn => turns.isEmpty ? null : turns.last;
   String? get activeTurnId {
     final id = state['active_turn_id'] as String?;
@@ -60,7 +74,9 @@ class HandrailConversationDocument {
   }
 
   HandrailConversationState get runtimeState {
-    final turn = activeTurnId == null ? latestTurn : turns.firstWhere((turn) => turn['turn_id'] == activeTurnId);
+    final turn = activeTurnId == null
+        ? latestTurn
+        : turns.firstWhere((turn) => turn['turn_id'] == activeTurnId);
     final turnId = turn?['turn_id'] as String?;
     final outputIds =
         (turn?['output_message_ids'] as List? ?? const []).toSet();
@@ -109,7 +125,20 @@ class HandrailConversationSession {
   final bool _ownsWorkspace;
   final StreamController<HandrailConversationSession> _changes =
       StreamController.broadcast(sync: true);
-  HandrailConversationDocument? _document;
+  HandrailConversationView? _document;
+  final _lifetime = Completer<void>();
+  Completer<void> _displayActivation = Completer<void>();
+  bool _displayActive = true;
+  HandrailDisplayControl? _control;
+  HandrailDisplayWindow? _displayWindow;
+  StreamSubscription<HandrailDisplayWindowState>? _displaySubscription;
+  List<HandrailDisplayRecord> _related = const [];
+  String? _relatedTurnId, _relatedCursor;
+  int? _relatedRevision;
+  int? _relatedWindowVersion;
+  int _relatedEpoch = 0;
+  List<String> _relatedMessageIds = const [];
+  Future<void>? _loadingRelated;
   HandrailGatewayException? _error;
   HandrailGatewayCapabilities? _capabilities;
   Future<void>? _refreshing;
@@ -129,6 +158,7 @@ class HandrailConversationSession {
     'lastAppliedRevision': null,
   };
   Timer? _timer;
+  Timer? _streamRefreshTimer;
   int _observationGeneration = 0;
   bool _disposed = false;
 
@@ -145,7 +175,46 @@ class HandrailConversationSession {
       throw ArgumentError.value(pollingInterval, 'pollingInterval');
     }
   }
-  HandrailConversationDocument? get document => _document;
+  HandrailConversationView? get document => _document;
+
+  /// Available only when bounded history and scalar controls are negotiated.
+  HandrailDisplayWindow? get displayWindow => _displayWindow;
+
+  /// Release presentation pages when another chat is selected. Execution and
+  /// scalar turn observation remain account-owned and are not cancelled.
+  void _setDisplayActive(bool active) {
+    if (_disposed || active == _displayActive) return;
+    _displayActive = active;
+    _displayActivation.complete();
+    _displayActivation = Completer<void>();
+    _relatedEpoch++;
+    _related = const [];
+    _relatedCursor = null;
+    _relatedRevision = null;
+    if (!active) {
+      unawaited(_displayWindow?.select(null));
+      if (_control != null) {
+        _publishDisplay();
+        _publish();
+      }
+    }
+  }
+
+  bool get hasMoreRelated => _relatedCursor != null;
+  Future<void> loadMoreRelated() {
+    if (_disposed)
+      return Future.error(StateError('Conversation session is disposed'));
+    if (_relatedCursor == null) return Future.value();
+    return _loadingRelated ??= _readRelated().then((_) {
+      if (!_disposed) {
+        _publishDisplay();
+        _publish();
+      }
+    }).whenComplete(() {
+      _loadingRelated = null;
+    });
+  }
+
   HandrailGatewayCapabilities? get capabilities => _capabilities;
   HandrailGatewayException? get error => _error;
   bool get isRefreshing => _refreshing != null;
@@ -183,44 +252,48 @@ class HandrailConversationSession {
       if (!_capabilities!.synchronization)
         throw const HandrailGatewayException('synchronization_unavailable',
             'Saved conversation synchronization is unavailable.');
-      var pull = _document == null;
-      if (!pull) {
-        final result = _value(await client.synchronize({
-          'operation': 'read_since',
-          'input': {
-            'conversationId': conversationId,
-            'afterRevision': _document!.revision,
+      if (_capabilities!.displayHistory?.control == true) {
+        await _refreshDisplay();
+      } else {
+        var pull = _document == null;
+        if (!pull) {
+          final result = _value(await client.synchronize({
+            'operation': 'read_since',
+            'input': {
+              'conversationId': conversationId,
+              'afterRevision': _document!.revision,
+            }
+          }));
+          if (_disposed) return;
+          if (result['status'] == 'snapshot_required') {
+            pull = true;
+          } else if (result['status'] == 'events') {
+            pull = (result['events'] as List).isNotEmpty ||
+                result['hasMore'] == true;
+          } else {
+            throw _syncFailure(result);
           }
-        }));
-        if (_disposed) return;
-        if (result['status'] == 'snapshot_required') {
-          pull = true;
-        } else if (result['status'] == 'events') {
-          pull = (result['events'] as List).isNotEmpty ||
-              result['hasMore'] == true;
-        } else {
-          throw _syncFailure(result);
         }
-      }
-      if (pull) {
-        final result = _value(await client.synchronize({
-          'operation': 'pull_snapshot',
-          'input': {'conversationId': conversationId}
-        }));
-        if (_disposed) return;
-        if (result['status'] != 'snapshot') throw _syncFailure(result);
-        final document = HandrailConversationDocument.fromSnapshot(
-            conversationId, _object(result['snapshot']));
-        if (_document?.revision != null &&
-            document.revision != null &&
-            document.revision! < _document!.revision!) {
-          throw const HandrailGatewayException('stale_snapshot',
-              'Saved conversation synchronization is temporarily behind.',
-              retryable: true);
+        if (pull) {
+          final result = _value(await client.synchronize({
+            'operation': 'pull_snapshot',
+            'input': {'conversationId': conversationId}
+          }));
+          if (_disposed) return;
+          if (result['status'] != 'snapshot') throw _syncFailure(result);
+          final document = HandrailConversationDocument.fromSnapshot(
+              conversationId, _object(result['snapshot']));
+          if (_document?.revision != null &&
+              document.revision != null &&
+              document.revision! < _document!.revision!) {
+            throw const HandrailGatewayException('stale_snapshot',
+                'Saved conversation synchronization is temporarily behind.',
+                retryable: true);
+          }
+          _document = document;
+          workspace.open(document.runtimeState,
+              select: workspace.snapshot.selectedConversationId == null);
         }
-        _document = document;
-        workspace.open(document.runtimeState,
-            select: workspace.snapshot.selectedConversationId == null);
       }
       await _ensureObservation();
       if (_disposed) return;
@@ -234,6 +307,15 @@ class HandrailConversationSession {
       _publish();
     } catch (cause) {
       if (_disposed) return;
+      if (_displayWindow != null &&
+          cause is HandrailGatewayException &&
+          const {'forbidden', 'unauthenticated', 'not_found'}
+              .contains(cause.code)) {
+        _control = null;
+        _document = null;
+        _related = const [];
+        await _displayWindow!.select(null);
+      }
       _error = cause is HandrailGatewayException
           ? cause
           : const HandrailGatewayException('synchronization_failed',
@@ -245,6 +327,10 @@ class HandrailConversationSession {
   }
 
   Future<void> _ensureObservation() async {
+    // Live canonical projection + bounded changes replace replaying a saved
+    // provider event log just to show a running turn. A newly submitted turn
+    // still observes its start acknowledgement and streamed activity below.
+    if (_capabilities?.displayHistory?.control == true) return;
     if (_submitting != null) return;
     final active = _document?.activeTurnId;
     if (active == _observedTurnId && _observation != null) return;
@@ -285,11 +371,13 @@ class HandrailConversationSession {
               : null);
       if (checkpoint is Map)
         _checkpoint = Map.unmodifiable(_object(checkpoint));
+      _scheduleStreamRefresh();
       // Render canonical snapshots. Replayed SSE text must not be appended to
       // text already loaded from the server snapshot a second time.
     }, onError: (Object cause) {
       if (_disposed || generation != _observationGeneration) return;
       _observation = null;
+      _scheduleStreamRefresh();
       _error = cause is HandrailGatewayException
           ? cause
           : const HandrailGatewayException('observation_disconnected',
@@ -301,6 +389,7 @@ class HandrailConversationSession {
     }, onDone: () {
       if (_disposed || generation != _observationGeneration) return;
       _observation = null;
+      _scheduleStreamRefresh();
       if (_startAcknowledgement != null && !_startAcknowledgement!.isCompleted)
         _startAcknowledgement!.completeError(const HandrailGatewayException(
             'start_unconfirmed',
@@ -308,6 +397,16 @@ class HandrailConversationSession {
             retryable: true));
       _publish();
     }, cancelOnError: true);
+  }
+
+  void _scheduleStreamRefresh() {
+    if (_disposed ||
+        _capabilities?.displayHistory?.control != true ||
+        _streamRefreshTimer != null) return;
+    _streamRefreshTimer = Timer(const Duration(milliseconds: 100), () {
+      _streamRefreshTimer = null;
+      if (!_disposed) unawaited(refresh().catchError((Object _) {}));
+    });
   }
 
   /// Prepare once with a globally unique operation ID. The host saves the result
@@ -321,6 +420,10 @@ class HandrailConversationSession {
     if (_submitting != null) throw StateError('A message is being submitted');
     await refresh();
     if (_disposed) throw StateError('Conversation session is disposed');
+    if (_document == null)
+      throw const HandrailGatewayException(
+          'history_preparing', 'The conversation is not ready to send.',
+          retryable: true);
     if (_submitting != null || _document!.activeTurnId != null)
       throw const HandrailGatewayException('conversation_busy',
           'Wait for the running turn before sending another message.');
@@ -461,8 +564,9 @@ class HandrailConversationSession {
     }
     await refresh();
     if (_disposed) throw StateError('Conversation session is disposed');
+    final confirmed = await _findTurn(submission.turnId);
     final turns =
-        _document!.turns.where((turn) => turn['turn_id'] == submission.turnId);
+        confirmed == null ? const <Map<String, Object?>>[] : [confirmed];
     if (turns.length != 1)
       throw const HandrailGatewayException('admission_unconfirmed',
           'The saved message is not visible yet. Retry the saved message.',
@@ -473,9 +577,8 @@ class HandrailConversationSession {
     if (_disposed) throw StateError('Conversation session is disposed');
     // A lost start acknowledgement can arrive after the run finished. Never
     // restart a canonical terminal turn, even if its transport record expired.
-    if (const ['completed', 'cancelled', 'failed', 'waiting_for_approval'].contains(_document!.turns
-        .firstWhere((turn) => turn['turn_id'] == submission.turnId)['status']))
-      return;
+    if (const ['completed', 'cancelled', 'failed', 'waiting_for_approval']
+        .contains(confirmed!['status'])) return;
     await _disconnectObservation();
     if (_disposed) throw StateError('Conversation session is disposed');
     _observedTurnId = submission.turnId;
@@ -489,6 +592,27 @@ class HandrailConversationSession {
     await acknowledgement.future;
   }
 
+  Future<Map<String, Object?>?> _findTurn(String turnId) async {
+    if (_capabilities?.displayHistory?.control == true) {
+      final control = await client.displayHistoryControl(
+          conversationId: conversationId,
+          turnId: turnId,
+          capability: _capabilities!.displayHistory!,
+          cancellation: _lifetime.future);
+      if (_disposed) throw StateError('Conversation session is disposed');
+      if (control.preparing)
+        throw const HandrailGatewayException(
+            'history_preparing', 'The saved turn is being prepared.',
+            retryable: true);
+      return control.requestedTurn == null
+          ? null
+          : _controlTurn(control.requestedTurn!);
+    }
+    return _document?.turns
+        .where((turn) => turn['turn_id'] == turnId)
+        .firstOrNull;
+  }
+
   /// Observes the canonical terminal state without starting or cancelling work.
   /// Closing the account releases waiters; a view change does not interrupt them.
   /// Failed and cancelled outcomes are returned for host-specific presentation.
@@ -497,14 +621,28 @@ class HandrailConversationSession {
       {Future<void>? cancellation}) async {
     if (_disposed) throw StateError('Conversation session is disposed');
     final done = Completer<Map<String, Object?>>();
-    void inspect() {
-      if (done.isCompleted) return;
-      final turn = _document?.turns
-          .where((value) => value['turn_id'] == turnId)
-          .firstOrNull;
-      if (turn != null &&
-          const ['completed', 'failed', 'cancelled', 'waiting_for_approval'].contains(turn['status'])) {
-        done.complete(turn);
+    bool reading = false;
+    Future<void> inspect() async {
+      if (done.isCompleted || reading) return;
+      reading = true;
+      try {
+        final turn = await _findTurn(turnId);
+        if (done.isCompleted) return;
+        if (turn != null &&
+            const ['completed', 'failed', 'cancelled', 'waiting_for_approval']
+                .contains(turn['status'])) {
+          done.complete(turn);
+        }
+      } catch (cause) {
+        if (_disposed && !done.isCompleted) {
+          done.completeError(const HandrailGatewayException(
+              'observation_closed', 'The conversation account was closed.',
+              retryable: true));
+        } else if (!done.isCompleted &&
+            cause is HandrailGatewayException &&
+            !cause.retryable) done.completeError(cause);
+      } finally {
+        reading = false;
       }
     }
 
@@ -542,12 +680,10 @@ class HandrailConversationSession {
           'cancellation_unavailable', 'Server cancellation is unavailable.');
     final turnId = _document?.activeTurnId;
     if (expectedTurnId != null && turnId != expectedTurnId) {
-      final known = _document?.turns
-          .where((turn) => turn['turn_id'] == expectedTurnId)
-          .firstOrNull;
+      final known = await _findTurn(expectedTurnId);
       if (known != null &&
-          const ['completed', 'failed', 'cancelled', 'waiting_for_approval'].contains(known['status']))
-        return;
+          const ['completed', 'failed', 'cancelled', 'waiting_for_approval']
+              .contains(known['status'])) return;
       throw const HandrailGatewayException('cancellation_target_changed',
           'The requested turn is not visible. Refresh before retrying cancellation.',
           retryable: true);
@@ -604,9 +740,21 @@ class HandrailConversationSession {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    if (!_lifetime.isCompleted) _lifetime.complete();
+    if (!_displayActivation.isCompleted) _displayActivation.complete();
+    _relatedEpoch++;
+    _control = null;
+    _document = null;
+    _related = const [];
+    _relatedMessageIds = const [];
+    _relatedCursor = null;
+    _submittingJson = null;
+    await _displaySubscription?.cancel();
+    await _displayWindow?.dispose();
     _admissionCallbacks.clear();
     _admittedSubmission = null;
     _timer?.cancel();
+    _streamRefreshTimer?.cancel();
     await _disconnectObservation();
     await _changes.close();
     if (_ownsWorkspace) await workspace.dispose();
@@ -618,16 +766,17 @@ Map<String, Object?> _value(Map<String, Object?> result) =>
 HandrailGatewayException _syncFailure(Map<String, Object?> result) {
   if (result['status'] == 'rejected') {
     final message = result['message'];
-    return HandrailGatewayException('synchronization_rejected',
+    return HandrailGatewayException(
+        'synchronization_rejected',
         message is String && message.isNotEmpty && message.length <= 500
             ? message
             : 'This message could not be saved. Review it before sending again.',
         retryable: false);
   }
   return HandrailGatewayException(
-        'synchronization_${result['status'] == 'unauthorized' ? 'unauthorized' : 'unavailable'}',
-        'The saved conversation is currently unavailable.',
-        retryable: result['status'] != 'unauthorized');
+      'synchronization_${result['status'] == 'unauthorized' ? 'unauthorized' : 'unavailable'}',
+      'The saved conversation is currently unavailable.',
+      retryable: result['status'] != 'unauthorized');
 }
 
 Object? _immutableJson(Object? value) {

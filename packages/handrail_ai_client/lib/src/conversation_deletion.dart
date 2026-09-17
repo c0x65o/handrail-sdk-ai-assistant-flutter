@@ -223,6 +223,7 @@ extension HandrailAssistantDeletion on HandrailAssistantController {
       _selectionError = null;
     }
     final closing = _sessions.remove(id)?._forgetAfterDeletion();
+    await _sessionSubscriptions.remove(id)?.cancel();
     workspace.forget(id);
     _publish();
     await closing;

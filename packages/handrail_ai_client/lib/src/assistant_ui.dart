@@ -63,6 +63,11 @@ extension HandrailAssistantOptionalUi on HandrailAssistantController {
         history: historyBinding,
         transcript: transcriptBinding,
         read: () => {
+              if (_draftStorage case final storage?)
+                'draftStorage': {
+                  'read': storage.readDraft,
+                  'write': storage.writeDraft,
+                },
               'conversationId': selectedId,
               'enabled': document != null &&
                   !archived &&

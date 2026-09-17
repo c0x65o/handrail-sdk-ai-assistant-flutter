@@ -4,12 +4,14 @@ part of '../handrail_ai_client.dart';
 class HandrailDisplayHistoryCapability {
   final int maximumPageSize;
   final int maximumPageBytes;
+  final bool control;
   const HandrailDisplayHistoryCapability._(
-      this.maximumPageSize, this.maximumPageBytes);
+      this.maximumPageSize, this.maximumPageBytes, this.control);
   factory HandrailDisplayHistoryCapability.fromJson(
       Map<String, Object?> value) {
     final size = value['maximumPageSize'], bytes = value['maximumPageBytes'];
     if (value['version'] != 1 ||
+        value['control'] != null && value['control'] is! bool ||
         size is! int ||
         size < 1 ||
         size > 50 ||
@@ -18,7 +20,8 @@ class HandrailDisplayHistoryCapability {
         bytes > 262144) {
       throw const FormatException('Invalid display history capability.');
     }
-    return HandrailDisplayHistoryCapability._(size, bytes);
+    return HandrailDisplayHistoryCapability._(
+        size, bytes, value['control'] == true);
   }
 }
 

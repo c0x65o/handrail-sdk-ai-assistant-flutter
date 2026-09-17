@@ -23,6 +23,10 @@ part 'src/transcription.dart';
 part 'src/attachments.dart';
 part 'src/attachment_download.dart';
 part 'src/display_history.dart';
+part 'src/display_control.dart';
+part 'src/display_session.dart';
+part 'src/display_positions.dart';
+part 'src/conversation_drafts.dart';
 part 'src/display_window.dart';
 
 const applicationGatewayProtocolVersion = 'handrail.application-gateway.v1';

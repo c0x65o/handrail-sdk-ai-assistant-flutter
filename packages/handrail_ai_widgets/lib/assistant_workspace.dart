@@ -169,7 +169,7 @@ class HandrailAssistantWorkspace<T> extends StatefulWidget {
   State<HandrailAssistantWorkspace<T>> createState() => _WorkspaceState<T>();
 }
 
-class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
+class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> with WidgetsBindingObserver {
   StreamSubscription<Object?>? _subscription;
   late HandrailApprovalMode _approvalMode;
   String? _localError, _lastDraft;
@@ -177,6 +177,7 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _approvalMode = widget.initialApprovalMode;
     _bind();
   }
@@ -186,6 +187,13 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
     widget.drafts.addListener(_changed);
     // Initialization/recovery failures are rendered by the canonical binding.
     unawaited(widget.binding.initialize().catchError((Object _) {}));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) {
+      unawaited(widget.drafts.flushDrafts().catchError((Object _) {}));
+    }
   }
 
   bool _clearing = false, _clearFailed = false;
@@ -247,6 +255,7 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
         !identical(oldWidget.drafts, widget.drafts)) {
       unawaited(_subscription?.cancel());
       oldWidget.drafts.removeListener(_changed);
+      unawaited(oldWidget.drafts.flushDrafts().catchError((Object _) {}));
       _approvalMode = widget.initialApprovalMode;
       _localError = null;
       _lastDraft = null;
@@ -259,6 +268,7 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
       widget.submissionEnabled &&
       state['canSend'] == true &&
       !widget.drafts.isSubmitting &&
+      !widget.drafts.controller.restoringDraft &&
       widget.drafts.controller.text.length <= widget.maxPromptLength &&
       (widget.drafts.controller.text.trim().isNotEmpty ||
           widget.drafts.attachments.isNotEmpty);
@@ -338,8 +348,10 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     unawaited(_subscription?.cancel());
     widget.drafts.removeListener(_changed);
+    unawaited(widget.drafts.flushDrafts().catchError((Object _) {}));
     // Account-owned work and drafts survive view closure.
     super.dispose();
   }
@@ -413,6 +425,42 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (widget.contextHeader case final header?) header,
+              if (drafts.controller.restoringDraft)
+                Semantics(
+                  liveRegion: true,
+                  child: const Text('Restoring draft…'),
+                ),
+              if (drafts.controller.draftStorageError case final draftError?)
+                Semantics(
+                  liveRegion: true,
+                  child: Column(
+                    children: [
+                      Text(draftError),
+                      Wrap(
+                        children: [
+                          TextButton(
+                            onPressed: () => unawaited(
+                              drafts.controller.flushDraft().catchError(
+                                (Object _) {},
+                              ),
+                            ),
+                            child: const Text('Retry saving draft'),
+                          ),
+                          TextButton(
+                            onPressed: () => unawaited(
+                              drafts.controller.reloadSavedDraft().catchError(
+                                (Object _) {},
+                              ),
+                            ),
+                            child: const Text(
+                              'Replace editor with saved draft',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               HandrailComposer(
                 key: widget.composerKey,
                 controller: drafts.controller,

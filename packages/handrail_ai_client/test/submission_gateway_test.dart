@@ -277,6 +277,53 @@ void main() {
     expect(controller.document!.messages, messages);
   });
 
+  test(
+      'real indexed history pages stay bounded and do not replace canonical context',
+      () async {
+    final api = client(), id = await conversation(api);
+    Future<void> seed(int count) async {
+      expect(
+          (await http.post(origin.resolve('/test/history-seed'),
+                  body: jsonEncode({'conversationId': id, 'count': count})))
+              .statusCode,
+          200);
+    }
+
+    await seed(200);
+    final before = await stats(), view = session(api, id);
+    await view.initialize();
+    expect(view.document!.isPartial, true);
+    expect(view.document!.messages.length, 30);
+    expect(view.document!.messages.first['message_id'], 'history-171');
+    expect(view.document!.messages.last['message_id'], 'history-200');
+    await view.displayWindow!.loadOlder();
+    await view.displayWindow!.loadOlder();
+    expect(view.document!.messages.length, 90);
+    final oldest = view.document!.messages.first['message_id'];
+    await seed(1);
+    await view.refresh();
+    expect(view.document!.messages.first['message_id'], oldest);
+    expect(view.displayWindow!.state.hasNewer, true);
+    expect(view.displayWindow!.state.retainedBytes, lessThanOrEqualTo(262144));
+    await view.displayWindow!.jumpToLatest();
+    expect(view.document!.messages.last['message_id'], 'history-201');
+    final after = await stats();
+    expect(after['snapshotReads'], before['snapshotReads']);
+    expect(after['displayReads'], greaterThan(before['displayReads'] as int));
+    expect(after['maximumDisplayBytes'], lessThanOrEqualTo(65536 + 1024));
+    final canonical = await api.synchronize({
+      'operation': 'pull_snapshot',
+      'input': {'conversationId': id}
+    });
+    expect(
+        (((canonical['value'] as Map)['snapshot'] as Map)['state']
+            as Map)['messages'],
+        hasLength(201));
+  },
+      skip: Platform.environment['HANDRAIL_TEST_JS_SDK_DIST'] == null
+          ? 'Requires explicit local SDK source qualification with PostgreSQL stores.'
+          : false);
+
   for (final failCancel in [false, true]) {
     test(
         'Stop queued before admission targets its original chat; failed cancel=$failCancel',

@@ -162,19 +162,86 @@ Widget surface(
 );
 
 void main() {
-  testWidgets('account replacement excludes a late Clear confirmation', (tester) async {
+  testWidgets(
+    'standard composer restores encrypted-adapter text and presents save failure/retry without losing edits',
+    (tester) async {
+      final fixture = Fixture(), initial = Completer<Map<String, Object?>?>();
+      var saved = <String, Object?>{
+            'version': '1',
+            'text': 'saved before reload',
+          },
+          fail = true;
+      fixture.state['draftStorage'] = <String, Object?>{
+        'read': (String id) => initial.future,
+        'write': (String id, String text, String? version) async {
+          if (fail) throw StateError('quota');
+          expect(version, saved['version']);
+          return saved = {'version': '2', 'text': text};
+        },
+      };
+      addTearDown(() async {
+        if (!initial.isCompleted) initial.complete(saved);
+        await fixture.dispose();
+      });
+      await tester.pumpWidget(surface(fixture, threads: false));
+      expect(find.text('Restoring draft…'), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const ValueKey('draft')),
+        'typing ahead of restore',
+      );
+      await tester.tap(find.byKey(const ValueKey('send')));
+      await tester.pump();
+      expect(fixture.requests, isEmpty);
+      initial.complete(saved);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 260));
+      await tester.pump();
+      expect(fixture.drafts.controller.text, 'typing ahead of restore');
+      expect(find.text('Retry saving draft'), findsOneWidget);
+      expect(find.text('Replace editor with saved draft'), findsOneWidget);
+      fail = false;
+      await tester.tap(find.text('Retry saving draft'));
+      await tester.pumpAndSettle();
+      expect(saved['text'], 'typing ahead of restore');
+      expect(find.text('Retry saving draft'), findsNothing);
+      expect(find.text('Restoring draft…'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets('account replacement excludes a late Clear confirmation', (
+    tester,
+  ) async {
     final first = Fixture(), second = Fixture();
-    addTearDown(first.dispose); addTearDown(second.dispose);
+    addTearDown(first.dispose);
+    addTearDown(second.dispose);
     var oldClears = 0, newClears = 0;
-    await tester.pumpWidget(surface(first, threads: false, clear: () async { oldClears++; }));
+    await tester.pumpWidget(
+      surface(
+        first,
+        threads: false,
+        clear: () async {
+          oldClears++;
+        },
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Clear conversation'));
     await tester.pumpAndSettle();
-    await tester.pumpWidget(surface(second, threads: false, clear: () async { newClears++; }));
+    await tester.pumpWidget(
+      surface(
+        second,
+        threads: false,
+        clear: () async {
+          newClears++;
+        },
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Clear'));
     await tester.pumpAndSettle();
-    expect(oldClears, 0); expect(newClears, 0);
+    expect(oldClears, 0);
+    expect(newClears, 0);
     await tester.pumpWidget(const SizedBox());
   });
   for (final width in [390.0, 1200.0]) {

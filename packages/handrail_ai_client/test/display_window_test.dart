@@ -117,6 +117,27 @@ class Fixture {
 
 void main() {
   test(
+      'widget binding preserves anchor navigation, errors and selection cancellation',
+      () async {
+    final fixture = Fixture();
+    addTearDown(fixture.dispose);
+    final binding = fixture.window.uiBinding;
+    await binding.select('chat', {'messageId': 'message-5', 'generation': 0});
+    final state = binding.read();
+    expect((state['records'] as List).map((record) => (record as Map)['id']),
+        ['message-5', 'message-6', 'message-7']);
+    expect(state['hasNewer'], isTrue);
+    expect(() => (state['records'] as List).clear(), throwsUnsupportedError);
+    fixture.fail = 'forbidden';
+    await binding.refresh();
+    expect(binding.read()['records'], isEmpty);
+    expect(binding.read()['error'], 'fixture');
+    await binding.select(null, null);
+    expect(binding.read()['conversationId'], isNull);
+    expect(binding.read()['records'], isEmpty);
+  });
+
+  test(
       'bounds retained messages, loads both directions, coalesces reads and restores an anchor',
       () async {
     final fixture = Fixture();

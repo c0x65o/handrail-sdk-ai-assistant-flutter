@@ -27,6 +27,9 @@ class Fixture {
       creations = <String, Map<String, Object?>>{};
   bool failList = false, loseCreate = false, loseArchive = false;
   bool titleGeneration = false;
+  bool displayHistory = false;
+  final activeTurns = <String, String>{};
+  final heldControls = <String, Completer<void>>{};
   List<Map<String, Object?>> messages = [];
   Future<http.Response?> Function(http.Request, Map)? before;
   final storage = <String, String>{};
@@ -42,7 +45,8 @@ class Fixture {
   late final client = HandrailAiClient(
       baseUri: Uri.parse('https://example.test/api/assistant'),
       httpClient: MockClient(handle));
-  HandrailAssistantController controller({bool autoCreate = true, bool threads = true}) =>
+  HandrailAssistantController controller(
+          {bool autoCreate = true, bool threads = true}) =>
       HandrailAssistantController(
           client: client,
           pendingStore: pending,
@@ -62,6 +66,13 @@ class Fixture {
         'protocolVersion': applicationGatewayProtocolVersion,
         'synchronization': true,
         'authoritativeCancellation': true,
+        if (displayHistory)
+          'displayHistory': {
+            'version': 1,
+            'control': true,
+            'maximumPageSize': 50,
+            'maximumPageBytes': 262144
+          },
         'resources': {'titleGeneration': titleGeneration}
       });
     if (path.endsWith('/conversations/list')) {
@@ -77,6 +88,63 @@ class Fixture {
     }
     if (path.endsWith('/conversations/get'))
       return ok({'descriptor': rows[body['conversationId']]});
+    if (path.endsWith('/conversations/history')) {
+      final input = body['input'] as Map,
+          id = input['conversationId'] as String;
+      final turn = activeTurns[id];
+      final header = {
+        'schemaVersion': 1,
+        'conversationId': id,
+        'status': 'ready',
+        'generation': 0,
+        'revision': 1,
+        'canonicalRevision': 1,
+        'activeTurnId': turn
+      };
+      if (body['operation'] == 'control') {
+        await heldControls[id]?.future;
+        final control = turn == null
+            ? null
+            : {
+                'turnId': turn,
+                'revision': 1,
+                'status': 'running',
+                'remoteMayStillBeRunning': true,
+                'error': null
+              };
+        return ok({
+          ...header,
+          'activeTurn': control,
+          'latestTurn': control,
+          'requestedTurn': null
+        });
+      }
+      return ok({
+        ...header,
+        'nextCursor': null,
+        'throughRevision': 1,
+        'records': body['operation'] == 'changes' || input['view'] != null
+            ? []
+            : [
+                for (var i = 0; i < 30; i++)
+                  {
+                    'kind': 'message',
+                    'id': '$id-$i',
+                    'revision': 1,
+                    'bytes': 120,
+                    'deferred': false,
+                    'value': {
+                      'message_id': '$id-$i',
+                      'role': 'assistant',
+                      'content': [
+                        {'type': 'text', 'text': '$id message $i'}
+                      ],
+                      'attachments': []
+                    }
+                  }
+              ]
+      });
+    }
     if (path.endsWith('/conversations/create')) {
       final row = creations.putIfAbsent(body['idempotencyKey'] as String, () {
         final value = {
@@ -141,11 +209,96 @@ class Fixture {
 
 void main() {
   test(
+      'standard UI exposes account-owned draft persistence from the pending adapter',
+      () async {
+    final fixture = Fixture(), controller = Fixture();
+    final assistant = fixture.controller(), other = controller.controller();
+    addTearDown(assistant.dispose);
+    addTearDown(other.dispose);
+    final storage =
+        assistant.uiBinding.read()['draftStorage'] as Map<String, Object?>;
+    final read =
+        storage['read'] as Future<Map<String, Object?>?> Function(String);
+    final write = storage['write'] as Future<Map<String, Object?>?> Function(
+        String, String, String?);
+    final saved = await write('one', 'local draft', null);
+    expect(await read('one'), saved);
+    expect((await fixture.pending.readDraft('one'))!['text'], 'local draft');
+    expect(await controller.pending.readDraft('one'), isNull);
+    expect(fixture.requests, isEmpty);
+  });
+  test(
+      'bounded account switching cancels obsolete reads, releases hidden pages and evicts idle sessions',
+      () async {
+    final f = Fixture()..displayHistory = true;
+    final controller = f.controller(autoCreate: false);
+    addTearDown(controller.dispose);
+    addTearDown(f.client.close);
+    final hold = f.heldControls['one'] = Completer<void>();
+    final opening = controller.openConversation('one');
+    while (
+        !f.requests.any((r) => r.url.path.endsWith('/conversations/history'))) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    await controller.openConversation('two');
+    await opening.timeout(const Duration(seconds: 1));
+    expect(controller.selectedId, 'two');
+    expect(controller.document!.messages, hasLength(30));
+    expect(controller.sessionFor('one')?.document?.messages ?? [], isEmpty);
+    hold.complete();
+    await Future<void>.delayed(Duration.zero);
+    expect(controller.sessionFor('one')?.displayWindow?.state.records ?? [],
+        isEmpty);
+    f.activeTurns['two'] = 'running-two';
+    await controller.session!.refresh();
+    for (var i = 0; i < 7; i++) {
+      final id = 'idle-$i';
+      f.rows[id] = descriptor(id);
+      await controller.openConversation(id);
+    }
+    expect(controller.sessionFor('two')!.document!.activeTurnId, 'running-two');
+    expect(controller.sessionFor('two')!.document!.messages, isEmpty);
+    expect(controller.sessionFor('idle-0'), null);
+    expect(controller.workspace.snapshot.conversations.length,
+        lessThanOrEqualTo(4));
+    expect(controller.document!.messages, hasLength(30));
+    final pageReads = f.requests
+        .where((r) => r.url.path.endsWith('/conversations/history'))
+        .map((r) => jsonDecode(r.body) as Map)
+        .where((r) =>
+            r['operation'] == 'page' && (r['input'] as Map)['view'] == null)
+        .length;
+    await controller.refreshObservations();
+    final after = f.requests
+        .where((r) => r.url.path.endsWith('/conversations/history'))
+        .map((r) => jsonDecode(r.body) as Map)
+        .where((r) =>
+            r['operation'] == 'page' && (r['input'] as Map)['view'] == null)
+        .length;
+    expect(after, pageReads,
+        reason: 'Background turns only read scalar control state');
+    await controller.openConversation('two');
+    expect(controller.document!.messages, hasLength(30));
+    expect(
+        f.requests.any((r) => r.url.path.endsWith('/synchronization')), false);
+    await controller.dispose();
+    expect(controller.sessionFor('two'), null);
+  });
+
+  test(
       'single conversation disables titles and clear retries retain identity and refresh context',
       () async {
     final f = Fixture()..titleGeneration = true;
-    f.messages = [{'message_id': 'old', 'role': 'assistant',
-      'content': [{'type': 'text', 'text': 'Old context'}], 'attachments': []}];
+    f.messages = [
+      {
+        'message_id': 'old',
+        'role': 'assistant',
+        'content': [
+          {'type': 'text', 'text': 'Old context'}
+        ],
+        'attachments': []
+      }
+    ];
     final controller = f.controller(autoCreate: false, threads: false);
     final secondDevice = f.controller(autoCreate: false, threads: false);
     addTearDown(secondDevice.dispose);
@@ -157,7 +310,8 @@ void main() {
     await secondDevice.openConversation('one');
     expect(secondDevice.document!.messages, hasLength(1));
     await controller.refreshGeneratedTitle('one', 'ended-call');
-    await controller.setInitialTitle('one', 'Unused attachment title', 'attachment');
+    await controller.setInitialTitle(
+        'one', 'Unused attachment title', 'attachment');
     expect(controller.historyPresentation['canCreate'], isFalse);
     expect(controller.historyPresentation['selectedTitle'], '');
     expect(f.requests.where((r) => r.url.path.endsWith('/titles/generate')),
@@ -183,13 +337,20 @@ void main() {
     expect(controller.busy, isFalse);
   });
   for (final persisted in [true, false]) {
-    test('external activity title refresh uses server state without text turns ($persisted)', () async {
+    test(
+        'external activity title refresh uses server state without text turns ($persisted)',
+        () async {
       final f = Fixture()..titleGeneration = true;
       f.before = (request, body) async {
         if (!request.url.path.endsWith('/titles/generate')) return null;
         expect(body['conversationId'], 'one');
         expect(body['idempotencyKey'], 'title:ended-call');
-        if (persisted) f.rows['one'] = {...f.rows['one']!, 'title': 'Saved voice title', 'version': 2};
+        if (persisted)
+          f.rows['one'] = {
+            ...f.rows['one']!,
+            'title': 'Saved voice title',
+            'version': 2
+          };
         return ok('Returned title');
       };
       final controller = f.controller(autoCreate: false);
@@ -199,24 +360,33 @@ void main() {
       await controller.openConversation('one');
       f.requests.clear();
       await controller.refreshGeneratedTitle('one', 'ended-call');
-      expect(controller.selectedDescriptor!.title, persisted ? 'Saved voice title' : 'New conversation');
-      expect(f.requests.map((r) => r.url.pathSegments.last), ['generate', 'list']);
+      expect(controller.selectedDescriptor!.title,
+          persisted ? 'Saved voice title' : 'New conversation');
+      expect(
+          f.requests.map((r) => r.url.pathSegments.last), ['generate', 'list']);
       expect(controller.document!.messages, isEmpty);
     });
   }
-  test('external activity title refresh preserves server failure without rename', () async {
+  test(
+      'external activity title refresh preserves server failure without rename',
+      () async {
     final f = Fixture()..titleGeneration = true;
-    f.before = (request, body) async => request.url.path.endsWith('/titles/generate')
-        ? http.Response('unavailable', 503) : null;
+    f.before = (request, body) async =>
+        request.url.path.endsWith('/titles/generate')
+            ? http.Response('unavailable', 503)
+            : null;
     final controller = f.controller(autoCreate: false);
     addTearDown(controller.dispose);
     addTearDown(f.client.close);
     await controller.initialize();
     f.requests.clear();
-    await expectLater(controller.refreshGeneratedTitle('one', 'ended-call'), throwsA(isA<HandrailGatewayException>()));
-    expect(f.requests.any((r) => r.url.path.endsWith('/conversations/rename')), isFalse);
+    await expectLater(controller.refreshGeneratedTitle('one', 'ended-call'),
+        throwsA(isA<HandrailGatewayException>()));
+    expect(f.requests.any((r) => r.url.path.endsWith('/conversations/rename')),
+        isFalse);
   });
-  test('external activity title refresh does not call unsupported servers', () async {
+  test('external activity title refresh does not call unsupported servers',
+      () async {
     final f = Fixture();
     final controller = f.controller(autoCreate: false);
     addTearDown(controller.dispose);
@@ -224,13 +394,19 @@ void main() {
     await controller.initialize();
     f.requests.clear();
     await controller.refreshGeneratedTitle('one', 'ended-call');
-    expect(f.requests.any((r) => r.url.path.endsWith('/titles/generate')), isFalse);
+    expect(f.requests.any((r) => r.url.path.endsWith('/titles/generate')),
+        isFalse);
   });
-  test('external activity title refresh rechecks live permission after capability read', () async {
+  test(
+      'external activity title refresh rechecks live permission after capability read',
+      () async {
     final f = Fixture()..titleGeneration = true;
     var allowed = true;
-    final controller = HandrailAssistantController(client: f.client,
-        pendingStore: f.pending, pollingInterval: null, autoCreate: false,
+    final controller = HandrailAssistantController(
+        client: f.client,
+        pendingStore: f.pending,
+        pollingInterval: null,
+        autoCreate: false,
         allowConversationManagement: () => allowed);
     addTearDown(controller.dispose);
     addTearDown(f.client.close);
@@ -238,33 +414,66 @@ void main() {
       if (request.url.path.endsWith('/capabilities')) allowed = false;
       return null;
     };
-    await expectLater(controller.refreshGeneratedTitle('one', 'ended-call'), throwsA(isA<HandrailGatewayException>()));
-    expect(f.requests.any((r) => r.url.path.endsWith('/titles/generate')), isFalse);
+    await expectLater(controller.refreshGeneratedTitle('one', 'ended-call'),
+        throwsA(isA<HandrailGatewayException>()));
+    expect(f.requests.any((r) => r.url.path.endsWith('/titles/generate')),
+        isFalse);
   });
 
-  test('failed server title generation does not race recovery with a fallback rename', () async {
-    final f = Fixture()..titleGeneration = true
-      ..messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'Long first message'}]}];
-    f.before = (request, body) async => request.url.path.endsWith('/titles/generate')
-        ? http.Response('unavailable', 503) : null;
+  test(
+      'failed server title generation does not race recovery with a fallback rename',
+      () async {
+    final f = Fixture()
+      ..titleGeneration = true
+      ..messages = [
+        {
+          'role': 'user',
+          'content': [
+            {'type': 'text', 'text': 'Long first message'}
+          ]
+        }
+      ];
+    f.before = (request, body) async =>
+        request.url.path.endsWith('/titles/generate')
+            ? http.Response('unavailable', 503)
+            : null;
     final controller = f.controller(autoCreate: false);
     addTearDown(controller.dispose);
     addTearDown(f.client.close);
     await controller.initialize();
     await controller.openConversation('one');
-    await expectLater(controller.setInitialTitle('one', 'Long first message', 'first'), throwsA(isA<HandrailGatewayException>()));
+    await expectLater(
+        controller.setInitialTitle('one', 'Long first message', 'first'),
+        throwsA(isA<HandrailGatewayException>()));
     expect(f.rows['one']!['title'], 'New conversation');
-    expect(f.requests.where((r) => r.url.path.endsWith('/conversations/rename')), isEmpty);
+    expect(
+        f.requests.where((r) => r.url.path.endsWith('/conversations/rename')),
+        isEmpty);
   });
   for (final generationSupported in [true, false]) {
-    test('initial titles support return-only and legacy servers ($generationSupported)', () async {
-      final f = Fixture()..titleGeneration = generationSupported
-        ..messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'First message'}]}];
+    test(
+        'initial titles support return-only and legacy servers ($generationSupported)',
+        () async {
+      final f = Fixture()
+        ..titleGeneration = generationSupported
+        ..messages = [
+          {
+            'role': 'user',
+            'content': [
+              {'type': 'text', 'text': 'First message'}
+            ]
+          }
+        ];
       f.before = (request, body) async {
-        if (request.url.path.endsWith('/titles/generate')) return ok('Generated title');
+        if (request.url.path.endsWith('/titles/generate'))
+          return ok('Generated title');
         if (request.url.path.endsWith('/conversations/rename')) {
           expect(body['expectedVersion'], 1);
-          f.rows['one'] = {...f.rows['one']!, 'title': body['title'], 'version': 2};
+          f.rows['one'] = {
+            ...f.rows['one']!,
+            'title': body['title'],
+            'version': 2
+          };
           return ok({'descriptor': f.rows['one'], 'status': 'updated'});
         }
         return null;
@@ -275,18 +484,35 @@ void main() {
       await controller.initialize();
       await controller.openConversation('one');
       await controller.setInitialTitle('one', 'First message', 'first');
-      expect(controller.selectedDescriptor!.title, generationSupported ? 'Generated title' : 'First message');
-      expect(f.requests.where((r) => r.url.path.endsWith('/conversations/rename')), hasLength(1));
+      expect(controller.selectedDescriptor!.title,
+          generationSupported ? 'Generated title' : 'First message');
+      expect(
+          f.requests.where((r) => r.url.path.endsWith('/conversations/rename')),
+          hasLength(1));
     });
   }
   for (final manualRename in [false, true]) {
-    test('server title generation preserves saved title (manual: $manualRename)', () async {
-      final f = Fixture()..titleGeneration = true
-        ..messages = [{'role': 'user', 'content': [{'type': 'text', 'text': 'A long first message'}]}];
+    test(
+        'server title generation preserves saved title (manual: $manualRename)',
+        () async {
+      final f = Fixture()
+        ..titleGeneration = true
+        ..messages = [
+          {
+            'role': 'user',
+            'content': [
+              {'type': 'text', 'text': 'A long first message'}
+            ]
+          }
+        ];
       f.before = (request, body) async {
         if (request.url.path.endsWith('/titles/generate')) {
-          f.rows['one'] = {...f.rows['one']!, 'version': 2,
-            'title': manualRename ? 'My chosen title' : 'Concise generated title'};
+          f.rows['one'] = {
+            ...f.rows['one']!,
+            'version': 2,
+            'title':
+                manualRename ? 'My chosen title' : 'Concise generated title'
+          };
           return ok('Concise generated title');
         }
         return null;
@@ -296,11 +522,15 @@ void main() {
       addTearDown(f.client.close);
       await controller.initialize();
       await controller.openConversation('one');
-      await controller.setInitialTitle('one', 'A long first message', 'operation-one');
+      await controller.setInitialTitle(
+          'one', 'A long first message', 'operation-one');
       expect(controller.selectedDescriptor!.title,
           manualRename ? 'My chosen title' : 'Concise generated title');
-      expect(f.requests.where((r) => r.url.path.endsWith('/titles/generate')), hasLength(1));
-      expect(f.requests.where((r) => r.url.path.endsWith('/conversations/rename')), isEmpty);
+      expect(f.requests.where((r) => r.url.path.endsWith('/titles/generate')),
+          hasLength(1));
+      expect(
+          f.requests.where((r) => r.url.path.endsWith('/conversations/rename')),
+          isEmpty);
     });
   }
 

@@ -15,6 +15,8 @@ abstract interface class HandrailPendingTurnStore {
 class HandrailKeyValuePendingTurnStore
     implements
         HandrailPendingTurnStore,
+        HandrailConversationDraftStore,
+        HandrailConversationPositionStore,
         HandrailConversationDeletionStore,
         HandrailApprovalDecisionStore {
   final String namespace;
@@ -35,6 +37,92 @@ class HandrailKeyValuePendingTurnStore
             namespace,
             conversationId
           ])))}';
+  String get _draftKey =>
+      'handrail.drafts.v1.${base64Url.encode(utf8.encode(namespace))}';
+  Future<Map<String, Map<String, Object?>>> _readDrafts(String key) async {
+    final raw = await read(key);
+    if (raw == null) return {};
+    if (raw.length > 4 * 1024 * 1024) {
+      throw const FormatException('Invalid draft journal');
+    }
+    final rows = _object(jsonDecode(raw));
+    if (rows.length > 32) throw const FormatException('Invalid draft journal');
+    final result = <String, Map<String, Object?>>{};
+    var bytes = 0;
+    for (final entry in rows.entries) {
+      if (!_historyId(entry.key))
+        throw const FormatException('Invalid draft identity');
+      final value = _draftRecord(_object(entry.value));
+      bytes += utf8.encode(value['text'] as String).length;
+      result[entry.key] = value;
+    }
+    if (bytes > 512 * 1024)
+      throw const FormatException('Invalid draft journal');
+    return result;
+  }
+
+  @override
+  Future<Map<String, Object?>?> readDraft(String conversationId) =>
+      _exclusiveKey(
+          _draftKey, (key) async => (await _readDrafts(key))[conversationId]);
+  @override
+  Future<Map<String, Object?>?> writeDraft(
+      String conversationId, String text, String? expectedVersion) {
+    if (!_historyId(conversationId) || utf8.encode(text).length > 65536) {
+      throw ArgumentError('Invalid draft identity or text exceeds 64 KiB');
+    }
+    return _exclusiveKey(_draftKey, (key) async {
+      final rows = await _readDrafts(key);
+      if (rows[conversationId]?['version'] != expectedVersion) {
+        throw const HandrailGatewayException('draft_conflict',
+            'A saved draft changed elsewhere. Your text remains in this editor.');
+      }
+      if (text.isEmpty) {
+        rows.remove(conversationId);
+        if (rows.isEmpty) {
+          await delete(key);
+        } else {
+          await write(key, jsonEncode(rows));
+        }
+        return null;
+      }
+      final record =
+          _draftRecord({'version': _assistantIdentity(), 'text': text});
+      rows[conversationId] = record;
+      final bytes = rows.values.fold<int>(
+          0, (sum, row) => sum + utf8.encode(row['text'] as String).length);
+      if (rows.length > 32 || bytes > 512 * 1024) {
+        throw const HandrailGatewayException('draft_storage_full',
+            'Local draft storage is full. Send or clear an existing draft and retry.');
+      }
+      await write(key, jsonEncode(rows));
+      return record;
+    });
+  }
+
+  @override
+  Future<Map<String, Object?>?> readPosition(String conversationId) =>
+      _exclusiveKey(_positionKey, (key) async {
+        final value = (await _readPositions(key))[conversationId];
+        return value == null ? null : _displayPosition(_object(value));
+      });
+  @override
+  Future<void> writePosition(
+      String conversationId, Map<String, Object?> position) {
+    if (!_historyId(conversationId))
+      throw ArgumentError('Invalid conversation identity');
+    final normalized = _displayPosition(position);
+    return _exclusiveKey(_positionKey, (key) async {
+      final values = await _readPositions(key);
+      values.remove(conversationId);
+      values[conversationId] = normalized;
+      while (values.length > 32) {
+        values.remove(values.keys.first);
+      }
+      await write(key, jsonEncode(values));
+    });
+  }
+
   Future<T> _exclusive<T>(
           String conversationId, Future<T> Function(String key) action) =>
       _exclusiveKey(_key(conversationId), action);

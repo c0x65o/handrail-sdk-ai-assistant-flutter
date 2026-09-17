@@ -52,6 +52,12 @@ class HandrailDisplayWindow {
       _changesAfter = 0;
   List<HandrailDisplayRecord> _records = const [];
   bool _hasOlder = false, _hasNewer = false, _disposed = false;
+  bool _followingLatest = true;
+  bool get followingLatest => _followingLatest;
+  void setFollowingLatest(bool value) {
+    _followingLatest = value;
+  }
+
   HandrailDisplayWindowOperation? _loading, _failedOperation;
   HandrailDisplayWindowOperation _change =
       HandrailDisplayWindowOperation.initial;
@@ -78,6 +84,68 @@ class HandrailDisplayWindow {
   }
   HandrailDisplayWindowState get state => _state;
   Stream<HandrailDisplayWindowState> get changes => _changes.stream;
+
+  /// Structural binding for the Flutter display widget; no Flutter dependency.
+  /// The widget owns selection/scrolling, while this controller owns network
+  /// cancellation, generation checks, and the hard row/byte limits.
+  ({
+    Object scope,
+    Stream<Object?> changes,
+    Map<String, Object?> Function() read,
+    Future<void> Function(String?, Map<String, Object?>?) select,
+    Future<void> Function() older,
+    Future<void> Function() newer,
+    Future<void> Function() latest,
+    Future<void> Function() refresh,
+    Future<void> Function() retry,
+  }) get uiBinding => (
+        scope: this,
+        changes: changes,
+        read: () => Map.unmodifiable({
+              'conversationId': state.conversationId,
+              'status': state.status,
+              'generation': state.generation,
+              'revision': state.revision,
+              'version': state.version,
+              'activeTurnId': state.activeTurnId,
+              'setFollowingLatest': setFollowingLatest,
+              'records': List.unmodifiable(state.records
+                  .map((record) => Map<String, Object?>.unmodifiable({
+                        'kind': record.kind,
+                        'id': record.id,
+                        'revision': record.revision,
+                        'turnId': record.turnId,
+                        'bytes': record.bytes,
+                        'deferred': record.deferred,
+                        'value': record.value,
+                      }))),
+              'hasOlder': state.hasOlder,
+              'hasNewer': state.hasNewer,
+              'loading': state.loading?.name,
+              'change': state.change.name,
+              'retryable': state.error is HandrailGatewayException
+                  ? (state.error as HandrailGatewayException).retryable
+                  : true,
+              'error': state.error is HandrailGatewayException
+                  ? (state.error as HandrailGatewayException).message
+                  : state.error == null
+                      ? null
+                      : 'Conversation history could not be loaded.',
+            }),
+        select: (id, anchor) => select(id,
+            anchor: anchor == null
+                ? null
+                : HandrailDisplayAnchor(
+                    messageId: anchor['messageId'] as String,
+                    generation: anchor['generation'] as int,
+                    newer: true,
+                    inclusive: true)),
+        older: loadOlder,
+        newer: loadNewer,
+        latest: jumpToLatest,
+        refresh: refresh,
+        retry: retry,
+      );
   void _publish() {
     _state = HandrailDisplayWindowState._(
         conversationId: _conversationId,
@@ -126,6 +194,7 @@ class HandrailDisplayWindow {
     _selection = Completer<void>();
     _pending = null;
     _initialAnchor = anchor;
+    _followingLatest = anchor == null;
     _clear();
     _conversationId = conversationId;
     _status = conversationId == null ? 'empty' : 'loading';
@@ -135,11 +204,20 @@ class HandrailDisplayWindow {
         : _read(HandrailDisplayWindowOperation.initial);
   }
 
-  Future<void> loadOlder() =>
-      _hasOlder ? _read(HandrailDisplayWindowOperation.older) : Future.value();
+  Future<void> loadOlder() {
+    _followingLatest = false;
+    return _hasOlder
+        ? _read(HandrailDisplayWindowOperation.older)
+        : Future.value();
+  }
+
   Future<void> loadNewer() =>
       _hasNewer ? _read(HandrailDisplayWindowOperation.newer) : Future.value();
-  Future<void> jumpToLatest() => _read(HandrailDisplayWindowOperation.latest);
+  Future<void> jumpToLatest() {
+    _followingLatest = true;
+    return _read(HandrailDisplayWindowOperation.latest);
+  }
+
   Future<void> refresh() => _read(_status == 'ready'
       ? HandrailDisplayWindowOperation.changes
       : HandrailDisplayWindowOperation.initial);

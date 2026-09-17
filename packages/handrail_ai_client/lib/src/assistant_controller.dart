@@ -38,11 +38,14 @@ class HandrailAssistantController {
       this.autoCreate = true,
       this.threads = true,
       this.pageSize = 50,
+      this.maximumCachedSessions = 4,
       this.pollingInterval = const Duration(seconds: 1),
       String Function()? createId,
       this.newConversationMetadata,
       this.deletionStore,
       this.approvalStore,
+      this.positionStore,
+      this.draftStore,
       this.loadApprovalReview,
       this.canDecideApproval,
       this.beforePendingRecovery,
@@ -54,6 +57,8 @@ class HandrailAssistantController {
       : _createId = createId ?? _assistantIdentity {
     if (pageSize < 1 || pageSize > 100)
       throw ArgumentError.value(pageSize, 'pageSize');
+    if (maximumCachedSessions < 1 || maximumCachedSessions > 32)
+      throw ArgumentError.value(maximumCachedSessions, 'maximumCachedSessions');
     if (pollingInterval != null &&
         pollingInterval! < const Duration(milliseconds: 100))
       throw ArgumentError.value(pollingInterval, 'pollingInterval');
@@ -88,6 +93,18 @@ class HandrailAssistantController {
   final HandrailPendingTurnStore pendingStore;
   final HandrailConversationDeletionStore? deletionStore;
   final HandrailApprovalDecisionStore? approvalStore;
+  final HandrailConversationPositionStore? positionStore;
+  final HandrailConversationDraftStore? draftStore;
+  HandrailConversationDraftStore? get _draftStorage =>
+      draftStore ??
+      (pendingStore is HandrailConversationDraftStore
+          ? pendingStore as HandrailConversationDraftStore
+          : null);
+  HandrailConversationPositionStore? get _positions =>
+      positionStore ??
+      (pendingStore is HandrailConversationPositionStore
+          ? pendingStore as HandrailConversationPositionStore
+          : null);
 
   /// Trusted host adapter must validate opaque argument references and identity.
   final Future<HandrailApprovalReview> Function(HandrailApprovalProposal)?
@@ -105,6 +122,10 @@ class HandrailAssistantController {
   final _clearRequests = <String, Map<String, Object?>>{};
   final _clearOperations = <String, Future<void>>{};
   final int pageSize;
+
+  /// Idle session cache. In-flight operations stay alive; unselected bounded
+  /// sessions retain scalar controls, never transcript pages.
+  final int maximumCachedSessions;
   final Duration? pollingInterval;
   final String Function() _createId;
 
@@ -116,7 +137,7 @@ class HandrailAssistantController {
   final workspace = HandrailConversationWorkspace();
   final _sessions = <String, HandrailConversationSession>{};
   final _sessionSubscriptions =
-      <StreamSubscription<HandrailConversationSession>>[];
+      <String, StreamSubscription<HandrailConversationSession>>{};
   late final StreamSubscription<HandrailConversationWorkspaceSnapshot>
       _workspaceSubscription;
   final _changes = StreamController<HandrailAssistantController>.broadcast();
@@ -160,7 +181,7 @@ class HandrailAssistantController {
   String? get selectedId => _selectedId;
   HandrailConversationSession? get session => _sessions[_selectedId];
   HandrailConversationSession? sessionFor(String? id) => _sessions[id];
-  HandrailConversationDocument? get document => session?.document;
+  HandrailConversationView? get document => session?.document;
   HandrailConversationDescriptor? get selectedDescriptor =>
       _descriptors[_selectedId];
   bool get archived => selectedDescriptor?.lifecycle == 'archived';
@@ -269,7 +290,8 @@ class HandrailAssistantController {
         'unreadOnly': unreadOnly,
         'unreadCount': unreadCount,
         'selectedId': selectedId,
-        'selectedTitle': threads ? selectedDescriptor?.title ?? newConversationTitle : '',
+        'selectedTitle':
+            threads ? selectedDescriptor?.title ?? newConversationTitle : '',
         'busy': busy,
         'canCreate': threads && canManageConversations,
         'canManageConversations': canManageConversations,
@@ -332,6 +354,11 @@ class HandrailAssistantController {
         read: () => {
               'conversationId': selectedId,
               'document': document?.state,
+              'displayWindow': session?.displayWindow?.uiBinding,
+              'hasMoreRelated': session?.hasMoreRelated ?? false,
+              'loadMoreRelated': session?.loadMoreRelated,
+              'readPosition': _positions?.readPosition,
+              'writePosition': _positions?.writePosition,
               'loading': document == null &&
                   error == null &&
                   historyError == null &&
@@ -548,7 +575,15 @@ class HandrailAssistantController {
   Future<HandrailConversationSession> ensureSession(String id) async {
     _assertConversationUsable(id);
     final existing = _sessions[id];
-    if (existing?.document != null) return existing!;
+    existing?._setDisplayActive(id == _selectedId);
+    if (existing?.document != null &&
+        (existing?._capabilities?.displayHistory?.control != true ||
+            id != _selectedId ||
+            existing?._displayWindow?.state.conversationId == id)) {
+      _sessions.remove(id);
+      _sessions[id] = existing!;
+      return existing;
+    }
     final value = _sessions.putIfAbsent(id, () {
       final session = HandrailConversationSession(
           client: client,
@@ -556,6 +591,7 @@ class HandrailAssistantController {
           workspace: workspace,
           pollingInterval: null,
           synchronizeActivity: false);
+      session._setDisplayActive(id == _selectedId);
       session._mayStart = (submission) async {
         if (!_cancelBeforeStart.remove(id)) return true;
         try {
@@ -566,10 +602,16 @@ class HandrailAssistantController {
           rethrow;
         }
       };
-      _sessionSubscriptions.add(session.changes.listen((_) => _publish()));
+      _sessionSubscriptions[id] = session.changes.listen((_) => _publish());
       return session;
     });
     await value.initialize();
+    // A selection change may have cancelled the previous in-flight refresh.
+    // Joining it is not a successful read of the newly selected page.
+    if (!_disposed &&
+        id == _selectedId &&
+        value._capabilities?.displayHistory?.control == true &&
+        value.displayWindow?.state.conversationId != id) await value.refresh();
     _assertConversationUsable(id);
     _knownCatalogCapabilities = value.capabilities ?? _knownCatalogCapabilities;
     _startPolling();
@@ -581,6 +623,9 @@ class HandrailAssistantController {
     _assertActive();
     _selectionGeneration++;
     _selectedId = null;
+    for (final value in _sessions.values) {
+      value._setDisplayActive(false);
+    }
     _selecting = false;
     _selectionError = null;
     workspace.select(null);
@@ -627,6 +672,10 @@ class HandrailAssistantController {
     _assertConversationUsable(id);
     final generation = ++_selectionGeneration;
     _selectedId = id;
+    final resumingDisplay = _sessions[id]?._displayActive == false;
+    for (final entry in _sessions.entries) {
+      entry.value._setDisplayActive(entry.key == id);
+    }
     _selecting = true;
     _selectionError = null;
     workspace.select(id);
@@ -635,7 +684,7 @@ class HandrailAssistantController {
       await getDescriptor(id);
       final alreadyOpen = _sessions.containsKey(id);
       final session = await ensureSession(id);
-      if (alreadyOpen) await session.refresh();
+      if (alreadyOpen && !resumingDisplay) await session.refresh();
       _assertConversationUsable(id);
       _pending.add(id);
       final saved = await pendingStore.load(id);
@@ -662,6 +711,29 @@ class HandrailAssistantController {
         _selecting = false;
         _publish();
       }
+      _trimSessions();
+    }
+  }
+
+  void _trimSessions() {
+    if (_disposed) return;
+    for (final entry in List.of(_sessions.entries)) {
+      if (_sessions.length <= maximumCachedSessions) break;
+      final id = entry.key, value = entry.value;
+      if (id == _selectedId ||
+          value.isRefreshing ||
+          value.isSubmitting ||
+          value.document?.activeTurnId != null ||
+          _pending.contains(id) ||
+          _sending.contains(id) ||
+          _stopping.contains(id) ||
+          _clearOperations.containsKey(id) ||
+          _deletionOperations.containsKey(id) ||
+          approvals.pendingFor(id)) continue;
+      _sessions.remove(id);
+      unawaited(_sessionSubscriptions.remove(id)?.cancel());
+      workspace.close(id);
+      unawaited(value.dispose());
     }
   }
 
@@ -901,6 +973,7 @@ class HandrailAssistantController {
     })()
         .whenComplete(() {
       _observing = null;
+      _trimSessions();
     });
   }
 
@@ -1133,10 +1206,12 @@ class HandrailAssistantController {
     await _voiceSubscription?.cancel();
     await closingVoice;
     await _workspaceSubscription.cancel();
-    for (final subscription in _sessionSubscriptions) {
+    for (final subscription in _sessionSubscriptions.values) {
       await subscription.cancel();
     }
     await Future.wait(sessions);
+    _sessions.clear();
+    _sessionSubscriptions.clear();
     await workspace.dispose();
     await _changes.close();
   }
