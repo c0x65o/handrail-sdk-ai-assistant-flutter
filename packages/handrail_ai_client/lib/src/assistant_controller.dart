@@ -46,9 +46,11 @@ class HandrailAssistantController {
       this.approvalStore,
       this.positionStore,
       this.draftStore,
+      this.attachmentDraftStore,
       this.loadApprovalReview,
       this.canDecideApproval,
       this.beforePendingRecovery,
+      this.reconcileAcceptedDraft,
       this.allowConversationManagement,
       Future<HandrailRealtimeWorkspacePage> Function(
               List<String>, HandrailRealtimeWorkspaceCursor?)?
@@ -95,6 +97,7 @@ class HandrailAssistantController {
   final HandrailApprovalDecisionStore? approvalStore;
   final HandrailConversationPositionStore? positionStore;
   final HandrailConversationDraftStore? draftStore;
+  final HandrailAttachmentDraftStore? attachmentDraftStore;
   HandrailConversationDraftStore? get _draftStorage =>
       draftStore ??
       (pendingStore is HandrailConversationDraftStore
@@ -134,6 +137,44 @@ class HandrailAssistantController {
 
   /// Capture a draft's original acceptance callback before recovering saved intent.
   final void Function()? Function(String conversationId)? beforePendingRecovery;
+
+  /// Headless hosts may supply the same account-owned exact-origin cleanup.
+  final Future<void> Function(String, Map<String, Object?>)?
+      reconcileAcceptedDraft;
+  Future<void> Function(String, Map<String, Object?>)? _draftReconciler;
+
+  void Function() _registerDraftReconciler(
+      Future<void> Function(String, Map<String, Object?>) reconcile) {
+    _assertActive();
+    if (_draftReconciler != null)
+      throw StateError('This account already owns its composer drafts');
+    _draftReconciler = reconcile;
+    return () {
+      if (identical(_draftReconciler, reconcile)) _draftReconciler = null;
+    };
+  }
+
+  Future<void> _reconcileAcceptedDraft(
+      String id, Map<String, Object?> origin) async {
+    _assertConversationUsable(id);
+    final handler = _draftReconciler ?? reconcileAcceptedDraft;
+    if (handler != null) {
+      await handler(id, origin);
+      return;
+    }
+    if (origin['textVersion'] case final String version) {
+      final storage = _draftStorage;
+      if (storage == null) throw StateError('No local draft storage');
+      await _discardDraftVersion(storage, id, version);
+    }
+    if ((origin['fileIds'] as List? ?? const []).isNotEmpty) {
+      final store = attachmentDraftStore;
+      if (store == null) throw StateError('No local attachment owner');
+      await store.discardAcceptedFiles(
+          id, (origin['fileIds'] as List).cast<String>());
+    }
+  }
+
   final workspace = HandrailConversationWorkspace();
   final _sessions = <String, HandrailConversationSession>{};
   final _sessionSubscriptions =
@@ -593,7 +634,8 @@ class HandrailAssistantController {
           conversationId: id,
           workspace: workspace,
           pollingInterval: null,
-          synchronizeActivity: false);
+          synchronizeActivity: false,
+          reconcileAcceptedDraft: _reconcileAcceptedDraft);
       session._setDisplayActive(id == _selectedId);
       session._mayStart = (submission) async {
         if (!_cancelBeforeStart.remove(id)) return true;
@@ -704,9 +746,15 @@ class HandrailAssistantController {
       }
       _operationErrors.remove(id);
     } catch (cause) {
-      if (!_disposed && generation == _selectionGeneration)
+      if (cause is _RejectedAdmission && !_disposed) {
+        try {
+          if (await pendingStore.load(id) == null) _pending.remove(id);
+        } catch (_) {/* Preserve an uncertain local journal. */}
+        if (!_disposed) _operationErrors[id] = cause;
+      } else if (!_disposed && generation == _selectionGeneration) {
         _selectionError = _assistantFailure(cause, 'selection_unavailable',
             'This conversation could not be loaded. Retry to reconnect.');
+      }
       rethrow;
     } finally {
       if (!_disposed && generation == _selectionGeneration) {
@@ -802,6 +850,7 @@ class HandrailAssistantController {
   Future<HandrailTurnSubmission?> sendMessage(Map<String, Object?> request,
       {String? conversationId,
       String? operationId,
+      Map<String, Object?>? localDraft,
       void Function(HandrailTurnSubmission)? onAccepted}) async {
     _assertActive();
     final id = conversationId ?? _selectedId;
@@ -823,6 +872,7 @@ class HandrailAssistantController {
           clientId: clientId,
           request: request,
           pendingStore: pendingStore,
+          localDraft: localDraft,
           onAccepted: onAccepted);
       _assertActive();
       _pending.remove(id);
@@ -830,7 +880,11 @@ class HandrailAssistantController {
     } catch (cause) {
       if (!_disposed) {
         try {
-          if (await pendingStore.load(id) != null) _pending.add(id);
+          if (await pendingStore.load(id) != null) {
+            _pending.add(id);
+          } else {
+            _pending.remove(id);
+          }
         } catch (_) {
           _pending.add(id);
         }
@@ -867,9 +921,14 @@ class HandrailAssistantController {
       _pending.remove(id);
       return value;
     } catch (cause) {
-      if (!_disposed)
-        _operationErrors[id] = _assistantFailure(cause, 'retry_unconfirmed',
-            'The saved message could not be confirmed. Retry to reconnect.');
+      if (!_disposed) {
+        try {
+          if (await pendingStore.load(id) == null) _pending.remove(id);
+        } catch (_) {/* An uncertain store read retains the retry indicator. */}
+        if (!_disposed)
+          _operationErrors[id] = _assistantFailure(cause, 'retry_unconfirmed',
+              'The saved message could not be confirmed. Retry to reconnect.');
+      }
       rethrow;
     } finally {
       _sending.remove(id);
@@ -1199,6 +1258,7 @@ class HandrailAssistantController {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    _draftReconciler = null;
     approvals._disposeInbox();
     _pollTimer?.cancel();
     _historyGeneration++;

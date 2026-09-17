@@ -28,6 +28,7 @@ class _AdmissionGate extends http.BaseClient {
   final admissionEntered = Completer<void>(),
       releaseAdmission = Completer<void>();
   final cancellations = <Map<String, Object?>>[];
+  final requests = <Map<String, Object?>>[];
   bool failCancelOnce = false;
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
@@ -35,6 +36,7 @@ class _AdmissionGate extends http.BaseClient {
       final body = request.body.isEmpty
           ? <String, Object?>{}
           : jsonDecode(request.body) as Map<String, Object?>;
+      requests.add(body);
       if (request.url.path.endsWith('/synchronization') &&
           body['operation'] == 'append_mutations' &&
           !admissionEntered.isCompleted) {
@@ -81,9 +83,13 @@ void main() {
   }
 
   HandrailConversationSession session(
-      HandrailAiClient client, String conversation) {
+      HandrailAiClient client, String conversation,
+      {Future<void> Function(String, Map<String, Object?>)? cleanup}) {
     final value = HandrailConversationSession(
-        client: client, conversationId: conversation, pollingInterval: null);
+        client: client,
+        conversationId: conversation,
+        pollingInterval: null,
+        reconcileAcceptedDraft: cleanup);
     sessions.add(value);
     return value;
   }
@@ -132,6 +138,181 @@ void main() {
     expect(errors.toString(), isEmpty);
   });
 
+  test(
+      'headless file receipt recovery uses metadata only after interrupted byte cleanup',
+      () async {
+    final metadata = <String, String>{}, sources = <String, List<int>>{};
+    var failCleanup = true, binaryReads = 0;
+    final files = HandrailKeyValueAttachmentDraftStore(
+      namespace: 'headless-file-wire',
+      read: (key) async => metadata[key],
+      write: (key, value) async {
+        metadata[key] = value;
+      },
+      delete: (key) async {
+        metadata.remove(key);
+      },
+      readBytes: (key) async {
+        binaryReads++;
+        return sources[key];
+      },
+      writeBytes: (key, value) async {
+        sources[key] = List.of(value);
+      },
+      deleteBytes: (key) async {
+        if (failCleanup) throw StateError('Interrupted file cleanup');
+        sources.remove(key);
+      },
+    );
+    final pending = HandrailKeyValuePendingTurnStore(
+      namespace: 'headless-file-wire',
+      read: (key) async => metadata[key],
+      write: (key, value) async {
+        metadata[key] = value;
+      },
+      delete: (key) async {
+        metadata.remove(key);
+      },
+    );
+    final recorder = _AdmissionGate()..releaseAdmission.complete();
+    final api = client(httpClient: recorder),
+        id = await conversation(api),
+        before = await stats();
+    await files.writeAttachmentDraft(
+        id,
+        [
+          for (final name in ['upload-old', 'upload-new'])
+            {
+              'id': name,
+              'filename': '$name.csv',
+              'mediaType': 'text/csv',
+              'byteSize': 3,
+              'bytes': [1, 2, 3],
+            }
+        ],
+        null);
+    var controller = HandrailAssistantController(
+        client: api,
+        pendingStore: pending,
+        attachmentDraftStore: files,
+        pollingInterval: null,
+        autoCreate: false);
+    await controller.openConversation(id);
+    final input = request('Read this file');
+    ((input['messages'] as List).last['content'] as List).add({
+      'type': 'document',
+      'attachment': {
+        'attachment_id': 'att_test_file',
+        'content_ref': 'ref_test_file',
+        'media_type': 'text/csv',
+        'byte_size': 3,
+        'filename': 'upload-old.csv'
+      },
+    });
+    await expectLater(
+        controller.sendMessage(input,
+            operationId: 'file-origin-${identity++}',
+            localDraft: {
+              'version': 1,
+              'fileIds': ['upload-old']
+            }),
+        throwsA(isA<HandrailGatewayException>()
+            .having((e) => e.code, 'code', 'draft_cleanup_failed')));
+    expect(await pending.load(id), isNotNull);
+    expect((await stats())['starts'], before['starts']);
+    expect(binaryReads, 0);
+    await controller.dispose();
+    failCleanup = false;
+    controller = HandrailAssistantController(
+        client: api,
+        pendingStore: pending,
+        attachmentDraftStore: files,
+        pollingInterval: null,
+        autoCreate: false);
+    addTearDown(controller.dispose);
+    await controller.openConversation(id);
+    expect(await pending.load(id), isNull);
+    expect(binaryReads, 0);
+    expect((await stats())['starts'], (before['starts'] as int) + 1);
+    final remaining = await files.readAttachmentDraft(id);
+    expect((remaining!['files'] as List).single['id'], 'upload-new');
+    expect(sources, hasLength(1));
+    expect(jsonEncode(recorder.requests), isNot(contains('fileIds')));
+    expect(jsonEncode(recorder.requests), isNot(contains('localDraft')));
+    await finish();
+    await completed(controller.sessionFor(id)!);
+  });
+
+  test(
+      'exact draft cleanup recovers partial device failure through the real gateway',
+      () async {
+    final storage = <String, String>{};
+    HandrailKeyValuePendingTurnStore pending() =>
+        HandrailKeyValuePendingTurnStore(
+            namespace: 'draft-origin-wire',
+            read: (key) async => storage[key],
+            write: (key, value) async {
+              storage[key] = value;
+            },
+            delete: (key) async {
+              storage.remove(key);
+            });
+    final recorder = _AdmissionGate()..releaseAdmission.complete();
+    final api = client(httpClient: recorder), before = await stats();
+    final id = await conversation(api);
+    final saved = await pending().writeDraft(id, 'identical text', null);
+    final version = saved!['version'] as String;
+    var controller = HandrailAssistantController(
+        client: api,
+        pendingStore: pending(),
+        pollingInterval: null,
+        autoCreate: false,
+        reconcileAcceptedDraft: (conversation, origin) async {
+          expect(conversation, id);
+          expect(origin['textVersion'], version);
+          await pending().writeDraft(id, '', version);
+          throw StateError('Process lost after partial local cleanup');
+        });
+    await controller.openConversation(id);
+    await expectLater(
+        controller.sendMessage(request('identical text'),
+            operationId: 'origin-${identity++}',
+            localDraft: {'version': 1, 'textVersion': version}),
+        throwsA(isA<HandrailGatewayException>()
+            .having((e) => e.code, 'code', 'draft_cleanup_failed')));
+    final original = (await pending().load(id))!.toJson();
+    expect(original['version'], 2);
+    expect(await pending().readDraft(id), isNull);
+    expect((await stats())['starts'], before['starts']);
+    await controller.dispose();
+    final newer = await pending().writeDraft(id, 'identical text', null);
+    controller = HandrailAssistantController(
+        client: api,
+        pendingStore: pending(),
+        pollingInterval: null,
+        autoCreate: false);
+    addTearDown(() => controller.dispose());
+    await controller.openConversation(id);
+    expect(await pending().load(id), isNull);
+    expect(await pending().readDraft(id), newer);
+    expect((await stats())['starts'], (before['starts'] as int) + 1);
+    final user =
+        controller.document!.messages.where((m) => m['role'] == 'user').single;
+    expect(jsonEncode(user), isNot(contains('textVersion')));
+    expect(jsonEncode(user), isNot(contains('localDraft')));
+    expect(jsonEncode((original['start'] as Map)['request']),
+        isNot(contains('textVersion')));
+    final admissions = recorder.requests
+        .where((body) => body['operation'] == 'append_mutations')
+        .toList();
+    expect(admissions, hasLength(2));
+    expect(admissions[0], admissions[1]);
+    expect(jsonEncode(recorder.requests), isNot(contains('localDraft')));
+    expect(jsonEncode(recorder.requests), isNot(contains('textVersion')));
+    await finish();
+    await completed(controller.sessionFor(id)!);
+  });
+
   test('deletion replays a lost real-gateway receipt after controller restart',
       () async {
     final storage = <String, String>{};
@@ -144,24 +325,48 @@ void main() {
         delete: (key) async {
           storage.remove(key);
         });
+    final files = HandrailKeyValueAttachmentDraftStore(
+        namespace: 'deletion-wire-test',
+        read: (key) async => storage[key],
+        write: (key, value) async {
+          storage[key] = value;
+        },
+        delete: (key) async {
+          storage.remove(key);
+        });
     final before = await stats();
     var controller = HandrailAssistantController(
         client: client(loseResponse: 'controller:delete'),
         pendingStore: pending,
+        attachmentDraftStore: files,
         pollingInterval: null,
         autoCreate: false);
     addTearDown(() => controller.dispose());
     await controller.newConversation();
     final id = controller.selectedId!,
         version = controller.selectedDescriptor!.version;
+    final saved = await files.writeAttachmentDraft(
+        id,
+        [
+          {
+            'id': 'selected',
+            'filename': 'selected.png',
+            'mediaType': 'image/png',
+            'byteSize': 3,
+            'bytes': [1, 2, 3],
+          }
+        ],
+        null);
     await expectLater(controller.permanentlyDelete(id, version),
         throwsA(isA<http.ClientException>()));
     expect(await pending.loadDeletions(), hasLength(1));
     expect(controller.document, isNotNull);
+    expect(await files.readAttachmentDraft(id), isNotNull);
     await controller.dispose();
     controller = HandrailAssistantController(
         client: client(loseResponse: 'controller:delete'),
         pendingStore: pending,
+        attachmentDraftStore: files,
         pollingInterval: null,
         autoCreate: false);
     await controller.initialize();
@@ -169,6 +374,13 @@ void main() {
     expect(controller.sessionFor(id), isNull);
     expect(controller.history.map((row) => row.id), isNot(contains(id)));
     expect(await pending.loadDeletions(), isEmpty);
+    expect(await files.readAttachmentDraft(id), isNull);
+    await expectLater(
+        files.writeAttachmentDraft(
+            id,
+            (saved!['files'] as List).cast<Map<String, Object?>>(),
+            saved['version'] as String),
+        throwsStateError);
     final after = await stats();
     expect(after['deletions'], (before['deletions'] as int) + 2);
     expect(after['starts'], before['starts']);
@@ -325,6 +537,76 @@ void main() {
           : false);
 
   test(
+      'oversized review uses compact durable receipts through the real JS gateway',
+      () async {
+    final before = await stats(), storage = <String, String>{};
+    final api = client(loseResponse: 'paged:approval'),
+        id = await conversation(api);
+    final seeded = await http.post(origin.resolve('/test/propose'),
+        body: jsonEncode({'conversationId': id, 'large': true}));
+    expect(seeded.statusCode, 200);
+    final proposalId =
+        (jsonDecode(seeded.body) as Map)['proposal_id'] as String;
+    final pending = HandrailKeyValuePendingTurnStore(
+        namespace: 'paged-wire-approval',
+        read: (key) async => storage[key],
+        write: (key, value) async {
+          storage[key] = value;
+        },
+        delete: (key) async {
+          storage.remove(key);
+        });
+    var controller = HandrailAssistantController(
+        client: api,
+        pendingStore: pending,
+        pollingInterval: null,
+        autoCreate: false);
+    addTearDown(() => controller.dispose());
+    await controller.openConversation(id);
+    expect(controller.session!.supportsApprovalReview, true);
+    await controller.approvals.openPendingApprovals();
+    controller.approvals.selectPendingApproval(proposalId);
+    Map view() => controller.approvals.presentation['pagedReview'] as Map;
+    for (var i = 0; i < 100 && view()['status'] != 'ready'; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(view()['status'], 'ready');
+    var pages = 0;
+    while (view()['complete'] != true) {
+      expect(((view()['section'] as Map)['text'] as String).runes.length,
+          lessThanOrEqualTo(8192));
+      expect(pages++, lessThan(5));
+      await (view()['next'] as Future<void> Function())();
+    }
+    (view()['acknowledge'] as void Function(bool))(true);
+    await (view()['decide'] as Future<void> Function(bool))(true);
+    expect(view()['error'], 'decision');
+    final saved = (await pending.loadApprovalDecisions()).single;
+    expect(saved.json['display'], true);
+    expect(storage.values.join(), isNot(contains('😀')));
+    expect(
+        (await http.post(origin.resolve('/test/advance-approval'),
+                body: jsonEncode({'proposalId': proposalId})))
+            .statusCode,
+        200);
+    await controller.dispose();
+    controller = HandrailAssistantController(
+        client: client(loseResponse: 'paged:approval'),
+        pendingStore: pending,
+        pollingInterval: null,
+        autoCreate: false);
+    await controller.initialize();
+    expect(await pending.loadApprovalDecisions(), isEmpty);
+    final after = await stats();
+    expect(after['decisions'], (before['decisions'] as int) + 2);
+    expect(after['maximumDecisionBytes'], lessThan(1024));
+    expect(after['snapshotReads'], before['snapshotReads']);
+  },
+      skip: Platform.environment['HANDRAIL_TEST_JS_SDK_DIST'] == null
+          ? 'Requires local SDK source qualification with PostgreSQL.'
+          : false);
+
+  test(
       'large message reader uses bounded plaintext HTTP and rejects content after deletion',
       () async {
     final api = client(), id = await conversation(api), text = '😀' * 12000;
@@ -351,6 +633,24 @@ void main() {
         await read(id, record.id, 0, record.revision, 8192, cancellation);
     expect(last['nextOffset'], isNull);
     expect('${first['text']}${last['text']}', text);
+    expect(view.capabilities!.displayHistory!.recordText, isTrue);
+    final readRecord = view.displayWindow!.uiBinding.read()['readRecordText']
+        as Future<Map<String, Object?>> Function(
+            String, String, String, int, int, int, Future<void>);
+    var serialized = '', offset = 0;
+    for (;;) {
+      final part = await readRecord(
+          id, 'message', record.id, 0, record.revision, offset, cancellation);
+      expect(part['encoding'], 'plain-text');
+      expect((part['text'] as String).runes.length, lessThanOrEqualTo(8192));
+      serialized += part['text'] as String;
+      if (part['nextOffset'] == null) break;
+      offset = part['nextOffset'] as int;
+    }
+    expect(serialized, contains('\n    "'));
+    expect((jsonDecode(serialized) as Map)['content'], [
+      {'type': 'text', 'text': text}
+    ]);
     expect(view.displayWindow!.state.records.single.value, isNull);
     final after = await stats();
     expect(after['snapshotReads'], before['snapshotReads']);
@@ -363,6 +663,10 @@ void main() {
     final cleared =
         await read(id, record.id, 0, record.revision, 0, cancellation);
     expect(cleared['errorCode'], anyOf('stale_cursor', 'not_found'));
+    expect(
+        (await readRecord(id, 'message', record.id, 0, record.revision, 0,
+            cancellation))['errorCode'],
+        anyOf('stale_cursor', 'not_found'));
   },
       skip: Platform.environment['HANDRAIL_TEST_JS_SDK_DIST'] == null
           ? 'Requires explicit local SDK source qualification with PostgreSQL stores.'
@@ -743,17 +1047,29 @@ void main() {
     test('lost $loss response reuses persisted intent after session recreation',
         () async {
       final api = client(loseResponse: loss), before = await stats();
-      final id = await conversation(api), view = session(api, id);
+      final id = await conversation(api);
+      var cleanups = 0;
+      Future<void> cleanup(
+          String conversation, Map<String, Object?> origin) async {
+        expect(conversation, id);
+        expect(origin, {'version': 1, 'textVersion': 'exact'});
+        cleanups++;
+      }
+
+      final view = session(api, id, cleanup: cleanup);
       final pending = await view.prepareTurn(
           operationId: 'op-${identity++}',
           clientId: 'dart-test',
-          request: request('Apply this once'));
+          request: request('Apply this once'),
+          localDraft: {'version': 1, 'textVersion': 'exact'});
       final persisted = jsonEncode(pending.toJson());
       await expectLater(view.submitTurn(pending), throwsA(anything));
+      expect(cleanups, loss == 'admission' ? 0 : 1);
       await view.dispose();
-      final recovered = session(api, id);
+      final recovered = session(api, id, cleanup: cleanup);
       await recovered.submitTurn(HandrailTurnSubmission.fromJson(
           jsonDecode(persisted) as Map<String, dynamic>));
+      expect(cleanups, loss == 'admission' ? 1 : 2);
       expect((await stats())['invocations'], before['invocations'] + 1);
       expect(recovered.document!.messages.where((m) => m['role'] == 'user'),
           hasLength(1));

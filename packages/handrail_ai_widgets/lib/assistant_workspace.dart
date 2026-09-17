@@ -169,7 +169,8 @@ class HandrailAssistantWorkspace<T> extends StatefulWidget {
   State<HandrailAssistantWorkspace<T>> createState() => _WorkspaceState<T>();
 }
 
-class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> with WidgetsBindingObserver {
+class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>>
+    with WidgetsBindingObserver {
   StreamSubscription<Object?>? _subscription;
   late HandrailApprovalMode _approvalMode;
   String? _localError, _lastDraft;
@@ -269,6 +270,8 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> with Widge
       state['canSend'] == true &&
       !widget.drafts.isSubmitting &&
       !widget.drafts.controller.restoringDraft &&
+      !widget.drafts.restoringAttachments &&
+      widget.drafts.attachmentStorageError == null &&
       widget.drafts.controller.text.length <= widget.maxPromptLength &&
       (widget.drafts.controller.text.trim().isNotEmpty ||
           widget.drafts.attachments.isNotEmpty);
@@ -282,7 +285,14 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> with Widge
     try {
       // Capture all business configuration before the first async upload.
       final context = widget.captureContext?.call();
-      await drafts.submitWithAttachments((text, files, accepted) async {
+      final draftSender =
+          state['sendWithDraft'] as HandrailWorkspaceDraftSender?;
+      Future<bool> send(
+        String text,
+        List<Map<String, Object?>> files,
+        VoidCallback accepted,
+        Map<String, Object?>? origin,
+      ) async {
         final submission = HandrailWorkspaceSubmission<T>(
           text: text,
           attachments: List.unmodifiable(files),
@@ -292,18 +302,34 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> with Widge
         final request =
             builder?.call(submission) ?? _defaultRequest(submission);
         final metadata = request['metadata'];
-        return binding.send(
-          conversationId: id,
-          request: {
-            ...request,
-            'metadata': {
-              if (metadata is Map) ...Map<String, Object?>.from(metadata),
-              ...submission.approvalMetadata,
-            },
+        final body = {
+          ...request,
+          'metadata': {
+            if (metadata is Map) ...Map<String, Object?>.from(metadata),
+            ...submission.approvalMetadata,
           },
-          onAccepted: accepted,
+        };
+        return draftSender != null
+            ? draftSender(
+                conversationId: id,
+                request: body,
+                localDraft: origin,
+                onAccepted: accepted,
+              )
+            : binding.send(
+                conversationId: id,
+                request: body,
+                onAccepted: accepted,
+              );
+      }
+
+      if (draftSender != null) {
+        await drafts.submitWithAttachmentsAndOrigin(send);
+      } else {
+        await drafts.submitWithAttachments(
+          (text, files, accepted) => send(text, files, accepted, null),
         );
-      });
+      }
     } on HandrailAttachmentException {
       // The shared attachment queue renders retained retry/discard guidance.
     } catch (_) {
@@ -379,180 +405,236 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> with Widge
       showUnread: widget.showUnread,
       newButtonKey: widget.newButtonKey,
     );
-    final conversation = Column(
-      children: [
-        HandrailPendingApprovalInbox(binding: widget.binding.approvals,
-          reviewBuilder: widget.approvalReviewBuilder, titleFor: widget.approvalTitle),
-        Expanded(
-          child: HandrailConversationTranscript(
-            key: widget.transcriptKey,
-            binding: widget.binding.transcript,
-            style: widget.transcriptStyle,
-            onOpenLink: widget.onOpenLink,
-            allowMessageLinks: widget.allowMessageLinks,
-            copyText: widget.copyText,
-            citationLink: widget.citationLink,
-            trailing: [
-              HandrailApprovalDecisionsView(
-                binding: widget.binding.approvals,
-                reviewBuilder: widget.approvalReviewBuilder,
-                titleFor: widget.approvalTitle,
-              ),
-              ...widget.transcriptTrailing,
-            ],
-            emptyBuilder: widget.emptyBuilder,
-            attachmentBuilder:
-                widget.attachmentBuilder ??
-                (downloader != null && id != null && downloadMaximum is int
-                    ? (context, attachment) => HandrailSavedAttachment(
-                        attachment: attachment,
-                        scope: (widget.binding.scope, id),
-                        downloader: downloader,
-                        maximumBytes: downloadMaximum,
-                        saveAttachment: widget.saveAttachment,
-                      )
-                    : null),
-            toolResultBuilder: widget.toolResultBuilder,
-            showToolActivity: widget.showToolActivity,
-            loadingLabel: widget.loadingLabel,
-            workingLabel: widget.workingLabel,
-            failureLabel: widget.failureLabel,
-            errorLabel: widget.errorLabel,
-            errorKey: widget.errorKey,
+    final conversation = LayoutBuilder(
+      builder: (context, constraints) => Column(
+        children: [
+          HandrailPendingApprovalInbox(
+            binding: widget.binding.approvals,
+            reviewBuilder: widget.approvalReviewBuilder,
+            titleFor: widget.approvalTitle,
           ),
-        ),
-        Padding(
-          padding: widget.composerPadding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (widget.contextHeader case final header?) header,
-              if (drafts.controller.restoringDraft)
-                Semantics(
-                  liveRegion: true,
-                  child: const Text('Restoring draft…'),
+          Expanded(
+            child: HandrailConversationTranscript(
+              key: widget.transcriptKey,
+              binding: widget.binding.transcript,
+              style: widget.transcriptStyle,
+              onOpenLink: widget.onOpenLink,
+              allowMessageLinks: widget.allowMessageLinks,
+              copyText: widget.copyText,
+              citationLink: widget.citationLink,
+              trailing: [
+                HandrailApprovalDecisionsView(
+                  binding: widget.binding.approvals,
+                  reviewBuilder: widget.approvalReviewBuilder,
+                  titleFor: widget.approvalTitle,
                 ),
-              if (drafts.controller.draftStorageError case final draftError?)
-                Semantics(
-                  liveRegion: true,
-                  child: Column(
-                    children: [
-                      Text(draftError),
-                      Wrap(
-                        children: [
-                          TextButton(
-                            onPressed: () => unawaited(
-                              drafts.controller.flushDraft().catchError(
-                                (Object _) {},
+                ...widget.transcriptTrailing,
+              ],
+              emptyBuilder: widget.emptyBuilder,
+              attachmentBuilder:
+                  widget.attachmentBuilder ??
+                  (downloader != null && id != null && downloadMaximum is int
+                      ? (context, attachment) => HandrailSavedAttachment(
+                          attachment: attachment,
+                          scope: (widget.binding.scope, id),
+                          downloader: downloader,
+                          maximumBytes: downloadMaximum,
+                          saveAttachment: widget.saveAttachment,
+                        )
+                      : null),
+              toolResultBuilder: widget.toolResultBuilder,
+              showToolActivity: widget.showToolActivity,
+              loadingLabel: widget.loadingLabel,
+              workingLabel: widget.workingLabel,
+              failureLabel: widget.failureLabel,
+              errorLabel: widget.errorLabel,
+              errorKey: widget.errorKey,
+            ),
+          ),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: constraints.maxHeight * .8),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: widget.composerPadding,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (widget.contextHeader case final header?) header,
+                    if (drafts.controller.draftInputError
+                        case final inputError?)
+                      Semantics(liveRegion: true, child: Text(inputError)),
+                    if (drafts.controller.restoringDraft)
+                      Semantics(
+                        liveRegion: true,
+                        child: const Text('Restoring draft…'),
+                      ),
+                    if (drafts.controller.draftStorageError
+                        case final draftError?)
+                      Semantics(
+                        liveRegion: true,
+                        child: Column(
+                          children: [
+                            Text(draftError),
+                            Wrap(
+                              children: [
+                                TextButton(
+                                  onPressed: () => unawaited(
+                                    drafts.controller.flushDraft().catchError(
+                                      (Object _) {},
+                                    ),
+                                  ),
+                                  child: const Text('Retry saving draft'),
+                                ),
+                                TextButton(
+                                  onPressed: () => unawaited(
+                                    drafts.controller
+                                        .reloadSavedDraft()
+                                        .catchError((Object _) {}),
+                                  ),
+                                  child: const Text(
+                                    'Replace editor with saved draft',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (drafts.restoringAttachments)
+                      Semantics(
+                        liveRegion: true,
+                        child: const Text('Restoring files…'),
+                      ),
+                    if (drafts.attachmentStorageError case final error?)
+                      Semantics(
+                        liveRegion: true,
+                        child: Column(
+                          children: [
+                            Text(error),
+                            Wrap(
+                              children: [
+                                TextButton(
+                                  onPressed: () => unawaited(
+                                    drafts.flushAttachmentDraft().catchError(
+                                      (Object _) {},
+                                    ),
+                                  ),
+                                  child: const Text('Retry saving files'),
+                                ),
+                                TextButton(
+                                  onPressed: () => unawaited(
+                                    drafts.reloadSavedAttachments().catchError(
+                                      (Object _) {},
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Replace selections with saved files',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    HandrailComposer(
+                      key: widget.composerKey,
+                      controller: drafts.controller,
+                      maxLength: widget.maxInputLength,
+                      maxLines: widget.composerMaxLines,
+                      allowExpand: widget.allowExpandedEditor,
+                      expandedEditorTitle: widget.expandedEditorTitle,
+                      attachKey: widget.attachKey,
+                      onAttach: widget.attachmentPicker == null
+                          ? null
+                          : () => unawaited(
+                              drafts.pickAttachmentsUsing(
+                                widget.attachmentPicker!,
                               ),
                             ),
-                            child: const Text('Retry saving draft'),
-                          ),
-                          TextButton(
-                            onPressed: () => unawaited(
-                              drafts.controller.reloadSavedDraft().catchError(
-                                (Object _) {},
-                              ),
-                            ),
-                            child: const Text(
-                              'Replace editor with saved draft',
-                            ),
-                          ),
-                        ],
+                      expandKey: widget.expandKey,
+                      expandedInputKey: widget.expandedInputKey,
+                      attachmentDrafts: drafts,
+                      focusNode: widget.focusNode,
+                      contextMenuBuilder: widget.contextMenuBuilder,
+                      onPasteImage: widget.onPasteImage,
+                      onVoiceBusyChanged: widget.onVoiceBusyChanged,
+                      inputKey: widget.inputKey,
+                      sendKey: widget.sendKey,
+                      placeholder: widget.placeholder,
+                      inputTextStyle: widget.inputTextStyle,
+                      decoration: widget.composerDecoration,
+                      sendButtonStyle: widget.sendButtonStyle,
+                      approvalMode: _approvalMode,
+                      showApprovalControl: widget.showApprovalControl,
+                      onApprovalModeChanged: (mode) {
+                        setState(() => _approvalMode = mode);
+                        widget.onApprovalModeChanged?.call(mode);
+                      },
+                      showAttachmentControl: widget.showAttachments,
+                      voiceControls: transcriber == null ? const [] : null,
+                      transcribeAudio: transcriber,
+                      transcriptionScope: (widget.binding.scope, id),
+                      transcriptionMaximumBytes:
+                          capabilities['transcriptionMaximumBytes'] as int? ??
+                          25 * 1024 * 1024,
+                      transcriptionMaximumDuration: Duration(
+                        milliseconds:
+                            (math.min(
+                                      (capabilities['transcriptionMaximumDurationSeconds']
+                                              as num?) ??
+                                          60,
+                                      60,
+                                    ) *
+                                    1000)
+                                .floor(),
                       ),
-                    ],
-                  ),
-                ),
-              HandrailComposer(
-                key: widget.composerKey,
-                controller: drafts.controller,
-                maxLength: widget.maxInputLength,
-                maxLines: widget.composerMaxLines,
-                allowExpand: widget.allowExpandedEditor,
-                expandedEditorTitle: widget.expandedEditorTitle,
-                attachKey: widget.attachKey,
-                onAttach: widget.attachmentPicker == null
-                    ? null
-                    : () => unawaited(
-                        drafts.pickAttachmentsUsing(widget.attachmentPicker!),
-                      ),
-                expandKey: widget.expandKey,
-                expandedInputKey: widget.expandedInputKey,
-                attachmentDrafts: drafts,
-                focusNode: widget.focusNode,
-                contextMenuBuilder: widget.contextMenuBuilder,
-                onPasteImage: widget.onPasteImage,
-                onVoiceBusyChanged: widget.onVoiceBusyChanged,
-                inputKey: widget.inputKey,
-                sendKey: widget.sendKey,
-                placeholder: widget.placeholder,
-                inputTextStyle: widget.inputTextStyle,
-                decoration: widget.composerDecoration,
-                sendButtonStyle: widget.sendButtonStyle,
-                approvalMode: _approvalMode,
-                showApprovalControl: widget.showApprovalControl,
-                onApprovalModeChanged: (mode) {
-                  setState(() => _approvalMode = mode);
-                  widget.onApprovalModeChanged?.call(mode);
-                },
-                showAttachmentControl: widget.showAttachments,
-                voiceControls: transcriber == null ? const [] : null,
-                transcribeAudio: transcriber,
-                transcriptionScope: (widget.binding.scope, id),
-                transcriptionMaximumBytes:
-                    capabilities['transcriptionMaximumBytes'] as int? ??
-                    25 * 1024 * 1024,
-                transcriptionMaximumDuration: Duration(
-                  milliseconds:
-                      (math.min(
-                                (capabilities['transcriptionMaximumDurationSeconds']
-                                        as num?) ??
-                                    60,
-                                60,
-                              ) *
-                              1000)
-                          .floor(),
-                ),
-                transcriptionMaxDraftLength: widget.maxPromptLength,
-                audioRecorderFactory: widget.audioRecorderFactory,
-                enabled: state['enabled'] == true,
-                canSend: _eligible(state),
-                sending: sending,
-                stopping: state['stopping'] == true,
-                onSend: () => unawaited(_send()),
-                onStop: drafts.uploadingAttachments
-                    ? drafts.cancelUploads
-                    : state['canStop'] == true && id != null
-                    ? () {
-                        unawaited(
-                          widget.binding.stop(id).catchError((Object _) {}),
-                        );
-                      }
-                    : null,
-              ),
-              if (_localError case final error?)
-                Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    error,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                      transcriptionMaxDraftLength: widget.maxPromptLength,
+                      audioRecorderFactory: widget.audioRecorderFactory,
+                      enabled: state['enabled'] == true,
+                      canSend: _eligible(state),
+                      sending: sending,
+                      stopping: state['stopping'] == true,
+                      onSend: () => unawaited(_send()),
+                      onStop: drafts.uploadingAttachments
+                          ? drafts.cancelUploads
+                          : state['canStop'] == true && id != null
+                          ? () {
+                              unawaited(
+                                widget.binding
+                                    .stop(id)
+                                    .catchError((Object _) {}),
+                              );
+                            }
+                          : null,
                     ),
-                  ),
+                    if (_localError case final error?)
+                      Semantics(
+                        liveRegion: true,
+                        child: Text(
+                          error,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    if (widget.showPromptCounter || tooLong)
+                      Text(
+                        !widget.showPromptCounter && tooLong
+                            ? 'Message is too long — shorten before sending.'
+                            : '${drafts.controller.text.length} / ${widget.maxPromptLength} characters${tooLong ? ' — shorten before sending' : ''}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: tooLong
+                              ? Theme.of(context).colorScheme.error
+                              : null,
+                        ),
+                      ),
+                  ],
                 ),
-              if (widget.showPromptCounter || tooLong)
-                Text(
-                  !widget.showPromptCounter && tooLong
-                      ? 'Message is too long — shorten before sending.'
-                      : '${drafts.controller.text.length} / ${widget.maxPromptLength} characters${tooLong ? ' — shorten before sending' : ''}',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: tooLong ? Theme.of(context).colorScheme.error : null,
-                  ),
-                ),
-            ],
+              ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
     if (!widget.threads)
       return Column(

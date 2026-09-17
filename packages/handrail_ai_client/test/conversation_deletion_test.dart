@@ -69,6 +69,68 @@ class Deletions extends Fixture {
 
 void main() {
   test(
+      'confirmed remote deletion keeps its journal until native file cleanup recovers',
+      () async {
+    final fixture = Deletions(), metadata = <String, String>{};
+    var failCleanup = true;
+    final files = HandrailKeyValueAttachmentDraftStore(
+        namespace: 'deleted-file-owner',
+        read: (key) async => metadata[key],
+        write: (key, value) async {
+          metadata[key] = value;
+        },
+        delete: (key) async {
+          if (failCleanup && key.contains('.blob.'))
+            throw StateError('file locked');
+          metadata.remove(key);
+        });
+    final saved = await files.writeAttachmentDraft(
+        'one',
+        [
+          {
+            'id': 'upload-one',
+            'filename': 'one.png',
+            'mediaType': 'image/png',
+            'byteSize': 3,
+            'bytes': [1, 2, 3],
+          }
+        ],
+        null);
+    HandrailAssistantController create() => HandrailAssistantController(
+        client: fixture.client,
+        pendingStore: fixture.pending,
+        attachmentDraftStore: files,
+        autoCreate: false,
+        pollingInterval: null);
+    var controller = create();
+    addTearDown(() => controller.dispose());
+    addTearDown(fixture.client.close);
+    await controller.initialize();
+    await expectLater(controller.permanentlyDelete('one', 1), throwsStateError);
+    expect(fixture.rows.containsKey('one'), isFalse);
+    expect(controller.deletedConversationIds, contains('one'));
+    expect(await fixture.pending.loadDeletions(), hasLength(1));
+    expect(
+        metadata.keys.where((key) => key.contains('.deleted.')), hasLength(1));
+    await controller.dispose();
+    failCleanup = false;
+    controller = create();
+    await controller.initialize();
+    expect(await fixture.pending.loadDeletions(), isEmpty);
+    expect(metadata.keys.where((key) => key.contains('.blob.')), isEmpty);
+    expect(fixture.deletes, hasLength(2));
+    expect(fixture.deletes.first, fixture.deletes.last);
+    expect(fixture.receipts, hasLength(1));
+    expect(controller.selectedId, 'two');
+    await expectLater(
+        files.writeAttachmentDraft(
+            'one',
+            (saved!['files'] as List).cast<Map<String, Object?>>(),
+            saved['version'] as String),
+        throwsStateError);
+  });
+
+  test(
       'an unresolved deletion does not block other conversations after restart',
       () async {
     final fixture = Deletions()..loseReply = true;

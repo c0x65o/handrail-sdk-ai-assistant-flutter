@@ -10,13 +10,13 @@ const sdk = await import(dist ? pathToFileURL(resolve(dist, 'index.js')).href : 
 const { createHandrailAssistant, createProviderToolLoopTransport } = await import(dist
   ? pathToFileURL(resolve(dist, 'server/assistant.js')).href : '@handrail/ai-assistant/server/assistant');
 const limits = { maximumBytes: 1024, acceptedMediaTypes: ['application/pdf'], ttlMilliseconds: 60_000 };
-let postgres;
+let postgres, ownedDatabase;
 if (dist) {
   // The current high-level SDK owns indexed history in PostgreSQL. Source
   // qualification must supply that declared contract, not a partial mock.
   const { PGlite } = createRequire(resolve(dist, '../package.json'))('@electric-sql/pglite');
   const { postgresFromClient } = await import(pathToFileURL(resolve(dist, 'postgres/index.js')).href);
-  const database = new PGlite();
+  const database = ownedDatabase = new PGlite();
   const adapt = db => {
     const client = { async query(sql, values = []) {
       const result = await db.query(sql, [...values]);
@@ -83,7 +83,6 @@ const assistant = await createHandrailAssistant({ id: 'dart-attachments', attach
       createContext: () => ({ request_id: randomUUID(), trace_id: randomUUID(), attribution: input.context.attribution, correlation_hints: {} }),
       executeTool: () => { throw new Error('No fixture tools'); } });
   } } });
-assistant.stopUsageWorker();
 const server = createServer(async (request, response) => {
   let reader;
   try {
@@ -101,4 +100,9 @@ const server = createServer(async (request, response) => {
   finally { reader?.releaseLock(); }
 });
 server.listen(0, '127.0.0.1', () => process.stdout.write(`http://127.0.0.1:${server.address().port}\n`));
-process.on('SIGTERM', () => { assistant.stopUsageWorker(); server.closeAllConnections(); server.close(() => process.exit(0)); });
+process.on('SIGTERM', async () => {
+  server.closeAllConnections();
+  await assistant.stopUsageWorker();
+  await ownedDatabase?.close();
+  server.close(() => process.exit(0));
+});

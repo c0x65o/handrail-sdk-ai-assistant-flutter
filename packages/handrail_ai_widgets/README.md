@@ -89,6 +89,28 @@ workspace on account changes. Prefer `HandrailComposerController` below for comp
 file intake and upload behavior; the generic controller supports existing host
 attachment models without requiring another upload implementation.
 
+The account controller retains at most 8 idle editor instances, evicting only
+empty or safely saved drafts. Unfinished work is protected. Text edits are limited
+to 64 KiB each, 32 retained drafts/snapshots and 512 KiB total UTF-8 content.
+Defaults for selected files are 64 files / 64 MiB across the account, in addition
+to the negotiated per-message limits, with at most 2 concurrent host transfers.
+Configure `maximumRetainedDrafts`, `maximumRetainedDraftBytes`,
+`maximumRetainedAttachments`, `maximumRetainedAttachmentBytes` and
+`maximumConcurrentUploads` on either controller or `forAssistant`.
+Rejected edits/selections preserve existing drafts. The standard workspace
+announces `draftInputError`; custom editors must display that property too.
+Capacity-blocked saved text stays in storage and can be explicitly reloaded after
+freeing capacity. These are content limits, not total process heap measurements.
+
+Accepted sends and cancelled transfers remain charged until the callback or host
+future actually settles. Stop preserves the exact retry key; retries do not
+bypass a still-running transfer's permit. File metadata/bytes are snapshotted once
+per selection, so a host converter is not repeatedly called while rendering or
+retrying. Generic attachments need `fileForAttachment` for byte accounting; their
+count is still bounded without it. The controller does not persist unsent file
+bytes: text drafts use the scoped durable store, admitted pending sends use their
+durable intent, and arbitrary native file selections remain account-memory state.
+
 For a staged host uploader, pass `onUploadReleased` to either composer controller
 or `HandrailComposerController.forAssistant`. It receives the exact upload key
 once when its selection is removed, admitted, discarded or disposed. Stop keeps
@@ -383,3 +405,61 @@ Capture, peer/data-channel setup, playback, identity and teardown belong to the
 SDK. See
 [the contract and qualification boundary](../../docs/realtime-voice-surface.md).
 This API is newer than the current public Flutter pin.
+
+
+## Exact draft recovery receipts (local source)
+
+The standard workspace and `HandrailComposerController.forAssistant` now bind
+saved submissions to exact persisted text revisions and selected-file upload
+identities. Cleanup belongs to the account owner, survives view closure, and
+preserves newer work even if the new text or file bytes match the original.
+Text cleanup serializes with writes, refuses to rebase over unseen remote edits,
+and flushes typing captured during cleanup before owner disposal completes.
+
+Headless/custom UI code can use `submitWithAttachmentsAndOrigin` and pass the
+origin to the client's `localDraft` send argument; the prior callback signature
+remains supported by `submitWithAttachments`. Direct draft-controller users can
+capture `draftEdit`, await `captureVersion(edit)`, and reconcile the resulting
+version only after confirmed admission. Never synthesize a receipt from the
+currently visible editor while retrying an older submission.
+
+Receipt-bearing pending journals require the matching client implementation
+(local journal version 2). Older clients fail closed; preserve saved journals
+for compatible recovery. The registration permits one draft owner per account
+and unregisters on owner disposal. These source changes do not alter application
+Git pins or locks. Native file-byte persistence is available through the optional client
+`attachmentDraftStore`; see the storage contract below.
+
+
+## Durable selected files (local source)
+
+Configure `HandrailAssistantController.attachmentDraftStore` before constructing
+`HandrailComposerController.forAssistant`. The factory obtains its structural
+`attachmentDraftStorage` binding automatically; the widgets package has no client
+package dependency. Custom owners can supply `HandrailAttachmentDraftBinding`
+as `attachmentStorage` and must provide both immutable file adapters.
+
+Only the selected conversation hydrates saved bytes. Recovery in an unopened
+conversation removes exact accepted IDs through metadata without reading files.
+The original upload key is persisted before upload, and a completed protected
+reference is saved before admission. Restarting restores that key and reference;
+ready files skip upload and write no binary data. A failed or uncertain upload
+retries with its original key. The host service must honor that key atomically.
+
+The standard workspace announces restore/save failures, disables Send and intake
+until restoration succeeds, and offers version-checked retry or explicit
+replacement with saved files. Conflicting editors never silently overwrite one
+another. `flushAttachmentDraft()` retries storage; `reloadSavedAttachments()`
+explicitly replaces the current selections. Ordinary disposal preserves drafts;
+await `closed` before closing account storage. `flushDrafts()` reports save
+failures while the owner is alive; disposal joins pending work but cannot make a
+failed host write durable. Stop during a source save prevents a subsequent upload
+and preserves the selection for retry. Storage callbacks and detached uploads
+continue to count against retained-file budgets until they actually settle.
+
+`discard(id)` removes that chat's draft using its known revision. The client owns
+confirmed permanent deletion and its storage fence; the standard binding forgets
+the deleted editor without issuing a stale replacement write. Older custom host
+send callbacks remain supported, but exact process-loss cleanup requires
+`submitWithAttachmentsAndOrigin` and the matching client `localDraft` argument.
+These are local source contracts, not an installed application upgrade.

@@ -21,6 +21,7 @@ export 'conversation_history.dart';
 export 'conversation_transcript.dart';
 export 'display_transcript.dart';
 export 'large_message.dart';
+export 'deferred_records.dart';
 export 'workspace_binding.dart';
 export 'assistant_workspace.dart';
 export 'assistant_close_guard.dart';

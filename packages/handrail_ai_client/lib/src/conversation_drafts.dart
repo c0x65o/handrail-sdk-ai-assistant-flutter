@@ -21,3 +21,16 @@ Map<String, Object?> _draftRecord(Map<String, Object?> value) {
   }
   return Map.unmodifiable({'version': version, 'text': text});
 }
+
+/// Conditional removal is idempotent, including after a partial cleanup failure.
+Future<String> _discardDraftVersion(
+    HandrailConversationDraftStore store, String id, String version) async {
+  try {
+    await store.writeDraft(id, '', version);
+    return 'removed';
+  } catch (_) {
+    final current = await store.readDraft(id);
+    if (current?['version'] == version) rethrow;
+    return current == null ? 'absent' : 'changed';
+  }
+}

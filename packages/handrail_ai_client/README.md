@@ -210,6 +210,41 @@ submission and compares the full submission before deleting it. Hosts sharing
 storage across processes/isolates must supply database atomicity through the
 interface instead. It is an adapter, not unencrypted filesystem persistence.
 
+### Exact draft origins on recovered admission (local source)
+
+`sendMessage` and `prepareTurn` accept an optional device-only `localDraft`
+receipt: `{'version': 1, 'textVersion': savedRevision, 'fileIds': selectionIds}`.
+It is stored at the pending submission root and excluded from admission/start
+and provider request bodies. Capture exact identities before asynchronous work;
+matching text or attachment content is not sufficient because newer work may
+intentionally be identical.
+
+Receipt-bearing submissions use **local journal version 2**. Version 1 remains
+readable without guessed cleanup. Old clients reject version 2 rather than
+silently acknowledging a receipt they cannot reconcile. Do not downgrade or
+clear pending journals during rollback; recover them with a compatible client.
+The gateway wire protocol is unchanged.
+
+After acknowledged canonical admission, the session awaits
+`reconcileAcceptedDraft(conversationId, origin)` before presentation callbacks,
+provider start and local journal acknowledgement. A cleanup failure retains the
+exact submission and raises retryable `draft_cleanup_failed`; retries reuse
+server identities and repeat local cleanup idempotently. Unconfirmed admission
+never clears drafts. A bare session must supply this callback when using a
+receipt. The account controller delegates to its registered composer owner or
+explicit callback; without one, text-only receipts can use its scoped draft
+store's atomic compare/delete fallback. File receipts require their owner.
+
+`HandrailComposerController.forAssistant(assistant.uiBinding)` registers that
+owner automatically; construct it before initialization/recovery, retain it
+outside the view, and dispose it before closing account storage. The standard
+workspace uses the additive `read()['sendWithDraft']` service. Existing
+structural bindings and `send` signatures remain compatible. The prior
+`beforePendingRecovery` callback still supports legacy in-process attempts;
+new receipts do not depend on it. Native attachment bytes are still retained
+in account memory only: exact selection cleanup does not itself provide file
+reload persistence. That adapter work remains unfinished.
+
 ### Retained realtime voice calls
 
 `HandrailRealtimeCallMonitor` is a headless, conversation-scoped observer for
@@ -351,3 +386,61 @@ Reads remain suspended until `setConversations` receives a valid list, which als
 recovers when it matches the previous valid list. These changes are local source
 beyond the public c22 baseline. See
 [shared voice-history guidance](../../docs/mobile-assistant-adoption.md#shared-voice-history-and-navigation-policy-local-source).
+
+
+## Native attachment draft storage (local source)
+
+Supply an account/API/tenant-scoped `HandrailAttachmentDraftStore` to
+`HandrailAssistantController(attachmentDraftStore: ...)`. The standard composer
+uses it automatically; headless recovery also removes exact accepted file IDs
+before starting a confirmed submission. Ordinary history reads never access it.
+Configure it together with the durable `pendingStore` for restart recovery.
+
+`HandrailKeyValueAttachmentDraftStore` adapts host-owned encrypted storage:
+
+```dart
+final files = HandrailKeyValueAttachmentDraftStore(
+  namespace: '$apiIdentity:$tenantId:$userId',
+  read: encryptedMetadata.read,
+  write: encryptedMetadata.write,
+  delete: encryptedMetadata.delete,
+  readBytes: encryptedFiles.read,
+  writeBytes: encryptedFiles.write,
+  deleteBytes: encryptedFiles.delete,
+);
+```
+
+The host supplies encryption and account storage lifecycle; the SDK does not
+select a plaintext filesystem location. Metadata replacement must be atomic;
+byte writes/deletes must be idempotent. All three binary callbacks are supplied
+together. Without them, the adapter stores each file as a separate base64 value
+in the encrypted key-value store; use binary callbacks for efficient larger files.
+The adapter serializes a namespace within one isolate. Multi-isolate/process
+storage requires a custom transactional implementation of the interface.
+
+`readAttachmentDraft(id)` hydrates only that chat. `writeAttachmentDraft(id,
+files, expectedVersion)` atomically compares versions and returns metadata only.
+Each file has a stable `id`, safe `filename`, `mediaType`, `byteSize`, `sha256`,
+and optional protected `reference`. New files also supply `bytes`; their hash is
+computed/verified before asynchronous work. Later writes omit bytes and retain
+the hash. Sources are immutable; changing content requires a new selection ID.
+The store caps an account at 64 files, 64 MiB, 32 nonempty conversations and a
+256 KiB metadata manifest. Staged writes and pending cleanup count against quotas;
+no saved work is evicted to admit another file. Remove a selection before replacing
+it if the account is at capacity.
+
+A write-ahead cleanup journal makes interrupted source writes and uncertain
+metadata commits recoverable from the last authoritative manifest. Cleanup scans
+metadata only. `discardAcceptedFiles(id, exactIds)` is idempotent and preserves
+newer selections. `eraseConversation(id)` is only for confirmed permanent deletion:
+it records a durable tombstone before erasing sources, so an old writer cannot
+resurrect a deleted conversation. The assistant retains its deletion journal if
+local cleanup fails, and compatible restart retries the same deletion identity.
+Server checkpoints, model context and attachment bodies never enter this device
+journal's pending-admission wire payload.
+
+Crash recovery covers acknowledged durable writes; it cannot guarantee an edit
+whose host storage operation has not committed. An uncertain write is surfaced
+as a conflict until the user explicitly reloads the saved revision. These APIs
+need a later published Flutter full-SHA/lock upgrade and host encrypted adapter
+configuration; no consumer dependency has been changed in this work.

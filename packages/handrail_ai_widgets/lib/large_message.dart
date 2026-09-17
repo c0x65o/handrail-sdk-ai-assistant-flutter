@@ -26,11 +26,13 @@ class HandrailLargeMessage extends StatefulWidget {
     required this.onOpen,
     required this.onClose,
     required this.onRefresh,
+    this.structured = false,
   });
   final String conversationId, id;
   final int generation, revision;
   final HandrailMessageTextReader reader;
   final bool expanded;
+  final bool structured;
   final VoidCallback onOpen, onClose, onRefresh;
   @override
   State<HandrailLargeMessage> createState() => _LargeMessageState();
@@ -152,31 +154,35 @@ class _LargeMessageState extends State<HandrailLargeMessage> {
       return Wrap(
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          const Text('Large message.'),
+          Text(widget.structured ? 'Large record details.' : 'Large message.'),
           TextButton(
             onPressed: widget.onOpen,
-            child: const Text('Read message'),
+            child: Text(widget.structured ? 'Read details' : 'Read message'),
           ),
         ],
       );
     return Semantics(
       container: true,
-      label: 'Large message text',
+      label: widget.structured ? 'Record details' : 'Large message text',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Wrap(
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text('Message text — part ${_offset ~/ 8192 + 1}'),
+              Text(
+                '${widget.structured ? 'Details' : 'Message text'} — part ${_offset ~/ 8192 + 1}',
+              ),
               TextButton(
                 onPressed: widget.onClose,
-                child: const Text('Close message'),
+                child: Text(
+                  widget.structured ? 'Close details' : 'Close message',
+                ),
               ),
             ],
           ),
           if (_loading)
-            const Text('Loading message…')
+            Text(widget.structured ? 'Loading details…' : 'Loading message…')
           else if (_error != null)
             Semantics(
               liveRegion: true,
@@ -184,9 +190,13 @@ class _LargeMessageState extends State<HandrailLargeMessage> {
                 children: [
                   Text(
                     _error == 'changed'
-                        ? 'This message changed. Reload it to read the latest version.'
+                        ? (widget.structured
+                              ? 'These details changed. Reload to read the latest version.'
+                              : 'This message changed. Reload it to read the latest version.')
                         : _error == 'denied'
-                        ? 'This message is no longer available.'
+                        ? (widget.structured
+                              ? 'These details are no longer available.'
+                              : 'This message is no longer available.')
                         : 'This part could not be loaded.',
                   ),
                   if (_error == 'unavailable')
@@ -200,7 +210,9 @@ class _LargeMessageState extends State<HandrailLargeMessage> {
                         widget.onClose();
                         widget.onRefresh();
                       },
-                      child: const Text('Reload message'),
+                      child: Text(
+                        widget.structured ? 'Reload details' : 'Reload message',
+                      ),
                     ),
                 ],
               ),
@@ -212,7 +224,11 @@ class _LargeMessageState extends State<HandrailLargeMessage> {
               ),
               child: SingleChildScrollView(
                 child: SelectableText(
-                  _text.isEmpty ? 'This message has no text.' : _text,
+                  _text.isEmpty
+                      ? (widget.structured
+                            ? 'No details in this section.'
+                            : 'This message has no text.')
+                      : _text,
                 ),
               ),
             ),

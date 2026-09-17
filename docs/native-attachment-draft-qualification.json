@@ -1,0 +1,122 @@
+{
+  "qualification": "local native attachment-store and standard Flutter composer source; no consumer installation, live storage or deployment",
+  "storage": {
+    "adapter": "HandrailKeyValueAttachmentDraftStore",
+    "namespace": "host supplied account/API/tenant identity; SHA-256 key prefix",
+    "maximumFiles": 64,
+    "maximumBytes": 67108864,
+    "maximumNonemptyConversations": 32,
+    "maximumManifestBytes": 262144,
+    "binarySourceWritesPerNewSelection": 1,
+    "sourceReadsOnReadyUpdateOrAcceptedCleanup": 0,
+    "sourceReadsForUnopenedChatRecoveryAndLifecycleFlush": 0,
+    "readyReferenceRecreationUploads": 0,
+    "metadataWritesForSelectionThenUploadThenReadyRecreation": 2,
+    "writeVersionComparison": true,
+    "stagedSourceGarbageJournal": true,
+    "permanentlyDeletedConversationWriteFence": true,
+    "binaryCallbacks": "optional all-or-none; encrypted host key-value base64 fallback",
+    "locking": "one isolate; multi-isolate/process hosts require a transactional custom store"
+  },
+  "checks": {
+    "composerDraftWorkspace": {
+      "passed": 71,
+      "skipped": 0,
+      "workers": 1
+    },
+    "clientStoreAndLocalJsGateway": {
+      "passed": 31,
+      "skipped": 0,
+      "workers": 1
+    },
+    "controllerDeletionTextDraftAndPendingJournal": {
+      "passed": 47,
+      "skipped": 0,
+      "workers": 1
+    },
+    "clientAnalysis": "passed",
+    "widgetAnalysis": "passed",
+    "responsiveFileStorageError": {
+      "widths": [
+        390,
+        320
+      ],
+      "textScales": [
+        1,
+        2
+      ],
+      "retryReachable": true,
+      "overflow": false
+    },
+    "interruptedByteWrite": true,
+    "uncertainMetadataCommitBeforeAndAfterLanding": true,
+    "cleanupFailureAndRecreatedController": true,
+    "staleWriterConflictAndExplicitReload": true,
+    "immutableSourceIntegrityAndAccountIsolation": true,
+    "slowSaveRetainsRemovedSelectionBudgetUntilSettlement": true,
+    "stopDuringSourceAndReadyReferenceSave": true,
+    "confirmedDeletionReplaysSameIdentityAfterLocalCleanupFailure": true,
+    "exactDeviceOriginExcludedFromHttp": true,
+    "selectedChatOnlyHydration": true,
+    "lateRestoreDoesNotReplaceVisibleChat": true
+  },
+  "consumerContracts": [
+    {
+      "projectRoot": "/opt/handrail/repos/mills/mills-family-erp-v4/mills-family-erp-v4-mobile",
+      "roots": [
+        "lib/repositories/sdk_assistant_repository.dart",
+        "lib/screens/assistant_screen.dart"
+      ],
+      "qualification": "local Flutter frontend source compile; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 16054
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/hitcents/hitcents-erp/hitcents-erp-mobile",
+      "roots": [
+        "lib/features/cents/cents_sdk.dart",
+        "lib/features/cents/cents_sheet.dart"
+      ],
+      "qualification": "local Flutter frontend source compile; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 10601
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/spartan-cyber-services/spartan-cyber-erp-v3/scs-erp-mobile",
+      "roots": [
+        "lib/src/aegis/aegis_sdk_repository.dart",
+        "lib/src/aegis/aegis_conversation_screen.dart"
+      ],
+      "qualification": "local Flutter frontend source compile; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 14294
+    }
+  ],
+  "commands": [
+    "cd packages/handrail_ai_widgets && flutter test --no-pub --concurrency=1 test/composer_attachment_storage_test.dart test/composer_drafts_test.dart test/draft_controller_test.dart test/assistant_workspace_test.dart",
+    "cd packages/handrail_ai_client && HANDRAIL_TEST_JS_SDK_DIST=/absolute/path/to/local/js/dist dart test test/submission_gateway_test.dart test/attachment_drafts_test.dart --concurrency=1",
+    "cd packages/handrail_ai_client && dart test test/assistant_controller_test.dart test/conversation_deletion_test.dart test/conversation_drafts_test.dart test/pending_turn_store_test.dart --concurrency=1",
+    "cd packages/handrail_ai_client && dart analyze --fatal-infos",
+    "cd packages/handrail_ai_widgets && flutter analyze --no-pub --fatal-infos",
+    "node tool/check-consumer-contract.mjs FLUTTER_ROOT CONSUMER_ROOT INTEGRATION_ENTRY WORKSPACE_ENTRY"
+  ],
+  "adoption": {
+    "sdkConfigurationChanged": false,
+    "consumerGitPinsOrLockfilesChanged": false,
+    "committed": false,
+    "pushed": false,
+    "deployed": false,
+    "requiredLater": [
+      "published full Flutter SDK SHA and matching consumer locks",
+      "host encrypted metadata/binary adapters with account/API/tenant namespaces",
+      "physical-device storage and process-loss qualification",
+      "custom host upload idempotency qualification"
+    ],
+    "consumerPolicies": {
+      "Mills": "single conversation preserved",
+      "Hitcents": "multiple conversations preserved",
+      "Spartan": "multiple conversations preserved"
+    }
+  },
+  "overallGoal": "active; native attachment draft storage completed locally; browser text retention, provider input memory and final feature audit remain"
+}

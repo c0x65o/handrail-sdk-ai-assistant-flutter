@@ -1,0 +1,76 @@
+{
+  "qualification": "local Flutter/Dart exact draft-origin recovery; no dependency installation or deployment",
+  "journal": {
+    "receiptVersion": 1,
+    "submissionVersion": 2,
+    "legacySubmissionVersion": 1,
+    "serverWireChanged": false
+  },
+  "checks": {
+    "focusedClientTests": {
+      "passed": 33,
+      "skipped": 2,
+      "gateway": "normally installed locked public JS SDK",
+      "skipReason": "two display/large-text tests require explicit local JS source qualification"
+    },
+    "localGatewaySourceTests": {
+      "passed": 19,
+      "skipped": 0,
+      "source": "existing adjacent JS dist; installed dependency unchanged"
+    },
+    "focusedWidgetTests": {
+      "passed": 57,
+      "skipped": 0
+    },
+    "clientAnalysis": "passed",
+    "widgetAnalysis": "passed",
+    "exactAdmissionHttpReplay": true,
+    "deviceReceiptExcludedFromHttp": true,
+    "partialCleanupFailureAndControllerRecreation": true,
+    "sameTextNewerDraftPreserved": true,
+    "unconfirmedAdmissionDoesNotClear": true,
+    "lostStartRetriesCleanup": true,
+    "typingDuringCleanupFlushedOnDispose": true,
+    "otherWriterNotOverwritten": true,
+    "removedReaddedIdenticalFilePreserved": true,
+    "ownerWorksAfterViewCloses": true
+  },
+  "consumerContracts": [
+    {
+      "projectRoot": "/opt/handrail/repos/mills/mills-family-erp-v4/mills-family-erp-v4-mobile",
+      "roots": [
+        "lib/repositories/sdk_assistant_repository.dart",
+        "lib/screens/assistant_screen.dart"
+      ],
+      "qualification": "local Flutter frontend source compile; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 13852
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/hitcents/hitcents-erp/hitcents-erp-mobile",
+      "roots": [
+        "lib/features/cents/cents_sdk.dart",
+        "lib/features/cents/cents_sheet.dart"
+      ],
+      "qualification": "local Flutter frontend source compile; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 7337
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/spartan-cyber-services/spartan-cyber-erp-v3/scs-erp-mobile",
+      "roots": [
+        "lib/src/aegis/aegis_sdk_repository.dart",
+        "lib/src/aegis/aegis_conversation_screen.dart"
+      ],
+      "qualification": "local Flutter frontend source compile; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 11371
+    }
+  ],
+  "limitations": [
+    "Synthetic local gateway and Flutter widget tests; no application preview, physical-device or provider/audio execution.",
+    "Native attachment bytes remain account-memory only; durable file reload persistence is unfinished.",
+    "Consumer Git pins and lockfiles are unchanged. A later authorized SDK commit/adoption is required.",
+    "The broader chatbot foundation goal remains active."
+  ]
+}

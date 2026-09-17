@@ -26,8 +26,9 @@ class HandrailApprovalProposal {
         json['proposal_version'] is! int ||
         version < 1 ||
         version >= 9007199254740991 ||
-        (json['expires_at'] != null && (json['expires_at'] is! String ||
-          DateTime.tryParse(json['expires_at'] as String) == null)) ||
+        (json['expires_at'] != null &&
+            (json['expires_at'] is! String ||
+                DateTime.tryParse(json['expires_at'] as String) == null)) ||
         !const [
           'pending',
           'confirmed',
@@ -92,7 +93,8 @@ class HandrailApprovalReview {
 class HandrailApprovalDecisionRequest {
   HandrailApprovalDecisionRequest.fromJson(Map<String, Object?> value)
       : json = Map.unmodifiable(value) {
-    if (value.length != 7 ||
+    if ((value.length != 7 &&
+            !(value.length == 8 && value['display'] == true)) ||
         value['expectedVersion'] is! int ||
         (value['expectedVersion'] as int) < 1 ||
         (value['expectedVersion'] as int) >= 9007199254740991 ||
@@ -145,12 +147,72 @@ class HandrailApprovalDecisions {
   HandrailApprovalDecisions._(this._owner);
   final HandrailAssistantController _owner;
   HandrailDisplayPage? _inbox;
+  _PagedApprovalReview? _pagedReview;
+  bool get _supportsPagedReview =>
+      _owner.session?.supportsApprovalReview == true &&
+      _owner.loadApprovalReview == null &&
+      _owner.canDecideApproval == null;
+  void _closePagedReview() {
+    _pagedReview?.dispose();
+    _pagedReview = null;
+  }
+
+  void _selectPagedReview(String id) {
+    _closePagedReview();
+    final session = _owner.session,
+        generation = _owner.session?._control?.generation;
+    if (!_supportsPagedReview || session == null || generation == null) return;
+    final selection = _owner._selectionGeneration,
+        conversation = session.conversationId;
+    final review = _PagedApprovalReview(
+        (offset, binding, cancelled) => session.readApprovalReview(
+            proposalId: id,
+            generation: generation,
+            binding: binding,
+            offset: offset,
+            cancellation: cancelled), (section, confirm) async {
+      _owner._assertActive();
+      if (selection != _owner._selectionGeneration ||
+          generation != session._control?.generation ||
+          _owner.archived ||
+          _owner.hasPendingDeletion(conversation) ||
+          session.capabilities?.resources['approvals'] != true ||
+          _store == null) {
+        throw const HandrailGatewayException('review_required',
+            'A current review and durable storage are required');
+      }
+      final binding = section['proposalBinding'] as String;
+      final request = HandrailApprovalDecisionRequest.fromJson({
+        'conversationId': conversation,
+        'proposalId': id,
+        'expectedVersion': section['proposalVersion'],
+        'status': confirm ? 'confirmed' : 'rejected',
+        'binding': binding,
+        'display': true,
+        'idempotencyKey': _approvalHash([binding, confirm]),
+        'idempotencyFingerprint': _approvalHash([binding, confirm]),
+      });
+      final previous = _pending[request.key];
+      if (previous != null && !previous._same(request)) {
+        throw const HandrailGatewayException(
+            'pending_approval_exists', 'Check the saved decision first');
+      }
+      _pending[request.key] = request;
+      await _execute(request);
+    }, _owner._publish);
+    _pagedReview = review;
+    unawaited(review.load());
+  }
+
   String? _inboxContext, _inboxCursor, _inboxSelected, _inboxError;
   int? _inboxSelection;
   bool _inboxOpen = false;
   Completer<void>? _inboxRequest;
-  String get _currentInboxContext => jsonEncode([_owner._selectionGeneration,
-    _owner.session?._control?.generation, _owner.session?._control?.revision]);
+  String get _currentInboxContext => jsonEncode([
+        _owner._selectionGeneration,
+        _owner.session?._control?.generation,
+        _owner.session?._control?.revision
+      ]);
   bool get _inboxCurrent => _inboxContext == _currentInboxContext;
 
   /// One inbox page is retained only while explicitly open for this selection.
@@ -159,16 +221,25 @@ class HandrailApprovalDecisions {
     final session = _owner.session;
     if (session == null || !session.supportsPendingApprovals) return;
     _cancelInboxRead();
-    final request = Completer<void>(); _inboxRequest = request;
+    _closePagedReview();
+    final request = Completer<void>();
+    _inboxRequest = request;
     _reviews.clear();
-    _inboxOpen = true; _inbox = null; _inboxError = null; _inboxSelected = null;
-    _inboxContext = _currentInboxContext; _inboxSelection = _owner._selectionGeneration; _inboxCursor = cursor;
+    _inboxOpen = true;
+    _inbox = null;
+    _inboxError = null;
+    _inboxSelected = null;
+    _inboxContext = _currentInboxContext;
+    _inboxSelection = _owner._selectionGeneration;
+    _inboxCursor = cursor;
     _owner._publish();
     try {
-      final page = await session.readApprovals(cursor: cursor, cancellation: request.future);
+      final page = await session.readApprovals(
+          cursor: cursor, cancellation: request.future);
       if (!request.isCompleted && _inboxCurrent) _inbox = page;
     } catch (_) {
-      if (!request.isCompleted && _inboxCurrent) _inboxError = 'Pending approvals could not be loaded. Try again.';
+      if (!request.isCompleted && _inboxCurrent)
+        _inboxError = 'Pending approvals could not be loaded. Try again.';
     } finally {
       if (identical(_inboxRequest, request)) {
         _cancelInboxRead();
@@ -176,26 +247,69 @@ class HandrailApprovalDecisions {
       }
     }
   }
-  void _cancelInboxRead() { final request = _inboxRequest; _inboxRequest = null;
-    if (request != null && !request.isCompleted) request.complete(); }
+
+  void _cancelInboxRead() {
+    final request = _inboxRequest;
+    _inboxRequest = null;
+    if (request != null && !request.isCompleted) request.complete();
+  }
+
   void closePendingApprovals() {
-    _cancelInboxRead(); _reviews.clear(); _inboxOpen = false; _inbox = null; _inboxSelected = null; _inboxError = null;
+    _cancelInboxRead();
+    _closePagedReview();
+    _reviews.clear();
+    _inboxOpen = false;
+    _inbox = null;
+    _inboxSelected = null;
+    _inboxError = null;
     _owner._publish();
   }
+
   void selectPendingApproval(String id) {
-    if (!_inboxCurrent || !_inboxOpen || _inbox == null || !_inbox!.records.any((r) => r.kind == 'approval' && r.id == id)) return;
-    if (_inboxSelected != id) _reviews.clear();
-    _inboxSelected = id; _owner._publish();
+    if (!_inboxCurrent ||
+        !_inboxOpen ||
+        _inbox == null ||
+        !_inbox!.records.any((r) => r.kind == 'approval' && r.id == id)) return;
+    if (_inboxSelected != id) {
+      _reviews.clear();
+      _selectPagedReview(id);
+    }
+    _inboxSelected = id;
+    _owner._publish();
   }
-  void _disposeInbox() { _cancelInboxRead(); _inbox = null; _reviews.clear(); _errors.clear(); }
+
+  void _disposeInbox() {
+    _cancelInboxRead();
+    _closePagedReview();
+    _inbox = null;
+    _reviews.clear();
+    _errors.clear();
+  }
+
   void _syncInbox() {
     if (!_inboxOpen || _inboxCurrent) return;
-    _cancelInboxRead(); _reviews.clear(); _inbox = null; _inboxSelected = null;
-    if (_inboxSelection != _owner._selectionGeneration) { _inboxOpen = false; return; }
+    if (_pagedReview != null &&
+        _inboxSelection == _owner._selectionGeneration &&
+        _inbox?.generation == _owner.session?._control?.generation) {
+      _inboxContext = _currentInboxContext;
+      return;
+    }
+    _closePagedReview();
+    _cancelInboxRead();
+    _reviews.clear();
+    _inbox = null;
+    _inboxSelected = null;
+    if (_inboxSelection != _owner._selectionGeneration) {
+      _inboxOpen = false;
+      return;
+    }
     _inboxContext = _currentInboxContext;
     // Reads never block control publication. A changed generation restarts the
     // bounded first page; no opaque cursor from before a clear is reused.
-    scheduleMicrotask(() { if (!_owner._disposed && _inboxOpen && _inboxCurrent) unawaited(openPendingApprovals()); });
+    scheduleMicrotask(() {
+      if (!_owner._disposed && _inboxOpen && _inboxCurrent)
+        unawaited(openPendingApprovals());
+    });
   }
 
   final _reviews = <String, HandrailApprovalReview>{};
@@ -216,16 +330,27 @@ class HandrailApprovalDecisions {
     final id = _owner.selectedId;
     if (id == null) return [];
     final records = _records(_owner.document?.state['approval_proposals']);
-    final selected = _inboxCurrent ? _inbox?.records.where((r) => r.id == _inboxSelected && r.kind == 'approval' && r.value != null).firstOrNull : null;
-    final proposals = records.map((v) => HandrailApprovalProposal(id, v)).toList();
+    final selected = _inboxCurrent
+        ? _inbox?.records
+            .where((r) =>
+                r.id == _inboxSelected &&
+                r.kind == 'approval' &&
+                r.value != null)
+            .firstOrNull
+        : null;
+    final proposals =
+        records.map((v) => HandrailApprovalProposal(id, v)).toList();
     if (selected?.value != null) {
       final candidate = HandrailApprovalProposal(id, selected!.value!);
       final index = proposals.indexWhere((p) => p.id == candidate.id);
-      if (index < 0) proposals.add(candidate);
-      else if (proposals[index].version < candidate.version) proposals[index] = candidate;
+      if (index < 0)
+        proposals.add(candidate);
+      else if (proposals[index].version < candidate.version)
+        proposals[index] = candidate;
     }
     return proposals;
   }
+
   HandrailApprovalProposal _current(String id, int version) {
     _owner._assertActive();
     final proposals = _proposals.where((p) => p.id == id).toList();
@@ -249,21 +374,34 @@ class HandrailApprovalDecisions {
     }
   }
 
-  Future<HandrailApprovalReview> _readBoundReview(HandrailApprovalProposal p) async {
+  Future<HandrailApprovalReview> _readBoundReview(
+      HandrailApprovalProposal p) async {
     final session = _owner.session;
     if (session?.supportsPendingApprovals == true) {
       final page = await session!.readApprovals(proposalId: p.id);
-      final record = page.records.where((r) => r.kind == 'approval' && r.id == p.id).firstOrNull;
-      if (record?.value != null && HandrailApprovalProposal(p.conversationId, record!.value!).binding == p.binding) {
-        final tool = page.records.where((r) => r.kind == 'tool' && r.id == p.json['tool_call_id']).firstOrNull?.value;
+      final record = page.records
+          .where((r) => r.kind == 'approval' && r.id == p.id)
+          .firstOrNull;
+      if (record?.value != null &&
+          HandrailApprovalProposal(p.conversationId, record!.value!).binding ==
+              p.binding) {
+        final tool = page.records
+            .where((r) => r.kind == 'tool' && r.id == p.json['tool_call_id'])
+            .firstOrNull
+            ?.value;
         final args = tool?['arguments'];
-        if (tool?['turn_id'] == p.json['turn_id'] && tool?['name'] == p.json['tool_name'] && args is Map &&
-            p.reviewedArguments['argument_ref'] == 'args-sha256-${_approvalHash(args)}') {
-          return HandrailApprovalReview.forProposal(p, arguments: Map<String, Object?>.from(args), complete: true);
+        if (tool?['turn_id'] == p.json['turn_id'] &&
+            tool?['name'] == p.json['tool_name'] &&
+            args is Map &&
+            p.reviewedArguments['argument_ref'] ==
+                'args-sha256-${_approvalHash(args)}') {
+          return HandrailApprovalReview.forProposal(p,
+              arguments: Map<String, Object?>.from(args), complete: true);
         }
       }
     }
-    throw const HandrailGatewayException('review_unavailable', 'Complete verified action details are unavailable. Reload the review.');
+    throw const HandrailGatewayException('review_unavailable',
+        'Complete verified action details are unavailable. Reload the review.');
   }
 
   Future<void> review(String id, int version) async {
@@ -336,20 +474,28 @@ class HandrailApprovalDecisions {
         _owner._assertActive();
         await _store!.retainApprovalDecision(request);
         _owner._assertActive();
-        final value =
-            _value(await _owner.client.transitionApproval(request.wire));
-        final proposal =
-            HandrailApprovalProposal(request.conversationId, value);
-        if (proposal.id != request.proposalId ||
-            proposal.version != (request.json['expectedVersion'] as int) + 1 ||
-            proposal.status != request.json['status'] ||
-            HandrailApprovalProposal(request.conversationId, {
-                  ...value,
-                  'proposal_version': request.json['expectedVersion']
-                }).binding !=
-                request.json['binding'])
-          throw const FormatException(
-              'Approval decision could not be verified');
+        if (request.json['display'] == true) {
+          await _owner.client.displayApprovalDecision({
+            ...request.wire,
+            'proposalBinding': request.json['binding']
+          }..remove('display'));
+        } else {
+          final value =
+              _value(await _owner.client.transitionApproval(request.wire));
+          final proposal =
+              HandrailApprovalProposal(request.conversationId, value);
+          if (proposal.id != request.proposalId ||
+              proposal.version !=
+                  (request.json['expectedVersion'] as int) + 1 ||
+              proposal.status != request.json['status'] ||
+              HandrailApprovalProposal(request.conversationId, {
+                    ...value,
+                    'proposal_version': request.json['expectedVersion']
+                  }).binding !=
+                  request.json['binding'])
+            throw const FormatException(
+                'Approval decision could not be verified');
+        }
         _owner._assertActive();
         await _store!.acknowledgeApprovalDecision(request);
         _owner._assertActive();
@@ -449,7 +595,8 @@ class HandrailApprovalDecisions {
           _store != null;
       items.add({
         ...p.json,
-        'inboxOnly': !_records(_owner.document?.state['approval_proposals']).any((r) => r['proposal_id'] == p.id),
+        'inboxOnly': !_records(_owner.document?.state['approval_proposals'])
+            .any((r) => r['proposal_id'] == p.id),
         'conversationId': p.conversationId,
         'binding': p.binding,
         'expired': p.expired,
@@ -482,14 +629,40 @@ class HandrailApprovalDecisions {
     }
     final retained = proposals.map((p) => p.binding).toSet();
     _reviews.removeWhere((key, _) => !retained.contains(key));
-    return {'conversationId': _owner.selectedId, 'items': items,
-      'pendingApprovalsAvailable': _owner.session?.supportsPendingApprovals == true && _owner.session?.hasPendingApprovals == true,
-      'inboxOpen': _inboxOpen, 'inboxLoading': _inboxRequest != null, 'inboxError': _inboxError,
-      'inboxSelected': _inboxSelected, 'inboxHasMore': _inbox?.nextCursor != null, 'inboxHasNewer': _inboxCursor != null,
-      'inboxItems': [for (final r in _inboxCurrent ? _inbox?.records ?? <HandrailDisplayRecord>[] : <HandrailDisplayRecord>[])
-        if (r.kind == 'approval') {'id': r.id, 'title': r.value?['tool_name'] ?? 'Action', 'deferred': r.deferred}],
-      'openInbox': () => openPendingApprovals(), 'olderInbox': () => openPendingApprovals(cursor: _inbox?.nextCursor),
-      'closeInbox': closePendingApprovals, 'selectInbox': selectPendingApproval,
+    return {
+      'conversationId': _owner.selectedId,
+      'items': items,
+      'pendingApprovalsAvailable':
+          _owner.session?.supportsPendingApprovals == true &&
+              _owner.session?.hasPendingApprovals == true,
+      'pagedReview': _pagedReview?.presentation,
+      'pagedReadOnly': _owner.archived ||
+          _store == null ||
+          _owner.session?.capabilities?.resources['approvals'] != true,
+      'reloadPagedReview': () {
+        if (_inboxSelected != null) _selectPagedReview(_inboxSelected!);
+      },
+      'inboxOpen': _inboxOpen,
+      'inboxLoading': _inboxRequest != null,
+      'inboxError': _inboxError,
+      'inboxSelected': _inboxSelected,
+      'inboxHasMore': _inbox?.nextCursor != null,
+      'inboxHasNewer': _inboxCursor != null,
+      'inboxItems': [
+        for (final r in _inboxCurrent
+            ? _inbox?.records ?? <HandrailDisplayRecord>[]
+            : <HandrailDisplayRecord>[])
+          if (r.kind == 'approval')
+            {
+              'id': r.id,
+              'title': r.value?['tool_name'] ?? 'Action',
+              'deferred': r.deferred
+            }
+      ],
+      'openInbox': () => openPendingApprovals(),
+      'olderInbox': () => openPendingApprovals(cursor: _inbox?.nextCursor),
+      'closeInbox': closePendingApprovals,
+      'selectInbox': selectPendingApproval,
     };
   }
 

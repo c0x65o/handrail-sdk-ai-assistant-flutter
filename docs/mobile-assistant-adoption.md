@@ -402,3 +402,34 @@ recovers the same saved turn once. Its deterministic provider/local JS source
 fixture is not live execution or a public installation receipt. These source
 changes still need a published SDK SHA, matching consumer locks and runtime
 qualification before adoption can be called complete.
+
+
+## Local exact-origin draft recovery qualification
+
+The standard workspace now records exact local draft origins in version-2
+pending journals. `forAssistant` registers account-owned cleanup automatically,
+so the existing three apps' standard workspace/factory integrations can receive
+this behavior with a later authorized matching Flutter SHA/lock upgrade. Keep
+Mills single-conversation configuration and the others' thread configuration.
+No installed dependency has been changed in this work.
+
+Create the draft owner before initializing the assistant. Preserve the existing
+legacy recovery callback for version-1/in-process compatibility; version-2
+replay uses the durable origin. Never clear pending journals to resolve a
+rollback: an older SDK cannot safely acknowledge version 2. Cleanup failures
+retain the original submission and are retried using its original server IDs.
+Native file-byte persistence is now implemented and locally qualified through
+`HandrailKeyValueAttachmentDraftStore` and the standard factory. Add a scoped
+encrypted storage adapter as `attachmentDraftStore` alongside `pendingStore`.
+This is an explicit future adoption step for each app; the SDK cannot choose an
+app's secure storage or namespace. Ready references and upload identities survive
+owner recreation, and background accepted cleanup performs no binary reads.
+See [the client storage contract](../packages/handrail_ai_client/README.md#native-attachment-draft-storage-local-source)
+and [qualification evidence](native-attachment-draft-qualification.json).
+
+For Hitcents, Mills and Spartan, retain the existing standard workspace/factory
+and account disposal hooks; await draft flushing before closing secure storage.
+Qualify each app's host upload idempotency and encrypted native file callbacks
+when adopting a published SHA. Mills remains single-conversation; the other two
+retain thread management. Local gateway/widget tests and consumer frontend
+compiles do not establish physical-device storage durability or deployment.

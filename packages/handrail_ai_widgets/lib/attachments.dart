@@ -197,6 +197,10 @@ class HandrailAttachmentException implements Exception {
           'This file exceeds the upload limit.',
         'selection_too_large' =>
           'The selected files exceed the total upload limit.',
+        'draft_attachment_capacity' =>
+          'Files in drafts and active sends have reached the device limit. Finish a send or remove unsent files before adding more.',
+        'upload_capacity' =>
+          'Other file uploads are still finishing. Wait a moment, then retry.',
         'unsupported_file' ||
         'invalid_attachment' =>
           'Choose a supported, nonempty file.',

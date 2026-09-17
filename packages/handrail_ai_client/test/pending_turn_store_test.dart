@@ -28,6 +28,49 @@ void main() {
           });
   setUp(values.clear);
   test(
+      'version-two origins survive storage and malformed or downgraded receipts fail',
+      () async {
+    final json = {
+      ...submission('origin').toJson(),
+      'version': 2,
+      'localDraft': {'version': 1, 'textVersion': 'exact-version'}
+    };
+    final original = HandrailTurnSubmission.fromJson(json);
+    await store('alice').retain(original);
+    expect((await store('alice').load('c1'))!.localDraft, json['localDraft']);
+    expect(await store('bob').load('c1'), isNull);
+    for (final invalid in [
+      {...json, 'version': 1},
+      {...json, 'localDraft': null},
+      {
+        ...json,
+        'localDraft': {'version': 1, 'textVersion': ''}
+      },
+      {
+        ...json,
+        'localDraft': {'version': 1, 'content': 'not a receipt'}
+      },
+      {
+        ...json,
+        'localDraft': {
+          'version': 1,
+          'fileIds': ['same', 'same']
+        }
+      },
+      {
+        ...json,
+        'localDraft': {
+          'version': 1,
+          'fileIds': ['no-attachment']
+        }
+      },
+    ]) {
+      expect(() => HandrailTurnSubmission.fromJson(invalid),
+          throwsFormatException);
+    }
+    expect((await store('alice').load('c1'))!.toJson(), original.toJson());
+  });
+  test(
       'restores account-scoped intent and rejects replacement until acknowledgement',
       () async {
     final original = submission('one');

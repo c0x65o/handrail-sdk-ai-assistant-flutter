@@ -157,6 +157,8 @@ extension HandrailAssistantDeletion on HandrailAssistantController {
         _assertActive();
         await _forgetDeletedConversation(id);
         _assertActive();
+        await attachmentDraftStore?.eraseConversation(id);
+        _assertActive();
         final saved = await pendingStore.load(id);
         _assertActive();
         if (saved != null) await pendingStore.acknowledge(saved);

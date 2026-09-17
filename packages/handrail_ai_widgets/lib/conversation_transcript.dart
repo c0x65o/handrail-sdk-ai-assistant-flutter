@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'markdown.dart';
 import 'display_transcript.dart';
+import 'deferred_records.dart';
 
 /// Matches the account controller without coupling the two SDK packages.
 typedef HandrailTranscriptUiBinding = ({
@@ -521,6 +522,18 @@ class _TranscriptState extends State<HandrailConversationTranscript>
         },
         trailing: [
           ..._defaultContents(context, includeMessages: false),
+          if (display.read()['readRecordText']
+              case final HandrailRecordTextReader read)
+            HandrailDeferredRecords(
+              conversationId: _state['conversationId'] as String,
+              generation: display.read()['generation'] as int,
+              records: _records(
+                document['deferred_records'],
+              ).where((record) => record['kind'] != 'message').toList(),
+              reader: read,
+              onRefresh: () =>
+                  unawaited(widget.binding.retry().catchError((Object _) {})),
+            ),
           if ((_map(
                         _map(_state['document'])['display_history'],
                       )['unresolvedCitationCount']

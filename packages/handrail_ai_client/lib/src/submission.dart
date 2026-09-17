@@ -9,11 +9,13 @@ class HandrailTurnSubmission {
       : _json = _immutableJson(value) as Map<String, Object?>;
 
   factory HandrailTurnSubmission.fromJson(Map<String, Object?> value) {
-    if (value['version'] != 1 ||
+    if (!const [1, 2].contains(value['version']) ||
+        (value['version'] == 2) != (value['localDraft'] != null) ||
         value['admission'] is! Map ||
         value['start'] is! Map) {
       throw const FormatException('Invalid saved turn submission');
     }
+    if (value['localDraft'] != null) _draftOrigin(_object(value['localDraft']));
     final submission = HandrailTurnSubmission._(value);
     final start = submission._start;
     if (submission._admission['conversationId'] != start['conversationId'] ||
@@ -25,6 +27,11 @@ class HandrailTurnSubmission {
         submission._admission['mutations'] is! List) {
       throw const FormatException('Invalid saved turn submission');
     }
+    final fileIds = submission.localDraft?['fileIds'] as List? ?? const [];
+    final mutations = submission._admission['mutations'] as List;
+    if (fileIds.isNotEmpty && fileIds.length > mutations.length - 2) {
+      throw const FormatException('Invalid local draft attachment identities');
+    }
     return submission;
   }
 
@@ -32,6 +39,10 @@ class HandrailTurnSubmission {
   Map<String, Object?> get _start => _object(_json['start']);
   Map<String, Object?> get _admission => _object(_json['admission']);
   String get conversationId => _start['conversationId'] as String;
+
+  /// Device-only receipt; never part of admission, start or provider bodies.
+  Map<String, Object?>? get localDraft =>
+      _json['localDraft'] == null ? null : _object(_json['localDraft']);
   String get turnId => _start['conversationTurnId'] as String;
 }
 
@@ -41,6 +52,7 @@ HandrailTurnSubmission _prepareSubmission({
   required String operationId,
   required String clientId,
   required Map<String, Object?> request,
+  Map<String, Object?>? localDraft,
 }) {
   if (operationId.isEmpty || operationId.length > 128 || clientId.isEmpty) {
     throw ArgumentError('A unique operation ID and client ID are required');
@@ -115,8 +127,9 @@ HandrailTurnSubmission _prepareSubmission({
       ]
     });
   }
-  return HandrailTurnSubmission._({
-    'version': 1,
+  return HandrailTurnSubmission.fromJson({
+    'version': localDraft == null ? 1 : 2,
+    if (localDraft != null) 'localDraft': _draftOrigin(localDraft),
     'admission': {
       'conversationId': conversationId,
       'expectedRevision': revision,
@@ -129,5 +142,30 @@ HandrailTurnSubmission _prepareSubmission({
       'idempotencyKey': 'start_$operationId',
       'request': wire
     },
+  });
+}
+
+/// Small immutable origin identities, not message content or authorization.
+Map<String, Object?> _draftOrigin(Map<String, Object?> input) {
+  final text = input['textVersion'], files = input['fileIds'];
+  if (input['version'] != 1 ||
+      input.keys.any((key) =>
+          !const ['version', 'textVersion', 'fileIds'].contains(key)) ||
+      text != null && (text is! String || text.isEmpty || text.length > 128) ||
+      files != null &&
+          (files is! List ||
+              files.length > 64 ||
+              files.any((id) =>
+                  id is! String ||
+                  !RegExp(r'^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$')
+                      .hasMatch(id)) ||
+              files.toSet().length != files.length)) {
+    throw const FormatException('Invalid local draft origin');
+  }
+  return Map.unmodifiable({
+    'version': 1,
+    if (text != null) 'textVersion': text,
+    if (files != null)
+      'fileIds': List<String>.unmodifiable((files as List).cast<String>()),
   });
 }

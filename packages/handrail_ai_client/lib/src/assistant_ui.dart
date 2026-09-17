@@ -68,6 +68,15 @@ extension HandrailAssistantOptionalUi on HandrailAssistantController {
                   'read': storage.readDraft,
                   'write': storage.writeDraft,
                 },
+              if (attachmentDraftStore case final storage?)
+                'attachmentDraftStorage': {
+                  'read': storage.readAttachmentDraft,
+                  'write': storage.writeAttachmentDraft,
+                  'discardAccepted': storage.discardAcceptedFiles,
+                  'erase': storage.eraseConversation,
+                },
+              'registerDraftReconciler': _registerDraftReconciler,
+              'sendWithDraft': _sendFromUi,
               'conversationId': selectedId,
               'enabled': document != null &&
                   !archived &&
@@ -122,37 +131,47 @@ extension HandrailAssistantOptionalUi on HandrailAssistantController {
               capability: capability);
         },
         send: (
-            {required conversationId,
-            required request,
-            required onAccepted}) async {
-          final operation = _createId();
-          final submitted = await sendMessage(request,
-              conversationId: conversationId,
-              operationId: operation,
-              onAccepted: (_) => onAccepted());
-          if (submitted == null) return false;
-          // Catalog presentation must never turn verified admission into a failure.
-          try {
-            await sessionFor(conversationId)?.refresh();
-            final messages = _records(request['messages']);
-            final last = messages.lastWhere(
-                (message) => message['role'] == 'user',
-                orElse: () => const {});
-            final parts = _records(last['content']);
-            final text = parts
-                .where((part) => part['type'] == 'text')
-                .map((part) => part['text'] as String? ?? '')
-                .join(' ')
-                .trim();
-            final files = parts.where((part) => part['attachment'] is Map).map(
-                (part) =>
-                    (part['attachment'] as Map)['filename'] as String? ??
-                    'Attachment');
-            await setInitialTitle(conversationId,
-                text.isNotEmpty ? text : files.join(', '), operation);
-          } catch (_) {}
-          return true;
-        },
+                {required conversationId,
+                required request,
+                required onAccepted}) =>
+            _sendFromUi(
+                conversationId: conversationId,
+                request: request,
+                localDraft: null,
+                onAccepted: onAccepted),
         stop: (id) => requestCancellation(conversationId: id),
       );
+  Future<bool> _sendFromUi(
+      {required String conversationId,
+      required Map<String, Object?> request,
+      required Map<String, Object?>? localDraft,
+      required void Function() onAccepted}) async {
+    final operation = _createId();
+    final submitted = await sendMessage(request,
+        conversationId: conversationId,
+        operationId: operation,
+        localDraft: localDraft,
+        onAccepted: (_) => onAccepted());
+    if (submitted == null) return false;
+    // Catalog presentation must never turn verified admission into a failure.
+    try {
+      await sessionFor(conversationId)?.refresh();
+      final messages = _records(request['messages']);
+      final last = messages.lastWhere((message) => message['role'] == 'user',
+          orElse: () => const {});
+      final parts = _records(last['content']);
+      final text = parts
+          .where((part) => part['type'] == 'text')
+          .map((part) => part['text'] as String? ?? '')
+          .join(' ')
+          .trim();
+      final files = parts.where((part) => part['attachment'] is Map).map(
+          (part) =>
+              (part['attachment'] as Map)['filename'] as String? ??
+              'Attachment');
+      await setInitialTitle(
+          conversationId, text.isNotEmpty ? text : files.join(', '), operation);
+    } catch (_) {}
+    return true;
+  }
 }

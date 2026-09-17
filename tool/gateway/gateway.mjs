@@ -13,7 +13,7 @@ const { createHandrailAssistant, createProviderToolLoopTransport } = await impor
 const {
   InMemoryConversationEventStore, InMemoryApprovalProposalStore,
   InMemoryConversationCatalog, InMemoryDurableApplicationTurnStore,
-  InMemoryToolExecutionLedger, parseConversationEvent,
+  InMemoryToolExecutionLedger, parseConversationEvent, assistantToolArgumentReference,
 } = await import(dist ? pathToFileURL(resolve(dist, 'index.js')).href : '@handrail/ai-assistant');
 
 const required = (id) => ({ id, source: 'server_derived', trust: 'authoritative' });
@@ -55,7 +55,7 @@ if (dist) {
     authorizeConversation: () => 'allow', authorizeApproval: () => 'allow' });
 }
 const stats = { invocations: 0, starts: 0, resumes: 0, admissions: 0, deletions: 0, decisions: 0,
-  displayReads: 0, snapshotReads: 0, displayBytes: 0, maximumDisplayBytes: 0 };
+  displayReads: 0, snapshotReads: 0, displayBytes: 0, maximumDisplayBytes: 0, maximumDecisionBytes: 0 };
 const release = new Map();
 const adapter = { metadata: { provider_id: 'test', model_id: 'test', capabilities: {
   streaming: true, text: true, tool_calls: false, parallel_tool_calls: false, reasoning: false,
@@ -108,10 +108,12 @@ const server = createServer(async (request, response) => {
       response.end('{}'); return;
     }
     if (request.url === '/test/propose') {
-      const { conversationId } = JSON.parse(body);
+      const { conversationId, large } = JSON.parse(body);
       const proposalId = randomUUID(), turnId = randomUUID(), toolCallId = randomUUID();
       const occurredAt = new Date().toISOString(), expiresAt = new Date(Date.now() + 60000).toISOString();
-      const reviewedArguments = { type: 'redacted_json', value: { amount: 42 } };
+      const arguments_ = { amount: 42, ...(large ? { body: '😀'.repeat(24000) } : {}) };
+      const reviewedArguments = large ? { type: 'opaque_reference', argument_ref: assistantToolArgumentReference(arguments_) }
+        : { type: 'redacted_json', value: arguments_ };
       const eventAttribution = { actor: { type: 'system' }, source: { type: 'runtime' } };
       const proposal = await bundle.approvals.create({ permissionContext: context, proposalId,
         groupId: conversationId, turnId, toolCallId, toolName: 'fixture_review', reviewedArguments,
@@ -120,7 +122,7 @@ const server = createServer(async (request, response) => {
         { type: 'message.created', message_id: `${turnId}-input`, role: 'user', content: [{ type: 'text', text: 'Review this change' }] },
         { type: 'turn.started', turn_id: turnId, input_message_ids: [`${turnId}-input`] },
         { type: 'tool_call.requested', turn_id: turnId, tool_call_id: toolCallId,
-          name: 'fixture_review', arguments: { amount: 42 } },
+          name: 'fixture_review', arguments: arguments_ },
         { type: 'approval.proposal_created', proposal_id: proposalId, group_id: conversationId,
           turn_id: turnId, tool_call_id: toolCallId, tool_name: 'fixture_review',
           // Mirror the authoritative proposal, including normalized legacy expiry.
@@ -130,7 +132,7 @@ const server = createServer(async (request, response) => {
         events: payloads.map((payload, index) => parseConversationEvent({ version: 1,
           event_id: randomUUID(), conversation_id: conversationId, revision: index + 1,
           occurred_at: occurredAt, ...eventAttribution, payload })) });
-      response.setHeader('content-type', 'application/json'); response.end(JSON.stringify(proposal)); return;
+      response.setHeader('content-type', 'application/json'); response.end(JSON.stringify(large ? { proposal_id: proposalId } : proposal)); return;
     }
     if (request.url === '/test/advance-approval') {
       // Test-only execution-state advancement; no business tool is invoked.
@@ -145,7 +147,7 @@ const server = createServer(async (request, response) => {
     if (request.url === '/test/finish') {
       for (const finish of release.values()) finish(); release.clear(); response.end('{}'); return;
     }
-    if (request.url.endsWith('/approvals/transition')) stats.decisions++;
+    if (request.url.endsWith('/approvals/transition') || request.url.endsWith('/approvals/transition-display')) stats.decisions++;
     if (request.url.endsWith('/conversations/history')) stats.displayReads++;
     if (request.url.endsWith('/synchronization') && JSON.parse(body).operation === 'pull_snapshot') stats.snapshotReads++;
     if (request.url.endsWith('/turns/start')) stats.starts++;
@@ -159,9 +161,10 @@ const server = createServer(async (request, response) => {
       const bytes = (await result.clone().arrayBuffer()).byteLength;
       stats.displayBytes += bytes; stats.maximumDisplayBytes = Math.max(stats.maximumDisplayBytes, bytes);
     }
+    if (request.url.endsWith('/approvals/transition-display')) stats.maximumDecisionBytes = Math.max(stats.maximumDecisionBytes, (await result.clone().arrayBuffer()).byteLength);
     const loss = request.headers['x-test-lose-response'];
     const stage = typeof loss === 'string' ? loss.split(':').at(-1) : null;
-    const matches = stage === 'approval' ? request.url.endsWith('/approvals/transition')
+    const matches = stage === 'approval' ? (request.url.endsWith('/approvals/transition') || request.url.endsWith('/approvals/transition-display'))
       : stage === 'admission' ? admission : stage === 'delete'
       ? request.url.endsWith('/conversations/permanent-delete')
       : stage === 'start' && request.url.endsWith('/turns/start');

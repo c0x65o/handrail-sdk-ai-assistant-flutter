@@ -10,6 +10,7 @@ class HandrailDraftController extends TextEditingController {
     this.onDraftChanged,
     this.readDraft,
     this.writeDraft,
+    this.validateDraft,
   }) : _lastText = text,
        super(text: text) {
     addListener(_observeDraft);
@@ -20,9 +21,36 @@ class HandrailDraftController extends TextEditingController {
   }
 
   final Future<Map<String, Object?>?> Function()? readDraft;
+
+  /// Return an actionable error to reject an edit before its text/revision or
+  /// stored version changes. Empty text is always allowed so removal can free
+  /// capacity. Hosts should surface [draftInputError] next to the editor.
+  final String? Function(String text)? validateDraft;
+  String? _inputError;
+  String? get draftInputError => _inputError;
+
+  bool _allowsText(String text) {
+    final error = text.isEmpty ? null : validateDraft?.call(text);
+    final changed = _inputError != error;
+    _inputError = error;
+    if (changed && !_disposed) notifyListeners();
+    return error == null;
+  }
+
+  @override
+  set value(TextEditingValue next) {
+    if (next.text != super.value.text && !_allowsText(next.text)) return;
+    super.value = next;
+  }
+
   final Future<Map<String, Object?>?> Function(String text, String? version)?
   writeDraft;
   String? _version, _storageError;
+  String? _persistingText;
+
+  /// Immutable snapshot held by the active storage callback, for account-wide
+  /// retention accounting even after the visible editor changes or closes.
+  String? get persistingDraftText => _persistingText;
   bool _loaded = false, _saving = false, _restoring = false;
   int _edit = 0, _savedEdit = 0;
   Timer? _saveTimer;
@@ -55,6 +83,10 @@ class HandrailDraftController extends TextEditingController {
   Future<void> _restore() async {
     try {
       final saved = _parseDraft(await readDraft!());
+      final restored = saved?['text'] as String?;
+      if (_edit == 0 && restored != null && !_allowsText(restored)) {
+        throw StateError('Draft capacity reached');
+      }
       _version = saved?['version'] as String?;
       _loaded = true;
       _storageError = null;
@@ -89,13 +121,81 @@ class HandrailDraftController extends TextEditingController {
     });
   }
 
+  /// Capture the exact edit at activation, before uploads or network writes.
+  int get draftEdit => _edit;
+  Future<String?> captureVersion(int edit) async {
+    await flushDraft();
+    return _edit == edit && _savedEdit == edit ? _version : null;
+  }
+
+  /// Confirmed server admission only. A matching text value is insufficient:
+  /// only this saved revision may be deleted, preserving all newer local work.
+  Future<void> reconcileAcceptedVersion(String version) {
+    if (_disposed || readDraft == null || writeDraft == null) {
+      return Future.error(StateError('Draft owner is unavailable'));
+    }
+    _saveTimer?.cancel();
+    _saveTimer = null;
+    final previous = _writing;
+    late final Future<void> work;
+    work =
+        Future<void>.microtask(() async {
+              await previous?.catchError((Object _) {});
+              await _initial;
+              var outcome = 'removed';
+              try {
+                await writeDraft!('', version);
+              } catch (_) {
+                final current = _parseDraft(await readDraft!());
+                if (current?['version'] == version) rethrow;
+                outcome = current == null ? 'absent' : 'changed';
+              }
+              if (_version != version) return;
+              if (outcome != 'changed') _version = null;
+              if (_savedEdit == _edit) {
+                _edit++;
+                _savedEdit = _edit;
+                _revision++;
+                _pendingAttempt = null;
+                _lastText = '';
+                if (!_disposed) {
+                  _restoring = true;
+                  text = '';
+                  _restoring = false;
+                }
+                _saving = false;
+                _storageError = outcome == 'changed'
+                    ? 'The saved draft changed in another view. Reload it before editing.'
+                    : null;
+              }
+            })
+            .catchError((Object error) {
+              _storageError =
+                  'The message was accepted, but its local draft could not be cleared. Retry the saved message.';
+              throw error;
+            })
+            .whenComplete(() {
+              if (identical(_writing, work)) {
+                _writing = null;
+                if (!_disposed && _edit != _savedEdit) _scheduleSave();
+              }
+              if (!_disposed) notifyListeners();
+            });
+    _writing = work;
+    return work;
+  }
+
   /// Flush captured text before releasing the account's encrypted store.
-  Future<void> flushDraft() {
-    if (_closed case final closing?) return closing;
+  Future<void> flushDraft() => _closed ?? _flushDraft();
+  Future<void> _flushDraft() {
     _saveTimer?.cancel();
     _saveTimer = null;
     if (writeDraft == null) return Future.value();
-    if (_writing case final current?) return current;
+    if (_writing case final current?) {
+      return current.then((_) async {
+        if (_savedEdit != _edit) await _flushDraft();
+      });
+    }
     late final Future<void> work;
     work =
         Future<void>.microtask(() async {
@@ -107,11 +207,16 @@ class HandrailDraftController extends TextEditingController {
                 if (utf8.encode(currentText).length > 65536) {
                   throw StateError('Draft exceeds 64 KiB');
                 }
-                final saved = _parseDraft(
-                  await writeDraft!(currentText, _version),
-                );
-                _version = saved?['version'] as String?;
-                _savedEdit = edit;
+                _persistingText = currentText;
+                try {
+                  final saved = _parseDraft(
+                    await writeDraft!(currentText, _version),
+                  );
+                  _version = saved?['version'] as String?;
+                  _savedEdit = edit;
+                } finally {
+                  _persistingText = null;
+                }
               }
               _saving = false;
               _storageError = null;
@@ -139,6 +244,8 @@ class HandrailDraftController extends TextEditingController {
     final edit = _edit;
     final saved = _parseDraft(await readDraft!());
     if (_disposed || edit != _edit) return;
+    final restored = saved?['text'] as String? ?? '';
+    if (!_allowsText(restored)) throw StateError('Draft capacity reached');
     _saveTimer?.cancel();
     _saveTimer = null;
     _version = saved?['version'] as String?;
@@ -148,7 +255,7 @@ class HandrailDraftController extends TextEditingController {
     _edit++;
     _savedEdit = _edit;
     _restoring = true;
-    _lastText = saved?['text'] as String? ?? '';
+    _lastText = restored;
     text = _lastText;
     _restoring = false;
     _revision++;
@@ -235,7 +342,7 @@ class HandrailDraftController extends TextEditingController {
 
   /// Invalidates callbacks from the previous conversation/account immediately.
   void reset({String text = ''}) {
-    if (_disposed) return;
+    if (_disposed || !_allowsText(text)) return;
     final changed = _lastText != text;
     _submission = null;
     _pendingAttempt = null;
@@ -258,7 +365,7 @@ class HandrailDraftController extends TextEditingController {
     _submission = null;
     _pendingAttempt = null;
     removeListener(_observeDraft);
-    _closed = flushDraft().catchError((Object _) {}).whenComplete(() {
+    _closed = _flushDraft().catchError((Object _) {}).whenComplete(() {
       _lastText = '';
       _version = null;
     });

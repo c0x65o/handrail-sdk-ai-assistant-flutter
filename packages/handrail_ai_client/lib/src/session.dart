@@ -122,6 +122,11 @@ class HandrailConversationSession {
   final HandrailConversationWorkspace workspace;
   final Duration? pollingInterval;
   final bool synchronizeActivity;
+
+  /// Exact local cleanup after confirmed admission, including recovered replay.
+  /// A failure keeps the caller's pending journal available for retry.
+  final Future<void> Function(String, Map<String, Object?>)?
+      reconcileAcceptedDraft;
   final bool _ownsWorkspace;
   final StreamController<HandrailConversationSession> _changes =
       StreamController.broadcast(sync: true);
@@ -175,7 +180,8 @@ class HandrailConversationSession {
       required this.conversationId,
       HandrailConversationWorkspace? workspace,
       this.pollingInterval = const Duration(seconds: 1),
-      this.synchronizeActivity = true})
+      this.synchronizeActivity = true,
+      this.reconcileAcceptedDraft})
       : workspace = workspace ?? HandrailConversationWorkspace(),
         _ownsWorkspace = workspace == null {
     if (pollingInterval != null &&
@@ -216,23 +222,81 @@ class HandrailConversationSession {
     }
   }
 
-  bool get supportsPendingApprovals => _capabilities?.displayHistory?.pendingApprovals == true;
+  bool get supportsApprovalReview =>
+      _capabilities?.displayHistory?.approvalReview == true;
+  Future<HandrailApprovalDisplayReview> readApprovalReview(
+      {required String proposalId,
+      required int generation,
+      String? binding,
+      int offset = 0,
+      Future<void>? cancellation}) async {
+    if (_disposed ||
+        !_displayActive ||
+        !supportsApprovalReview ||
+        generation != _control?.generation) {
+      throw const HandrailGatewayException(
+          'cancelled', 'Approval review is unavailable');
+    }
+    final activation = _displayActivation;
+    final value = await _displayRead((closed) => client.displayApprovalReview(
+        conversationId: conversationId,
+        proposalId: proposalId,
+        generation: generation,
+        binding: binding,
+        offset: offset,
+        cancellation: Future.any([
+          closed,
+          activation.future,
+          if (cancellation != null) cancellation
+        ])));
+    if (_disposed ||
+        activation.isCompleted ||
+        generation != _control?.generation) {
+      throw const HandrailGatewayException(
+          'cancelled', 'Approval review was cancelled');
+    }
+    return value;
+  }
+
+  bool get supportsPendingApprovals =>
+      _capabilities?.displayHistory?.pendingApprovals == true;
   bool get hasPendingApprovals => _control?.hasPendingApprovals == true;
+
   /// Explicit bounded inbox or proposal/tool review, independent of messages.
-  Future<HandrailDisplayPage> readApprovals({String? proposalId, String? cursor, Future<void>? cancellation}) async {
-    if (_disposed || !_displayActive || !supportsPendingApprovals || _control == null || _control!.preparing) {
-      throw const HandrailGatewayException('approval_inbox_unavailable', 'Pending approvals are unavailable.', retryable: true);
+  Future<HandrailDisplayPage> readApprovals(
+      {String? proposalId, String? cursor, Future<void>? cancellation}) async {
+    if (_disposed ||
+        !_displayActive ||
+        !supportsPendingApprovals ||
+        _control == null ||
+        _control!.preparing) {
+      throw const HandrailGatewayException(
+          'approval_inbox_unavailable', 'Pending approvals are unavailable.',
+          retryable: true);
     }
     final generation = _control!.generation, activation = _displayActivation;
     final page = await _displayRead((closed) => client.displayHistoryPage(
-      conversationId: conversationId, capability: _capabilities!.displayHistory!,
-      view: proposalId == null ? {'type': 'pending_approvals'} : {'type': 'approval', 'proposalId': proposalId},
-      cursor: cursor, limit: proposalId == null ? 30 : 2, maximumBytes: proposalId == null ? 65536 : 131072,
-      cancellation: cancellation == null ? closed : Future.any([closed, cancellation])));
-    if (_disposed || activation.isCompleted) throw StateError('Approval read cancelled');
-    if (page.preparing || page.generation != generation || _control?.generation != generation ||
-        page.revision < (_control?.revision ?? 0) || page.revision < (_displayWindow?.state.revision ?? 0)) {
-      throw const HandrailGatewayException('stale_approvals', 'Approval details changed. Try again.', retryable: true);
+        conversationId: conversationId,
+        capability: _capabilities!.displayHistory!,
+        view: proposalId == null
+            ? {'type': 'pending_approvals'}
+            : {'type': 'approval', 'proposalId': proposalId},
+        cursor: cursor,
+        limit: proposalId == null ? 30 : 2,
+        maximumBytes: proposalId == null ? 65536 : 131072,
+        cancellation: cancellation == null
+            ? closed
+            : Future.any([closed, cancellation])));
+    if (_disposed || activation.isCompleted)
+      throw StateError('Approval read cancelled');
+    if (page.preparing ||
+        page.generation != generation ||
+        _control?.generation != generation ||
+        page.revision < (_control?.revision ?? 0) ||
+        page.revision < (_displayWindow?.state.revision ?? 0)) {
+      throw const HandrailGatewayException(
+          'stale_approvals', 'Approval details changed. Try again.',
+          retryable: true);
     }
     return page;
   }
@@ -508,7 +572,9 @@ class HandrailConversationSession {
     required String operationId,
     required String clientId,
     required Map<String, Object?> request,
+    Map<String, Object?>? localDraft,
   }) async {
+    final origin = localDraft == null ? null : _draftOrigin(localDraft);
     final immutableRequest = _immutableJson(request) as Map<String, Object?>;
     if (_submitting != null) throw StateError('A message is being submitted');
     await refresh();
@@ -525,7 +591,8 @@ class HandrailConversationSession {
         revision: _document!.revision,
         operationId: operationId,
         clientId: clientId,
-        request: immutableRequest);
+        request: immutableRequest,
+        localDraft: origin);
   }
 
   /// Persists intent before any admission/start write. A failed/uncertain send
@@ -535,12 +602,15 @@ class HandrailConversationSession {
       required String clientId,
       required Map<String, Object?> request,
       required HandrailPendingTurnStore pendingStore,
+      Map<String, Object?>? localDraft,
       void Function(HandrailTurnSubmission)? onAccepted}) async {
     final submission = await prepareTurn(
-        operationId: operationId, clientId: clientId, request: request);
+        operationId: operationId,
+        clientId: clientId,
+        request: request,
+        localDraft: localDraft);
     await pendingStore.retain(submission);
-    await submitTurn(submission, onAccepted: onAccepted);
-    await pendingStore.acknowledge(submission);
+    await _submitRetained(submission, pendingStore, onAccepted);
     return submission;
   }
 
@@ -549,9 +619,23 @@ class HandrailConversationSession {
       {void Function(HandrailTurnSubmission)? onAccepted}) async {
     final submission = await pendingStore.load(conversationId);
     if (submission == null) return null;
-    await submitTurn(submission, onAccepted: onAccepted);
-    await pendingStore.acknowledge(submission);
+    await _submitRetained(submission, pendingStore, onAccepted);
     return submission;
+  }
+
+  Future<void> _submitRetained(
+      HandrailTurnSubmission submission,
+      HandrailPendingTurnStore pendingStore,
+      void Function(HandrailTurnSubmission)? onAccepted) async {
+    try {
+      await submitTurn(submission, onAccepted: onAccepted);
+    } on _RejectedAdmission {
+      // A definite rejection admits nothing. Keep editable drafts/files while
+      // releasing the exact journal so the user can correct the request.
+      await pendingStore.acknowledge(submission);
+      rethrow;
+    }
+    await pendingStore.acknowledge(submission);
   }
 
   /// Acknowledges admission/start, not completion. Repeating an uncertain send
@@ -664,6 +748,18 @@ class HandrailConversationSession {
       throw const HandrailGatewayException('admission_unconfirmed',
           'The saved message is not visible yet. Retry the saved message.',
           retryable: true);
+    if (submission.localDraft case final origin?) {
+      try {
+        final cleanup = reconcileAcceptedDraft;
+        if (cleanup == null) throw StateError('No local draft owner');
+        await cleanup(conversationId, origin);
+      } catch (_) {
+        throw const HandrailGatewayException('draft_cleanup_failed',
+            'Your message was saved, but its local draft could not be cleared. Retry the saved message.',
+            retryable: true);
+      }
+    }
+    if (_disposed) throw StateError('Conversation session is disposed');
     _publishAdmission(submission);
     if (_disposed) throw StateError('Conversation session is disposed');
     if (_mayStart != null && !await _mayStart!(submission)) return;
@@ -865,15 +961,20 @@ class HandrailConversationSession {
 
 Map<String, Object?> _value(Map<String, Object?> result) =>
     _object(result['value']);
+
+class _RejectedAdmission extends HandrailGatewayException {
+  const _RejectedAdmission(String message)
+      : super('synchronization_rejected', message);
+}
+
 HandrailGatewayException _syncFailure(Map<String, Object?> result) {
   if (result['status'] == 'rejected') {
     final message = result['message'];
-    return HandrailGatewayException(
-        'synchronization_rejected',
-        message is String && message.isNotEmpty && message.length <= 500
-            ? message
-            : 'This message could not be saved. Review it before sending again.',
-        retryable: false);
+    return _RejectedAdmission(message is String &&
+            message.isNotEmpty &&
+            message.length <= 500
+        ? message
+        : 'This message could not be saved. Review it before sending again.');
   }
   return HandrailGatewayException(
       'synchronization_${result['status'] == 'unauthorized' ? 'unauthorized' : 'unavailable'}',

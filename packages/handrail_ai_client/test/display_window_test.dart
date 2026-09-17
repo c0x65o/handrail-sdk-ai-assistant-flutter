@@ -116,68 +116,82 @@ class Fixture {
 }
 
 void main() {
-  test('message text reads cancel on replacement, selection and disposal',
-      () async {
-    final requested = <Completer<void>>[
-      for (var i = 0; i < 3; i++) Completer<void>()
-    ];
-    final pending = <Completer<http.Response>>[
-      for (var i = 0; i < 3; i++) Completer<http.Response>()
-    ];
-    var index = 0;
-    final client = HandrailAiClient(
-      baseUri: Uri.parse('https://test.invalid/assistant'),
-      httpClient: MockClient((request) async {
-        final body = jsonDecode(request.body) as Map;
-        final input = body['input'] as Map;
-        if (body['operation'] == 'content') {
-          final current = index++;
-          requested[current].complete();
-          return pending[current].future;
-        }
-        return response(page(input['conversationId'] as String, [record(1)]));
-      }),
-    );
-    final window = HandrailDisplayWindow(
-        client: client,
-        capability: HandrailDisplayHistoryCapability.fromJson({
-          'version': 1,
-          'maximumPageSize': 50,
-          'maximumPageBytes': 262144,
-          'messageText': true,
-        }));
-    addTearDown(() async {
+  for (final recordText in [false, true])
+    test(
+        'content ($recordText) reads cancel on replacement, selection and disposal',
+        () async {
+      final requested = <Completer<void>>[
+        for (var i = 0; i < 3; i++) Completer<void>()
+      ];
+      final pending = <Completer<http.Response>>[
+        for (var i = 0; i < 3; i++) Completer<http.Response>()
+      ];
+      var index = 0;
+      final client = HandrailAiClient(
+        baseUri: Uri.parse('https://test.invalid/assistant'),
+        httpClient: MockClient((request) async {
+          final body = jsonDecode(request.body) as Map;
+          final input = body['input'] as Map;
+          if (body['operation'] == 'content') {
+            final current = index++;
+            requested[current].complete();
+            return pending[current].future;
+          }
+          return response(page(input['conversationId'] as String, [record(1)]));
+        }),
+      );
+      final window = HandrailDisplayWindow(
+          client: client,
+          capability: HandrailDisplayHistoryCapability.fromJson({
+            'version': 1,
+            'maximumPageSize': 50,
+            'maximumPageBytes': 262144,
+            'messageText': true,
+            'recordText': recordText,
+          }));
+      addTearDown(() async {
+        await window.dispose();
+        client.close();
+      });
+      await window.select('first');
+      final binding = window.uiBinding.read();
+      final message = binding['readMessageText'] as Future<Map<String, Object?>>
+          Function(String, String, int, int, int, Future<void>);
+      final recordReader = binding['readRecordText']
+          as Future<Map<String, Object?>> Function(
+              String, String, String, int, int, int, Future<void>)?;
+      expect(recordReader != null, recordText);
+      Future<Map<String, Object?>> read(String chat, String id, int generation,
+              int revision, int offset, Future<void> cancel) =>
+          recordText
+              ? recordReader!(
+                  chat, 'tool', id, generation, revision, offset, cancel)
+              : message(chat, id, generation, revision, offset, cancel);
+      final cancellation = Completer<void>();
+      final first = read('first', 'message-1', 0, 1, 0, cancellation.future);
+      await requested[0].future;
+      final second =
+          read('first', 'message-1', 0, 1, 8192, cancellation.future);
+      await requested[1].future;
+      expect((await first)['errorCode'], 'cancelled');
+      await window.select('second');
+      expect((await second)['errorCode'], 'cancelled');
+      final third = read('second', 'message-1', 0, 1, 0, cancellation.future);
+      await requested[2].future;
       await window.dispose();
-      client.close();
+      expect((await third)['errorCode'], 'cancelled');
+      cancellation.complete();
+      for (final request in pending) {
+        request.complete(response({
+          'encoding': 'plain-text',
+          'text': 'late',
+          'revision': 1,
+          'nextOffset': null
+        }));
+      }
+      await Future<void>.delayed(Duration.zero);
+      expect(window.state.records, isEmpty);
     });
-    await window.select('first');
-    final read = window.uiBinding.read()['readMessageText']
-        as Future<Map<String, Object?>> Function(
-            String, String, int, int, int, Future<void>);
-    final cancellation = Completer<void>();
-    final first = read('first', 'message-1', 0, 1, 0, cancellation.future);
-    await requested[0].future;
-    final second = read('first', 'message-1', 0, 1, 8192, cancellation.future);
-    await requested[1].future;
-    expect((await first)['errorCode'], 'cancelled');
-    await window.select('second');
-    expect((await second)['errorCode'], 'cancelled');
-    final third = read('second', 'message-1', 0, 1, 0, cancellation.future);
-    await requested[2].future;
-    await window.dispose();
-    expect((await third)['errorCode'], 'cancelled');
-    cancellation.complete();
-    for (final request in pending) {
-      request.complete(response({
-        'encoding': 'plain-text',
-        'text': 'late',
-        'revision': 1,
-        'nextOffset': null
-      }));
-    }
-    await Future<void>.delayed(Duration.zero);
-    expect(window.state.records, isEmpty);
-  });
 
   test(
       'widget binding preserves anchor navigation, errors and selection cancellation',

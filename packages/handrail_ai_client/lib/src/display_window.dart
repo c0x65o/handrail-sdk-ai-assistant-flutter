@@ -114,6 +114,7 @@ class HandrailDisplayWindow {
               'activeTurnId': state.activeTurnId,
               'setFollowingLatest': setFollowingLatest,
               if (capability.messageText) 'readMessageText': _readMessageText,
+              if (capability.recordText) 'readRecordText': _readRecordText,
               'records': List.unmodifiable(state.records
                   .map((record) => Map<String, Object?>.unmodifiable({
                         'kind': record.kind,
@@ -191,16 +192,40 @@ class HandrailDisplayWindow {
       !_disposed && identical(selection, _selection) && !selection.isCompleted;
 
   Future<Map<String, Object?>> _readMessageText(
+          String conversationId,
+          String id,
+          int generation,
+          int revision,
+          int offset,
+          Future<void> cancellation) =>
+      _readContent(conversationId, 'message', id, generation, revision, offset,
+          cancellation, false);
+
+  Future<Map<String, Object?>> _readRecordText(
+          String conversationId,
+          String kind,
+          String id,
+          int generation,
+          int revision,
+          int offset,
+          Future<void> cancellation) =>
+      _readContent(conversationId, kind, id, generation, revision, offset,
+          cancellation, true);
+
+  Future<Map<String, Object?>> _readContent(
       String conversationId,
+      String kind,
       String id,
       int generation,
       int revision,
       int offset,
-      Future<void> cancellation) async {
+      Future<void> cancellation,
+      bool recordText) async {
     final selection = _selection;
-    if (!capability.messageText ||
+    if (!(recordText ? capability.recordText : capability.messageText) ||
         !_current(selection) ||
-        conversationId != _conversationId) {
+        conversationId != _conversationId ||
+        generation != _generation) {
       return {'errorCode': 'cancelled'};
     }
     if (_contentRequest?.isCompleted == false) _contentRequest!.complete();
@@ -214,13 +239,16 @@ class HandrailDisplayWindow {
       final chunk = await client.displayHistoryContent(
           conversationId: conversationId,
           generation: generation,
-          kind: 'message',
+          kind: kind,
           id: id,
           revision: revision,
           offset: offset,
-          messageText: true,
+          messageText: !recordText,
+          recordText: recordText,
           cancellation: contentRequest.future);
-      if (!_current(selection)) return {'errorCode': 'cancelled'};
+      if (!_current(selection) ||
+          contentRequest.isCompleted ||
+          generation != _generation) return {'errorCode': 'cancelled'};
       return {
         'encoding': chunk.encoding,
         'text': chunk.text,

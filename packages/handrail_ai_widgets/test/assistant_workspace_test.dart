@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:handrail_ai_widgets/handrail_ai_widgets.dart';
 import 'conversation_history_test.dart' as history;
+import 'composer_attachment_storage_test.dart' as file_storage;
 import 'conversation_transcript_test.dart' as transcript;
 
 typedef UploadResult = ({
@@ -33,7 +34,11 @@ class Fixture {
   Completer<bool>? admission;
   VoidCallback? accepted;
   HandrailWorkspaceDownloader? Function(String?)? downloadFactory;
-  late final drafts = HandrailComposerController.forAssistant(binding);
+  int maximumRetainedDraftBytes = 512 * 1024;
+  late final drafts = HandrailComposerController.forAssistant(
+    binding,
+    maximumRetainedDraftBytes: maximumRetainedDraftBytes,
+  );
   HandrailWorkspaceBinding get binding => (
     scope: this,
     changes: events.stream,
@@ -162,6 +167,187 @@ Widget surface(
 );
 
 void main() {
+  for (final (width, scale) in [(390.0, 1.0), (320.0, 2.0)]) {
+    testWidgets(
+      'standard binding restores files and exposes retry at width $width, scale $scale',
+      (tester) async {
+        tester.view.physicalSize = Size(width, 850);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final fixture = Fixture(), storage = file_storage.Files();
+        addTearDown(fixture.dispose);
+        final readGate = Completer<void>();
+        storage.beforeRead = (_) => readGate.future;
+        final binding = storage.binding;
+        fixture.state['attachmentDraftStorage'] = <String, Object?>{
+          'read': binding.read,
+          'write': binding.write,
+          'discardAccepted': binding.discardAccepted,
+        };
+        await tester.pumpWidget(surface(fixture, width: width, scale: scale));
+        await tester.pump();
+        expect(find.text('Restoring files…'), findsOneWidget);
+        expect(
+          tester
+              .widget<HandrailComposer>(find.byType(HandrailComposer))
+              .canSend,
+          isFalse,
+        );
+        readGate.complete();
+        await tester.pumpAndSettle();
+        storage.beforeWrite = (_) async => throw StateError('disk full');
+        fixture.drafts.addPickedAttachments([
+          HandrailAttachmentFile(
+            fileName: 'photo.png',
+            mediaType: 'image/png',
+            bytes: [1, 2, 3],
+          ),
+        ]);
+        await tester.pumpAndSettle();
+        expect(find.text('Retry saving files'), findsOneWidget);
+        expect(
+          find.text('Replace selections with saved files'),
+          findsOneWidget,
+        );
+        expect(
+          tester
+              .widget<HandrailComposer>(find.byType(HandrailComposer))
+              .canSend,
+          isFalse,
+        );
+        expect(fixture.requests, isEmpty);
+        storage.beforeWrite = null;
+        await tester.ensureVisible(find.text('Retry saving files'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Retry saving files'));
+        await tester.pumpAndSettle();
+        expect(find.text('Retry saving files'), findsNothing);
+        expect(fixture.drafts.attachments.single.fileName, 'photo.png');
+        expect(
+          tester
+              .widget<HandrailComposer>(find.byType(HandrailComposer))
+              .canSend,
+          isTrue,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets(
+    'standard binding captures durable origins and owns replay cleanup outside the view',
+    (tester) async {
+      final fixture = Fixture();
+      final saved = <String, Map<String, Object?>>{};
+      var revision = 0;
+      Future<void> Function(String, Map<String, Object?>)? reconcile;
+      Map<String, Object?>? origin;
+      final gate = Completer<void>();
+      fixture.state['draftStorage'] = <String, Object?>{
+        'read': (String id) async => saved[id],
+        'write': (String id, String text, String? version) async {
+          if (saved[id]?['version'] != version) throw StateError('conflict');
+          if (text.isEmpty) {
+            saved.remove(id);
+            return null;
+          }
+          return saved[id] = {'version': '${++revision}', 'text': text};
+        },
+      };
+      fixture.state['registerDraftReconciler'] =
+          (Future<void> Function(String, Map<String, Object?>) callback) {
+            reconcile = callback;
+            return () {
+              reconcile = null;
+            };
+          };
+      fixture.state['sendWithDraft'] =
+          ({
+            required String conversationId,
+            required Map<String, Object?> request,
+            required Map<String, Object?>? localDraft,
+            required VoidCallback onAccepted,
+          }) async {
+            origin = localDraft;
+            fixture.requests.add((id: conversationId, request: request));
+            await gate.future;
+            await reconcile!(conversationId, localDraft!);
+            onAccepted();
+            return true;
+          };
+      addTearDown(fixture.dispose);
+      await tester.pumpWidget(surface(fixture));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const ValueKey('draft')), 'sent');
+      final selected = HandrailAttachmentFile(
+        fileName: 'sent.png',
+        mediaType: 'image/png',
+        bytes: [1, 2, 3],
+      );
+      fixture.drafts.addPickedAttachments([selected]);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('send')));
+      await tester.pumpAndSettle();
+      expect(origin!['textVersion'], saved['one']!['version']);
+      expect(origin!['fileIds'] as List, hasLength(1));
+      expect(
+        jsonEncode(fixture.requests.single.request),
+        isNot(contains('localDraft')),
+      );
+      fixture.drafts.controller.text = 'newer';
+      fixture.drafts.removeAttachmentAt(0);
+      fixture.drafts.addAttachments([selected]);
+      await tester.pumpWidget(const SizedBox());
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(fixture.drafts.controller.text, 'newer');
+      expect(fixture.drafts.attachments, [selected]);
+      final flushing = fixture.drafts.flushDrafts();
+      await tester.pump();
+      await flushing;
+      expect(saved['one']!['text'], 'newer');
+      final replaying = reconcile!('one', origin!);
+      await tester.pump();
+      await replaying;
+      expect(saved['one']!['text'], 'newer');
+      expect(fixture.drafts.attachments, [selected]);
+      fixture.drafts.dispose();
+      await tester.pump();
+      await fixture.drafts.closed;
+      expect(reconcile, isNull);
+    },
+  );
+
+  testWidgets('capacity errors keep the editor usable and are announced', (
+    tester,
+  ) async {
+    final fixture = Fixture()..maximumRetainedDraftBytes = 6;
+    addTearDown(fixture.dispose);
+    await tester.pumpWidget(surface(fixture));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const ValueKey('draft')), 'ready');
+    await tester.enterText(find.byKey(const ValueKey('draft')), 'too much');
+    await tester.pumpAndSettle();
+    expect(fixture.drafts.controller.text, 'ready');
+    final warning = find.textContaining('device text limit');
+    expect(warning, findsOneWidget);
+    expect(
+      find.ancestor(
+        of: warning,
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Semantics && widget.properties.liveRegion == true,
+        ),
+      ),
+      findsWidgets,
+    );
+    await tester.enterText(find.byKey(const ValueKey('draft')), 'short');
+    await tester.pumpAndSettle();
+    expect(fixture.drafts.controller.text, 'short');
+    expect(warning, findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'standard composer restores encrypted-adapter text and presents save failure/retry without losing edits',
     (tester) async {

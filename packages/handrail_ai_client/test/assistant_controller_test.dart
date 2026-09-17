@@ -208,6 +208,77 @@ class Fixture {
 }
 
 void main() {
+  for (final recover in [false, true]) {
+    test(
+        'definite attachment rejection keeps drafts and unlocks correction; recovery=$recover',
+        () async {
+      final f = Fixture()..displayHistory = true;
+      final controller = f.controller(autoCreate: false);
+      addTearDown(controller.dispose);
+      addTearDown(f.client.close);
+      var admissions = 0, accepted = 0;
+      final bodies = <Object?>[];
+      f.before = (request, body) async {
+        if (body['operation'] == 'append_mutations') {
+          admissions++;
+          bodies.add(body['input']);
+          if (recover && admissions == 1)
+            return http.Response('lost response', 503);
+          return ok({
+            'status': 'rejected',
+            'code': 'attachment_expired',
+            'message':
+                'A file upload expired before the message was saved. Select the file again.'
+          });
+        }
+        return null;
+      };
+      await controller.openConversation('one');
+      final draft =
+          await f.pending.writeDraft('one', 'retain this draft', null);
+      final request = <String, Object?>{
+        'protocol_version': 'handrail.ai-runtime.v1',
+        'continuation_of': null,
+        'messages': [
+          {
+            'role': 'user',
+            'content': [
+              {'type': 'text', 'text': 'retain this draft'}
+            ]
+          }
+        ],
+        'tools': [],
+        'tool_results': [],
+        'generation': {'max_output_tokens': 100, 'temperature': 0},
+        'correlation_hints': {},
+      };
+      await expectLater(
+          controller.sendMessage(request, operationId: 'rejected',
+              onAccepted: (_) {
+            accepted++;
+          }),
+          throwsA(isA<HandrailGatewayException>()));
+      if (recover) {
+        expect(controller.hasPendingMessage, isTrue);
+        // Reopening performs durable retry just as a recreated client does.
+        await expectLater(
+            controller.openConversation('one'),
+            throwsA(isA<HandrailGatewayException>()
+                .having((error) => error.retryable, 'retryable', isFalse)));
+        expect(bodies[1], bodies[0]);
+      }
+      expect(admissions, recover ? 2 : 1);
+      expect(accepted, 0);
+      expect(await f.pending.load('one'), isNull);
+      expect(await f.pending.readDraft('one'), draft);
+      expect(controller.hasPendingMessage, isFalse);
+      expect(controller.canSend, isTrue);
+      expect(
+          f.requests
+              .where((request) => request.url.path.endsWith('/turns/start')),
+          isEmpty);
+    });
+  }
   test(
       'standard UI exposes account-owned draft persistence from the pending adapter',
       () async {

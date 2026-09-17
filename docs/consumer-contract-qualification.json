@@ -105,5 +105,69 @@
       "exitCode": 0,
       "milliseconds": 26230
     }
+  ],
+  "approvalReviewCompiles": [
+    {
+      "projectRoot": "/opt/handrail/repos/hitcents/hitcents-erp/hitcents-erp-mobile",
+      "roots": [
+        "lib/features/cents/cents_sdk.dart",
+        "lib/features/cents/cents_sheet.dart"
+      ],
+      "qualification": "local Flutter frontend source compile; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 8832
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/mills/mills-family-erp-v4/mills-family-erp-v4-mobile",
+      "roots": [
+        "lib/repositories/sdk_assistant_repository.dart",
+        "lib/screens/assistant_screen.dart"
+      ],
+      "qualification": "local Flutter frontend source compile; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 13306
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/spartan-cyber-services/spartan-cyber-erp-v3/scs-erp-mobile",
+      "roots": [
+        "lib/src/aegis/aegis_sdk_repository.dart",
+        "lib/src/aegis/aegis_conversation_screen.dart"
+      ],
+      "qualification": "local Flutter frontend source compile; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 15748
+    }
+  ],
+  "foundationFinalCompiles": [
+    {
+      "projectRoot": "/opt/handrail/repos/hitcents/hitcents-erp/hitcents-erp-mobile",
+      "roots": [
+        "lib/features/cents/cents_sdk.dart",
+        "lib/features/cents/cents_sheet.dart"
+      ],
+      "qualification": "local Flutter frontend source compile; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 9047
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/mills/mills-family-erp-v4/mills-family-erp-v4-mobile",
+      "roots": [
+        "lib/repositories/sdk_assistant_repository.dart",
+        "lib/screens/assistant_screen.dart"
+      ],
+      "qualification": "local Flutter frontend source compile; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 15298
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/spartan-cyber-services/spartan-cyber-erp-v3/scs-erp-mobile",
+      "roots": [
+        "lib/src/aegis/aegis_sdk_repository.dart",
+        "lib/src/aegis/aegis_conversation_screen.dart"
+      ],
+      "qualification": "local Flutter frontend source compile; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 12148
+    }
   ]
 }

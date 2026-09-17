@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'attachments.dart';
 import 'package:flutter/foundation.dart';
 import 'draft_controller.dart';
 import 'workspace_binding.dart';
+
+part 'composer_attachment_storage.dart';
 
 /// Account-scoped drafts and file selections, retained independently per chat.
 /// Hosts supply attachment validation/upload and the authenticated send adapter.
@@ -18,8 +21,44 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
     this.filePicker,
     this.readDraft,
     this.writeDraft,
+    this.attachmentStorage,
     this.onUploadReleased,
-  });
+    this.maximumRetainedAttachmentBytes = 64 * 1024 * 1024,
+    this.maximumRetainedAttachments = 64,
+    this.maximumConcurrentUploads = 2,
+    this.maximumRetainedDraftBytes = 512 * 1024,
+    this.maximumRetainedDrafts = 32,
+  }) {
+    if (maximumRetainedAttachmentBytes < 1 ||
+        maximumRetainedAttachments < 1 ||
+        maximumConcurrentUploads < 1 ||
+        maximumRetainedDraftBytes < 1 ||
+        maximumRetainedDrafts < 1) {
+      throw ArgumentError('Draft retention limits must be positive');
+    }
+    if (attachmentStorage != null &&
+        (fileForAttachment == null || attachmentForFile == null)) {
+      throw ArgumentError('Persistent files require immutable file adapters');
+    }
+  }
+
+  /// Account-wide retained selections, in addition to each message's negotiated
+  /// upload limits. Opaque host attachments require [fileForAttachment] for the
+  /// byte check; the count and upload-concurrency checks always apply.
+  final HandrailAttachmentDraftBinding? attachmentStorage;
+  final int maximumRetainedAttachmentBytes;
+  final int maximumRetainedAttachments;
+  final int maximumConcurrentUploads;
+
+  /// UTF-8 content limits across editors and still-running send/save callbacks.
+  /// Each editor also has the durable store's 64 KiB individual text limit.
+  final int maximumRetainedDraftBytes;
+  final int maximumRetainedDrafts;
+  final _submissionTexts = <Object, (HandrailDraftController, String)>{};
+  final _closingTexts = <HandrailDraftController, String>{};
+  int _activeUploads = 0;
+  final _operations = <List<_DraftFile<TAttachment>>>{};
+  final _transfers = <Object, _DraftFile<TAttachment>>{};
   final Future<Map<String, Object?>?> Function(String conversationId)?
   readDraft;
   final Future<Map<String, Object?>?> Function(
@@ -44,11 +83,27 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
   @override
   bool get attachmentsEnabled =>
       !_disposed &&
+      !restoringAttachments &&
+      attachmentStorageError == null &&
       _selectedId != null &&
       attachmentLimits != null &&
       uploaderForConversation?.call(_selectedId) != null &&
       fileForAttachment != null &&
       attachmentForFile != null;
+  bool get restoringAttachments =>
+      attachmentStorage != null &&
+      _selectedId != null &&
+      !_selected.filesLoaded &&
+      _selected.fileStorageError == null;
+  bool get savingAttachments => _selected.fileWriting != null;
+  String? get attachmentStorageError => _selected.fileStorageError;
+
+  /// Retry is version-checked and never overwrites an unknown saved revision.
+  Future<void> flushAttachmentDraft() => _flushFiles(_selected, retry: true);
+
+  /// Explicitly replace local selections with the current saved revision.
+  Future<void> reloadSavedAttachments() => _reloadFiles(_selected);
+
   @override
   bool get pickingAttachments => _selected.picking;
   @override
@@ -58,26 +113,46 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
   @override
   List<HandrailAttachmentSelection> get attachmentSelections => [
     if (fileForAttachment != null)
-      for (final file in _selected.files)
-        HandrailAttachmentSelection(
-          id: file,
-          filename: fileForAttachment!(file.value).displayName,
-          byteSize: fileForAttachment!(file.value).byteSize,
-          status: file.status,
-          error: file.error?.message,
-        ),
+      for (final file in _selected.files) _selection(file),
   ];
+  HandrailAttachmentFile _fileData(_DraftFile<TAttachment> file) =>
+      file.data ??= fileForAttachment!(file.value);
+  HandrailAttachmentSelection _selection(_DraftFile<TAttachment> file) {
+    final data = _fileData(file);
+    return HandrailAttachmentSelection(
+      id: file,
+      filename: data.displayName,
+      byteSize: data.byteSize,
+      status: file.status,
+      error: file.error?.message,
+    );
+  }
+
   final _drafts = <String?, _ConversationDraft<TAttachment>>{};
   final _closing = <String?, Future<void>>{};
   String? _selectedId;
   bool _disposed = false;
 
   String? get selectedId => _selectedId;
-  _ConversationDraft<TAttachment> get _selected =>
-      _drafts.putIfAbsent(_selectedId, () => _createDraft(_selectedId));
+  _ConversationDraft<TAttachment> get _selected {
+    final draft = _drafts.putIfAbsent(
+      _selectedId,
+      () => _createDraft(_selectedId),
+    );
+    if (!_disposed &&
+        !draft.filesLoaded &&
+        draft.fileLoading == null &&
+        draft.fileStorageError == null) {
+      unawaited(_restoreFiles(draft).catchError((Object _) {}));
+    }
+    return draft;
+  }
+
   _ConversationDraft<TAttachment> _createDraft(String? id) {
     final previous = _closing[id];
-    final controller = HandrailDraftController(
+    late final HandrailDraftController controller;
+    controller = HandrailDraftController(
+      validateDraft: (text) => _validateDraftText(controller, text),
       readDraft: id == null || readDraft == null
           ? null
           : () async {
@@ -89,22 +164,69 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
           : (text, version) => writeDraft!(id, text, version),
     );
     controller.addListener(_changed);
-    return _ConversationDraft<TAttachment>(controller);
+    return _ConversationDraft<TAttachment>(
+      controller,
+      id,
+      filesLoaded: attachmentStorage == null || id == null,
+      previousClosing: previous,
+    );
+  }
+
+  String? _validateDraftText(HandrailDraftController replacing, String text) {
+    if (text.length > 65536 || utf8.encode(text).length > 65536) {
+      return 'A draft can contain up to 64 KiB of text. Shorten this edit or attach a document.';
+    }
+    final retained = <(HandrailDraftController, String)>{
+      (replacing, text),
+      for (final draft in _drafts.values)
+        if (!identical(draft.controller, replacing))
+          (draft.controller, draft.controller.text),
+      ..._submissionTexts.values,
+      for (final entry in _closingTexts.entries) (entry.key, entry.value),
+      for (final controller in {
+        replacing,
+        ..._drafts.values.map((draft) => draft.controller),
+        ..._closingTexts.keys,
+      })
+        if (controller.persistingDraftText case final writing?)
+          (controller, writing),
+    };
+    var count = 0, bytes = 0;
+    for (final (_, value) in retained) {
+      if (value.isEmpty) continue;
+      count++;
+      // Stop on count before encoding exceptional numbers of protected entries.
+      if (count > maximumRetainedDrafts) break;
+      bytes += utf8.encode(value).length;
+      if (bytes > maximumRetainedDraftBytes) break;
+    }
+    if (count > maximumRetainedDrafts || bytes > maximumRetainedDraftBytes) {
+      return 'Drafts and active sends have reached the device text limit. Finish a send or clear another draft before adding more text.';
+    }
+    return null;
   }
 
   void _closeDraft(
     String? id,
     _ConversationDraft<TAttachment> draft, {
     bool discard = false,
+    bool deleted = false,
   }) {
     draft.controller.removeListener(_changed);
     _releaseDraft(draft);
+    draft.filesDeleted = deleted;
+    final closingFiles = _closeFiles(draft, discard: discard);
     if (discard) draft.controller.reset();
+    _closingTexts[draft.controller] = draft.controller.text;
     draft.controller.dispose();
-    final closing = draft.controller.closed;
+    final closing = Future.wait([
+      draft.controller.closed,
+      closingFiles,
+    ]).then((_) {});
     _closing[id] = closing;
     unawaited(
       closing.whenComplete(() {
+        _closingTexts.remove(draft.controller);
         if (identical(_closing[id], closing)) _closing.remove(id);
       }),
     );
@@ -115,7 +237,15 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
   Future<void> get closed => Future.wait(_closing.values).then((_) {});
   Future<void> flushDrafts() async {
     await Future.wait(
-      _drafts.values.map((draft) => draft.controller.flushDraft()),
+      _drafts.values.expand(
+        (draft) => [
+          draft.controller.flushDraft(),
+          if (draft.filesLoaded ||
+              draft.fileLoading != null ||
+              draft.fileEdit != draft.fileSavedEdit)
+            _flushFiles(draft, retry: true),
+        ],
+      ),
     );
     await closed;
   }
@@ -147,10 +277,13 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
         !_drafts.containsKey(conversationId)) {
       final initial = _drafts.remove(null);
       if (initial != null) {
-        if (readDraft != null && writeDraft != null) {
+        if (readDraft != null && writeDraft != null ||
+            attachmentStorage != null) {
           final assigned = _createDraft(conversationId);
           assigned.controller.reset(text: initial.controller.text);
           assigned.files.addAll(initial.files);
+          if (attachmentStorage != null && initial.files.isNotEmpty)
+            assigned.fileEdit++;
           initial.files.clear();
           _closeDraft(null, initial);
           _drafts[conversationId] = assigned;
@@ -160,20 +293,30 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
       }
     }
     _selectedId = conversationId;
-    _drafts.putIfAbsent(conversationId, () => _createDraft(conversationId));
+    final selected = _drafts.putIfAbsent(
+      conversationId,
+      () => _createDraft(conversationId),
+    );
+    unawaited(_restoreFiles(selected).catchError((Object _) {}));
     _trimDrafts();
     _changed();
   }
 
-  void discard(String? conversationId) {
+  void discard(String? conversationId, {bool permanentlyDeleted = false}) {
     if (_disposed) return;
     final draft =
         _drafts.remove(conversationId) ??
-        (conversationId != null && readDraft != null
+        (conversationId != null &&
+                (readDraft != null || attachmentStorage != null)
             ? _createDraft(conversationId)
             : null);
     if (draft != null) {
-      _closeDraft(conversationId, draft, discard: true);
+      _closeDraft(
+        conversationId,
+        draft,
+        discard: true,
+        deleted: permanentlyDeleted,
+      );
     }
     _changed();
   }
@@ -190,19 +333,62 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
 
   void addAttachments(Iterable<TAttachment> values) {
     if (_disposed) return;
+    if (restoringAttachments || attachmentStorageError != null) {
+      throw StateError(
+        'Restore or retry saved files before adding a selection',
+      );
+    }
     final selected = values.toList();
+    final additions = selected
+        .map((value) => _DraftFile<TAttachment>(value))
+        .toList();
+    _validateRetainedAttachments(_selected, [..._selected.files, ...additions]);
     if (fileForAttachment != null)
       attachmentLimits?.validate(
-        [...attachments, ...selected].map(fileForAttachment!),
+        [..._selected.files, ...additions].map(_fileData),
       );
-    _selected.files.addAll(selected.map(_DraftFile.new));
+    _selected.files.addAll(additions);
+    _filesChanged(_selected);
     _selected.attachmentError = null;
     _changed();
   }
 
+  void _validateRetainedAttachments(
+    _ConversationDraft<TAttachment> replacing,
+    List<_DraftFile<TAttachment>> files,
+  ) {
+    // Pending acceptance can still retain a removed selection. Do not hide those
+    // bytes/counts from the budget or clear an ambiguous submission to make room.
+    final retained = <_DraftFile<TAttachment>>{
+      ..._transfers.values,
+      for (final operation in _operations) ...operation,
+      for (final draft in _drafts.values) ...{
+        ...(identical(draft, replacing) ? files : draft.files),
+        ...?draft.pendingFiles,
+      },
+    };
+    if (retained.length > maximumRetainedAttachments) {
+      throw const HandrailAttachmentException('draft_attachment_capacity');
+    }
+    var bytes = 0;
+    if (fileForAttachment != null) {
+      for (final file in retained) {
+        bytes += _fileData(file).byteSize;
+        if (bytes > maximumRetainedAttachmentBytes) {
+          throw const HandrailAttachmentException('draft_attachment_capacity');
+        }
+      }
+    }
+  }
+
   void removeAttachmentAt(int index) {
-    if (_disposed || index < 0 || index >= _selected.files.length) return;
+    if (_disposed ||
+        _selected.fileLoading != null ||
+        index < 0 ||
+        index >= _selected.files.length)
+      return;
     _releaseFile(_selected.files.removeAt(index));
+    _filesChanged(_selected);
     _selected.attachmentError = null;
     _changed();
   }
@@ -258,6 +444,7 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
   }
 
   void _cancelDraft(_ConversationDraft<TAttachment> draft) {
+    draft.uploadEpoch++;
     for (final file in {...draft.files, ...?draft.pendingFiles}) {
       file.cancel();
     }
@@ -289,6 +476,9 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
     void Function(double)? onProgress,
   }) async {
     if (_disposed) throw const HandrailAttachmentException('cancelled');
+    if (restoringAttachments || attachmentStorageError != null) {
+      throw StateError('Restore or retry saved files before uploading');
+    }
     final draft = _selected;
     if (draft.uploading || draft.controller.isSubmitting) {
       throw const HandrailAttachmentException('upload_in_progress');
@@ -301,12 +491,18 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
       );
       selected.add(index < 0 ? _DraftFile(value) : remaining.removeAt(index));
     }
+    _validateRetainedAttachments(draft, selected);
+    if (fileForAttachment != null) {
+      attachmentLimits?.validate(selected.map(_fileData));
+    }
     for (final file in remaining) {
       _releaseFile(file);
     }
+    final changed = !listEquals(draft.files, selected);
     draft.files
       ..clear()
       ..addAll(selected);
+    if (changed) _filesChanged(draft);
     return _upload(
       draft,
       selected,
@@ -319,21 +515,52 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
   /// Retains each upload identity/reference until durable message admission.
   /// Text and approval/route metadata may be captured by the host at activation.
   Future<TResult?> submitWithAttachments<TResult>(
+    Future<TResult> Function(String, List<Map<String, Object?>>, VoidCallback)
+    send,
+  ) => _submitWithAttachments(
+    (text, files, accepted, _) => send(text, files, accepted),
+    captureOrigin: false,
+  );
+
+  /// Standard account binding uses this receipt-aware send path. Legacy host
+  /// callbacks keep their signature and must opt in explicitly for recovery.
+  Future<TResult?> submitWithAttachmentsAndOrigin<TResult>(
     Future<TResult> Function(
-      String text,
-      List<Map<String, Object?>> references,
-      VoidCallback accepted,
+      String,
+      List<Map<String, Object?>>,
+      VoidCallback,
+      Map<String, Object?>?,
     )
     send,
-  ) async {
-    if (_disposed || isSubmitting || pickingAttachments) return null;
+  ) => _submitWithAttachments(send, captureOrigin: true);
+
+  Future<TResult?> _submitWithAttachments<TResult>(
+    Future<TResult> Function(
+      String,
+      List<Map<String, Object?>>,
+      VoidCallback,
+      Map<String, Object?>?,
+    )
+    send, {
+    required bool captureOrigin,
+  }) async {
+    if (_disposed ||
+        isSubmitting ||
+        pickingAttachments ||
+        restoringAttachments ||
+        attachmentStorageError != null)
+      return null;
     final draft = _selected;
+    final edit = draft.controller.draftEdit;
     final files = draft.pendingFiles = List.of(draft.files);
     final upload = uploaderForConversation?.call(_selectedId);
     final limits = attachmentLimits;
     return _run(
       draft,
       (token) => draft.controller.submit((text, accepted) async {
+        final version = captureOrigin
+            ? await draft.controller.captureVersion(edit)
+            : null;
         final references = await _upload(draft, files, upload, limits);
         if (_disposed || !_drafts.containsValue(draft))
           throw const HandrailAttachmentException('cancelled');
@@ -341,6 +568,16 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
           text,
           references,
           () => _acceptFiles(draft, files, token, accepted),
+          captureOrigin && (version != null || files.isNotEmpty)
+              ? {
+                  'version': 1,
+                  if (version != null) 'textVersion': version,
+                  if (files.isNotEmpty)
+                    'fileIds': files
+                        .map((file) => file.uploadKey)
+                        .toList(growable: false),
+                }
+              : null,
         );
       }),
     );
@@ -354,35 +591,55 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
     void Function(double)? onProgress,
   }) async {
     if (files.isEmpty) return const [];
+    _operations.add(files);
+    final uploadEpoch = draft.uploadEpoch;
     draft.uploading = true;
     draft.attachmentError = null;
     _changed();
     try {
       if (upload == null || limits == null || fileForAttachment == null)
         throw const HandrailAttachmentException('unsupported_file');
-      limits.validate(files.map((file) => fileForAttachment!(file.value)));
+      limits.validate(files.map(_fileData));
+      // Persist sources and upload identities before any network side effect.
+      if (attachmentStorage != null) await _flushFiles(draft);
       final references = <Map<String, Object?>>[];
       for (final file in files) {
         if (_disposed ||
+            draft.uploadEpoch != uploadEpoch ||
             !_drafts.containsValue(draft) ||
             !draft.files.contains(file))
           throw const HandrailAttachmentException('cancelled');
         if (file.reference == null) {
           if (file.error != null && !file.retryable) throw file.error!;
-          final data = fileForAttachment!(file.value);
+          if (_activeUploads >= maximumConcurrentUploads) {
+            throw const HandrailAttachmentException('upload_capacity');
+          }
+          final data = _fileData(file);
           final abort = file.abort = Completer<void>();
           file.status = HandrailAttachmentStatus.uploading;
           file.error = null;
           _changed();
           try {
+            // Keep the slot until the host upload actually settles. Cancelling
+            // observation must not admit unlimited detached byte transfers.
+            _activeUploads++;
+            final transferKey = Object();
+            _transfers[transferKey] = file;
+            final transfer =
+                Future.sync(
+                  () => upload(
+                    bytes: data.bytes,
+                    filename: data.displayName,
+                    mediaType: data.mediaType,
+                    idempotencyKey: file.uploadKey,
+                    cancellation: abort.future,
+                  ),
+                ).whenComplete(() {
+                  _activeUploads--;
+                  _transfers.remove(transferKey);
+                });
             final result = await Future.any([
-              upload(
-                bytes: data.bytes,
-                filename: data.displayName,
-                mediaType: data.mediaType,
-                idempotencyKey: file.uploadKey,
-                cancellation: abort.future,
-              ),
+              transfer,
               abort.future.then<
                 ({
                   Map<String, Object?>? reference,
@@ -414,6 +671,8 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
             }
             file.reference = Map.unmodifiable(value);
             file.status = HandrailAttachmentStatus.ready;
+            _filesChanged(draft);
+            if (attachmentStorage != null) await _flushFiles(draft);
           } catch (error) {
             file.error = _safeAttachmentError(error);
             if (file.error!.code == 'cancelled') file.retryable = true;
@@ -424,6 +683,9 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
             _changed();
           }
         }
+        if (draft.uploadEpoch != uploadEpoch) {
+          throw const HandrailAttachmentException('cancelled');
+        }
         references.add(file.reference!);
         onProgress?.call(references.length / files.length);
       }
@@ -433,6 +695,7 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
       draft.attachmentError = failure.message;
       throw failure;
     } finally {
+      _operations.remove(files);
       draft.uploading = false;
       _changed();
     }
@@ -475,6 +738,30 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
     );
   }
 
+  /// Account-owned recovery never adopts the visible chat or matches content.
+  Future<void> reconcileAcceptedDraft(
+    String id,
+    Map<String, Object?> origin,
+  ) async {
+    if (_disposed) throw StateError('Draft owner is closed');
+    final draft = _drafts.putIfAbsent(id, () => _createDraft(id));
+    draft.recovering++;
+    try {
+      if (origin['textVersion'] case final String version) {
+        await draft.controller.reconcileAcceptedVersion(version);
+      }
+      if (_disposed || !_drafts.containsValue(draft))
+        throw StateError('Draft owner is closed');
+      final ids = (origin['fileIds'] as List? ?? const [])
+          .cast<String>()
+          .toSet();
+      await _reconcileFiles(draft, ids);
+    } finally {
+      draft.recovering--;
+      _changed();
+    }
+  }
+
   /// Bind to a shared client controller's beforePendingRecovery hook. This does
   /// not select the recovering conversation or adopt the currently visible draft.
   VoidCallback capturePendingAcceptance(String conversationId) {
@@ -496,6 +783,7 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
         draft.files.removeWhere(files.contains);
       }
       draft.attachmentError = null;
+      _filesChanged(draft);
       _changed();
     };
   }
@@ -505,9 +793,16 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
     Future<TResult?> Function(Object token) operation,
   ) async {
     final token = draft.activeSubmission = Object();
+    _submissionTexts[token] = (draft.controller, draft.controller.text);
+    final files = List<_DraftFile<TAttachment>>.of(
+      draft.pendingFiles ?? draft.files,
+    );
+    _operations.add(files);
     try {
       return await operation(token);
     } finally {
+      _operations.remove(files);
+      _submissionTexts.remove(token);
       if (identical(draft.activeSubmission, token))
         draft.activeSubmission = null;
     }
@@ -532,6 +827,7 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
         _releaseFile(file);
       }
       draft.files.removeWhere(files.contains);
+      _filesChanged(draft);
       draft.attachmentError = null;
       _changed();
     }
@@ -552,12 +848,17 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
       final draft = entry.value;
       if (entry.key == _selectedId ||
           draft.picking ||
+          draft.recovering > 0 ||
+          draft.fileLoading != null ||
+          draft.fileWriting != null ||
+          draft.fileStorageError != null ||
+          draft.fileEdit != draft.fileSavedEdit ||
           draft.uploading ||
           draft.controller.isSubmitting ||
           draft.controller.hasPendingSubmission ||
           draft.files.isNotEmpty ||
           draft.pendingFiles != null ||
-          !draft.controller.draftIsDurable)
+          draft.hasDraft && !draft.controller.draftIsDurable)
         continue;
       _drafts.remove(entry.key);
       _closeDraft(entry.key, draft);
@@ -577,21 +878,38 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
 }
 
 class _ConversationDraft<T> {
-  _ConversationDraft(this.controller);
+  _ConversationDraft(
+    this.controller,
+    this.id, {
+    required this.filesLoaded,
+    this.previousClosing,
+  });
+  final Future<void>? previousClosing;
+  final String? id;
+  bool filesLoaded, filesDeleted = false, fileReloadRequested = false;
+  String? fileVersion, fileStorageError;
+  int fileEdit = 0, fileSavedEdit = 0;
+  Future<void>? fileLoading, fileWriting, fileTask;
   final HandrailDraftController controller;
   final files = <_DraftFile<T>>[];
   List<_DraftFile<T>>? pendingFiles;
   Object? activeSubmission;
   bool picking = false, uploading = false;
+  int recovering = 0, uploadEpoch = 0;
   String? attachmentError;
   bool get hasDraft => controller.text.isNotEmpty || files.isNotEmpty;
 }
 
 class _DraftFile<T> {
-  _DraftFile(this.value);
+  _DraftFile(this.value, {String? uploadKey})
+    : uploadKey =
+          uploadKey ??
+          'upload-${List.generate(16, (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0')).join()}';
   final T value;
-  final String uploadKey =
-      'upload-${List.generate(16, (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0')).join()}';
+  HandrailAttachmentFile? data;
+  final String uploadKey;
+  String? sha256;
+  bool persisted = false;
   Map<String, Object?>? reference;
   HandrailAttachmentStatus status = HandrailAttachmentStatus.selected;
   HandrailAttachmentException? error;
@@ -632,7 +950,13 @@ class HandrailComposerController
     super.filePicker,
     super.readDraft,
     super.writeDraft,
+    super.attachmentStorage,
     super.onUploadReleased,
+    super.maximumRetainedAttachmentBytes,
+    super.maximumRetainedAttachments,
+    super.maximumConcurrentUploads,
+    super.maximumRetainedDraftBytes,
+    super.maximumRetainedDrafts,
   }) : super(
          fileForAttachment: (file) => file,
          attachmentForFile: (file) => file,
@@ -644,12 +968,44 @@ class HandrailComposerController
     HandrailWorkspaceBinding binding, {
     HandrailAttachmentLimits? attachmentLimits,
     HandrailAttachmentProvider? attachmentProvider,
+    int maximumRetainedAttachmentBytes = 64 * 1024 * 1024,
+    int maximumRetainedAttachments = 64,
+    int maximumConcurrentUploads = 2,
+    int maximumRetainedDraftBytes = 512 * 1024,
+    int maximumRetainedDrafts = 32,
     void Function(String idempotencyKey)? onUploadReleased,
     Future<List<HandrailAttachmentFile>> Function(HandrailAttachmentLimits)?
     filePicker,
   }) {
     final storage = binding.read()['draftStorage'] as Map<String, Object?>?;
+    final fileStorage =
+        binding.read()['attachmentDraftStorage'] as Map<String, Object?>?;
     final drafts = HandrailComposerController(
+      attachmentStorage: fileStorage == null
+          ? null
+          : (
+              read:
+                  fileStorage['read']
+                      as Future<Map<String, Object?>?> Function(String),
+              write:
+                  fileStorage['write']
+                      as Future<Map<String, Object?>?> Function(
+                        String,
+                        List<Map<String, Object?>>,
+                        String?,
+                      ),
+              discardAccepted:
+                  fileStorage['discardAccepted']
+                      as Future<Map<String, Object?>> Function(
+                        String,
+                        List<String>,
+                      ),
+            ),
+      maximumRetainedAttachmentBytes: maximumRetainedAttachmentBytes,
+      maximumRetainedAttachments: maximumRetainedAttachments,
+      maximumConcurrentUploads: maximumConcurrentUploads,
+      maximumRetainedDraftBytes: maximumRetainedDraftBytes,
+      maximumRetainedDrafts: maximumRetainedDrafts,
       readDraft:
           storage?['read'] as Future<Map<String, Object?>?> Function(String)?,
       writeDraft:
@@ -682,13 +1038,21 @@ class HandrailComposerController
         }
       },
     );
+    final register =
+        binding.read()['registerDraftReconciler']
+            as void Function() Function(
+              Future<void> Function(String, Map<String, Object?>),
+            )?;
+    drafts._unregisterDraftReconciler = register?.call(
+      drafts.reconcileAcceptedDraft,
+    );
     final removed = <String>{};
     void select() {
       final state = binding.read();
       for (final id
           in (state['deletedConversationIds'] as List? ?? const [])
               .cast<String>()) {
-        if (removed.add(id)) drafts.discard(id);
+        if (removed.add(id)) drafts.discard(id, permanentlyDeleted: true);
       }
       drafts.select(
         state['conversationId'] as String?,
@@ -702,8 +1066,11 @@ class HandrailComposerController
   }
 
   StreamSubscription<Object?>? _assistantSubscription;
+  void Function()? _unregisterDraftReconciler;
   @override
   void dispose() {
+    _unregisterDraftReconciler?.call();
+    _unregisterDraftReconciler = null;
     unawaited(_assistantSubscription?.cancel());
     _assistantSubscription = null;
     super.dispose();

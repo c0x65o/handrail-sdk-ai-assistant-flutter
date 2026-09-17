@@ -6,16 +6,27 @@ class HandrailDisplayHistoryCapability {
   final int maximumPageBytes;
   final bool control;
   final bool messageText;
+  final bool recordText;
+  final bool approvalReview;
   final bool pendingApprovals;
-  const HandrailDisplayHistoryCapability._(this.maximumPageSize,
-      this.maximumPageBytes, this.control, this.messageText, this.pendingApprovals);
+  const HandrailDisplayHistoryCapability._(
+      this.maximumPageSize,
+      this.maximumPageBytes,
+      this.control,
+      this.messageText,
+      this.pendingApprovals,
+      this.recordText,
+      this.approvalReview);
   factory HandrailDisplayHistoryCapability.fromJson(
       Map<String, Object?> value) {
     final size = value['maximumPageSize'], bytes = value['maximumPageBytes'];
     if (value['version'] != 1 ||
         value['control'] != null && value['control'] is! bool ||
         value['messageText'] != null && value['messageText'] is! bool ||
-        value['pendingApprovals'] != null && value['pendingApprovals'] is! bool ||
+        value['recordText'] != null && value['recordText'] is! bool ||
+        value['approvalReview'] != null && value['approvalReview'] is! bool ||
+        value['pendingApprovals'] != null &&
+            value['pendingApprovals'] is! bool ||
         size is! int ||
         size < 1 ||
         size > 50 ||
@@ -25,7 +36,13 @@ class HandrailDisplayHistoryCapability {
       throw const FormatException('Invalid display history capability.');
     }
     return HandrailDisplayHistoryCapability._(
-        size, bytes, value['control'] == true, value['messageText'] == true, value['pendingApprovals'] == true);
+        size,
+        bytes,
+        value['control'] == true,
+        value['messageText'] == true,
+        value['pendingApprovals'] == true,
+        value['recordText'] == true,
+        value['approvalReview'] == true);
   }
 }
 
@@ -327,12 +344,14 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
       int? revision,
       int offset = 0,
       bool messageText = false,
+      bool recordText = false,
       Future<void>? cancellation,
       Duration timeout = const Duration(seconds: 30)}) async {
     if (!_historyId(conversationId) ||
         !_historyId(id) ||
         !HandrailDisplayRecord.kinds.contains(kind) ||
         messageText && kind != 'message' ||
+        messageText && recordText ||
         generation < 0 ||
         offset < 0 ||
         offset > 2147483646 ||
@@ -348,17 +367,20 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
           'id': id,
           'offset': offset,
           if (messageText) 'format': 'message-text',
+          if (recordText) 'format': 'record-text',
           if (revision != null) 'revision': revision,
         },
         65536,
         cancellation,
         timeout));
-    if (chunk.encoding != (messageText ? 'plain-text' : 'json-text') ||
+    if (chunk.encoding !=
+            (messageText || recordText ? 'plain-text' : 'json-text') ||
         revision != null && chunk.revision != revision ||
         chunk.nextOffset != null &&
             (chunk.text.isEmpty ||
                 chunk.nextOffset != offset + chunk.text.runes.length ||
-                messageText && chunk.text.runes.length != 8192)) {
+                (messageText || recordText) &&
+                    chunk.text.runes.length != 8192)) {
       throw const FormatException(
           'Display history content changed while reading.');
     }
@@ -373,7 +395,9 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
       Duration timeout) async {
     if (timeout <= Duration.zero)
       throw ArgumentError('A positive history timeout is required.');
-    final body = jsonEncode({'operation': operation, 'input': input});
+    final decision = operation == 'approval_decision';
+    final body =
+        jsonEncode(decision ? input : {'operation': operation, 'input': input});
     if (utf8.encode(body).length > 8192)
       throw ArgumentError('Display history request is too large.');
     final abort = Completer<void>();
@@ -399,7 +423,10 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
       final headers = await cancellable(_headers());
       if (abort.isCompleted) throw cancelled();
       final request = http.AbortableRequest(
-          'POST', _uri('/conversations/history'),
+          'POST',
+          _uri(decision
+              ? '/approvals/transition-display'
+              : '/conversations/history'),
           abortTrigger: abort.future)
         ..followRedirects = false
         ..headers.addAll(headers)

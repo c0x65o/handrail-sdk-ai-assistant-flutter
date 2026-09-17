@@ -355,3 +355,112 @@ small displays and replaces pages rather than appending all pending actions.
 Oversized deferred proposal/tool details remain unavailable for confirmation;
 a full structured deferred-review reader is still required before that case is
 considered complete. No dependency pins or production deployments were changed.
+
+## Large structured record sections
+
+When `displayHistory.recordText` is advertised, `displayHistoryContent` accepts
+`recordText: true` for tools, approvals, citation sources and other display record
+kinds. The returned plain text is formatted record JSON, limited to 8,192 Unicode
+code points and pinned to its record revision/generation. Keep only one section;
+never concatenate it into transcript or provider history. Do not combine this
+option with `messageText: true`.
+
+The display window exposes a `readRecordText` callback through its structural
+binding. `HandrailDeferredRecords` is exported for custom hosts; the standard
+transcript uses it for deferred related records. It cancels reads on replacement,
+selection changes and disposal, rejects late results, and provides explicit
+previous/next, retry, close and changed-record reload actions. No contents load
+before the user opens the reader. Hosts need the negotiated server capability;
+older servers preserve the existing fallback.
+
+This is an inspection surface. It does not make an oversized approval eligible
+for confirmation. The bound approval reviewer must still establish complete
+review of its exact proposal version and argument reference. That bounded review
+protocol remains separate work. Changes are local and require later authorized
+public full-SHA SDK adoption with matching locks.
+
+
+## Bounded verified approval review
+
+Negotiate `displayHistory.approvalReview: true` separately from `recordText`.
+`POST /conversations/history` with operation `approval_review` accepts
+`{ conversationId, generation, proposalId, offset?, binding? }`. The first request
+uses offset zero and no binding. Later requests, including navigation backwards,
+include the first response's binding. A ready response contains at most 8,192
+Unicode code points of formatted, literal argument text, a next offset, the exact
+proposal version, argument reference, and immutable proposal binding. It never
+returns a checkpoint, event slice, attachment bytes or the entire tool record.
+The client enforces a 65,536-byte response ceiling independently of the text
+limit. Only the current section is retained and rendered.
+
+The server verifies opaque arguments against the materialized tool argument hash,
+turn, tool name and call identity. Redacted reviews expose only the exact redacted
+proposal view. The display binding includes tenant/account scope, clear generation,
+proposal revision and relevant tool revision. Changed bindings fail closed; account
+replacement, selection changes and disposal cancel held reads. `preparing` means
+that bounded background projection/summary work must finish before review.
+
+`POST /approvals/transition-display` accepts the existing versioned decision and
+idempotency fields plus `conversationId` and `proposalBinding`. Authorization is
+still the `approvals` action. It verifies the proposal binding before the existing
+store transition and returns a compact receipt containing schema version,
+conversation/proposal IDs, resulting proposal version/status and the original
+proposal binding. The client limits this response to 8,192 bytes. Replaying the
+same decision can recover its original receipt after execution advances; display
+pagination never substitutes for server authorization or model context.
+
+The JavaScript standard pending inbox uses `ConversationPagedApprovalReview` and the
+account-owned session reader. The headless `ConversationApprovalReview` controller
+tracks a contiguous review watermark and one immutable decision intent. Confirmation
+requires reaching every section and explicitly acknowledging review, then rechecks
+the pinned binding immediately before dispatch. Rejection is available after the
+initial verified section. Uncertain responses retry the original idempotent intent,
+without first requiring an already-decided proposal to remain pending. Rendering
+literal text prevents partial JSON or HTML from becoming executable content.
+
+The standard Flutter pending inbox uses the same section protocol and acknowledgement
+controls. It persists only decision identity/hashes through the existing account
+approval store before sending, and resumes compact receipts after process restart.
+Custom domain review loaders or permission predicates retain their existing review
+path; the generic section UI does not replace those policies. Custom Flutter hosts
+must place `HandrailPendingApprovalInbox` using `controller.approvals.uiBinding`.
+
+The additive `handrail_ai_display_missing_review_control` index tracks missing
+materialized tool/proposal summaries. Existing histories gain summaries through
+authorization-scoped background work, one entity per step by default, under the
+canonical append lock and existing bounded maintenance scheduler. Clear/deletion
+fences still apply. New projections write summaries during canonical updates.
+No summary backfill runs on list requests. This local goal has not applied a
+production migration. Install the schema with the authorized SDK adoption process.
+
+The explicit content read formats/slices one selected argument inside PostgreSQL;
+work for that individual oversized argument can still scale with its size. It does
+not scan other messages or ship the full argument to the client. Custom non-hash
+opaque review references require their authorized domain resolver; the standard
+reader does not treat an unverifiable reference as consent.
+
+Local evidence for the section reader, compact receipts, restart recovery and
+three mobile consumer compiles is recorded in `approval-review-qualification.json`.
+
+
+### Definitive admission rejection and correction
+
+A synchronization response with `status: rejected` certifies that the proposed
+message was not admitted (for example, an unsent upload expired). The account
+session releases only that exact pending-send journal, keeps the editable draft
+and selected files, and reports a nonretryable correction message. The user can
+replace/remove the file and send a new intent. No accepted callback or provider
+start runs for the rejected admission. Rejection is distinct from a lost response,
+which retains the original intent for idempotent retry. If removing the local
+journal fails, it remains recoverable under the same identity; neither path
+clears a newer draft. The server's rejection remains authoritative on replay.
+
+
+## Final local regression qualification
+
+The complete client suite passes 226 tests and the widget suite passes 220 tests,
+including real local JavaScript gateway/SQL integration, approval restart, voice,
+attachments, drafts, responsive layouts and stale account/selection handling. Full
+Dart/Flutter analysis and all three mobile source compiles pass. See
+`chatbot-foundation-final-qualification.json`. Published-pin installation, native
+device performance and production deployment remain later adoption checks.

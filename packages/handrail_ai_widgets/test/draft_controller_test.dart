@@ -4,6 +4,136 @@ import 'package:handrail_ai_widgets/handrail_ai_widgets.dart';
 
 void main() {
   test(
+    'replayed origin removes only its exact saved revision after recreation',
+    () async {
+      Map<String, Object?>? saved;
+      var sequence = 0;
+      HandrailDraftController owner() => HandrailDraftController(
+        readDraft: () async => saved,
+        writeDraft: (text, version) async {
+          if (version != saved?['version']) throw StateError('conflict');
+          return saved = text.isEmpty
+              ? null
+              : {'version': '${++sequence}', 'text': text};
+        },
+      );
+      final first = owner();
+      await first.flushDraft();
+      first.text = 'sent';
+      final version = (await first.captureVersion(first.draftEdit))!;
+      first.dispose();
+      await first.closed;
+      final next = owner();
+      addTearDown(() async {
+        next.dispose();
+        await next.closed;
+      });
+      await next.flushDraft();
+      await next.reconcileAcceptedVersion(version);
+      expect(saved, isNull);
+      expect(next.text, isEmpty);
+      next.text = 'sent';
+      await next.flushDraft();
+      await next.reconcileAcceptedVersion(version);
+      expect(saved!['text'], 'sent');
+      expect(next.text, 'sent');
+      expect(saved!['version'], isNot(version));
+    },
+  );
+
+  test(
+    'origin capture does not identify a newer edit written while it waits',
+    () async {
+      final entered = Completer<void>(), release = Completer<void>();
+      var writes = 0;
+      final draft = HandrailDraftController(
+        readDraft: () async => null,
+        writeDraft: (text, version) async {
+          if (writes++ == 0) {
+            entered.complete();
+            await release.future;
+          }
+          return {'version': '$writes', 'text': text};
+        },
+      );
+      addTearDown(() async {
+        draft.dispose();
+        await draft.closed;
+      });
+      await draft.flushDraft();
+      draft.text = 'same';
+      final captured = draft.captureVersion(draft.draftEdit);
+      await entered.future;
+      draft.text = 'other';
+      draft.text = 'same';
+      release.complete();
+      expect(await captured, isNull);
+      expect(draft.text, 'same');
+    },
+  );
+
+  test(
+    'typing during cleanup survives immediate owner disposal and flush',
+    () async {
+      Map<String, Object?>? saved = {'version': 'sent-v', 'text': 'sent'};
+      final entered = Completer<void>(), release = Completer<void>();
+      final draft = HandrailDraftController(
+        readDraft: () async => saved,
+        writeDraft: (text, version) async {
+          if (text.isEmpty) {
+            entered.complete();
+            await release.future;
+          }
+          if (version != saved?['version']) throw StateError('conflict');
+          return saved = text.isEmpty
+              ? null
+              : {'version': 'next-v', 'text': text};
+        },
+      );
+      await draft.flushDraft();
+      final cleaning = draft.reconcileAcceptedVersion('sent-v');
+      await entered.future;
+      draft.text = 'new';
+      draft.dispose();
+      release.complete();
+      await cleaning;
+      await draft.closed;
+      expect(saved, {'version': 'next-v', 'text': 'new'});
+    },
+  );
+
+  test(
+    'cleanup preserves another writer without rebasing over unseen text',
+    () async {
+      Map<String, Object?>? saved = {'version': 'sent-v', 'text': 'sent'};
+      final draft = HandrailDraftController(
+        readDraft: () async => saved,
+        writeDraft: (text, version) async {
+          if (version != saved?['version']) throw StateError('conflict');
+          return saved = text.isEmpty
+              ? null
+              : {'version': 'write-v', 'text': text};
+        },
+      );
+      addTearDown(() async {
+        draft.dispose();
+        await draft.closed;
+      });
+      await draft.flushDraft();
+      saved = {'version': 'new-v', 'text': 'remote'};
+      await draft.reconcileAcceptedVersion('sent-v');
+      expect(draft.text, isEmpty);
+      expect(saved!['text'], 'remote');
+      expect(draft.draftStorageError, contains('another view'));
+      draft.text = 'local';
+      await expectLater(draft.flushDraft(), throwsStateError);
+      expect(saved!['text'], 'remote');
+      await draft.reloadSavedDraft();
+      expect(draft.text, 'remote');
+    },
+  );
+
+  test(
     'typing during restoration wins and admission preserves later edits',
     () async {
       final reading = Completer<Map<String, Object?>?>();

@@ -12,6 +12,7 @@ part 'src/session.dart';
 part 'src/assistant_controller.dart';
 part 'src/conversation_deletion.dart';
 part 'src/approval_decisions.dart';
+part 'src/approval_display_review.dart';
 part 'src/assistant_ui.dart';
 part 'src/submission.dart';
 part 'src/protected_http.dart';
@@ -27,6 +28,7 @@ part 'src/display_control.dart';
 part 'src/display_session.dart';
 part 'src/display_positions.dart';
 part 'src/conversation_drafts.dart';
+part 'src/attachment_drafts.dart';
 part 'src/display_window.dart';
 
 const applicationGatewayProtocolVersion = 'handrail.application-gateway.v1';
