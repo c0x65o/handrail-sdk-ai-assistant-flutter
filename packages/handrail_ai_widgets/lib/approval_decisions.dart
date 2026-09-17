@@ -16,8 +16,10 @@ typedef HandrailApprovalBinding = ({
 /// renderer may format validated arguments, but cannot grant approval permission.
 class HandrailApprovalDecisionsView extends StatefulWidget {
   const HandrailApprovalDecisionsView(
-      {super.key, required this.binding, this.reviewBuilder, this.titleFor});
+      {super.key, required this.binding, this.reviewBuilder, this.titleFor, this.proposalId});
   final HandrailApprovalBinding binding;
+  /// When set, render only the explicitly selected inbox decision.
+  final String? proposalId;
 
   /// Business wording only; proposal identity and decision gates are unchanged.
   final String? Function(Map<String, Object?>)? titleFor;
@@ -91,6 +93,7 @@ class _ApprovalDecisionsState extends State<HandrailApprovalDecisionsView> {
     final items = (state['items'] as List? ?? const [])
         .whereType<Map>()
         .map((v) => Map<String, Object?>.from(v))
+        .where((v) => widget.proposalId == null ? v['inboxOnly'] != true : v['proposal_id'] == widget.proposalId)
         .toList();
     if (items.isEmpty && state['error'] == null) return const SizedBox.shrink();
     final binding = widget.binding;
@@ -181,4 +184,51 @@ class _ApprovalDecisionsState extends State<HandrailApprovalDecisionsView> {
         }),
     ]);
   }
+}
+
+
+/// Persistent entry point independent of the scrolled message window. The
+/// controller retains one inbox page and validates each selected decision.
+class HandrailPendingApprovalInbox extends StatelessWidget {
+  const HandrailPendingApprovalInbox({super.key, required this.binding, this.reviewBuilder, this.titleFor});
+  final HandrailApprovalBinding binding;
+  final String? Function(Map<String, Object?>)? titleFor;
+  final Widget? Function(BuildContext, Map<String, Object?>)? reviewBuilder;
+
+  @override
+  Widget build(BuildContext context) => StreamBuilder<Object?>(
+    stream: binding.changes,
+    builder: (context, _) {
+      final state = binding.read(), open = binding.read()['inboxOpen'] == true;
+      if (!open && state['pendingApprovalsAvailable'] != true) return const SizedBox.shrink();
+      final loading = state['inboxLoading'] == true;
+      final items = (state['inboxItems'] as List? ?? const []).whereType<Map>().toList();
+      final selected = state['inboxSelected'] as String?;
+      return Semantics(container: true, label: 'Pending approvals', child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .4),
+        child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          TextButton(onPressed: open ? state['closeInbox'] as void Function()? : () => (state['openInbox'] as Future<void> Function())(),
+            child: Text(open ? 'Close pending approvals' : 'Review pending approvals')),
+          if (open) ...[
+            if (loading) const LinearProgressIndicator(semanticsLabel: 'Loading pending approvals'),
+            if (state['inboxError'] case final String error) ...[
+              Semantics(liveRegion: true, child: Text(error)),
+              TextButton(onPressed: () => (state['openInbox'] as Future<void> Function())(), child: const Text('Retry pending approvals')),
+            ],
+            if (!loading && state['inboxError'] == null && items.isEmpty) const Text('No pending approvals on this page.'),
+            for (final item in items) TextButton(
+              onPressed: loading ? null : () => (state['selectInbox'] as void Function(String))(item['id'] as String),
+              child: Text('Review ${item['title']}')),
+            if (state['inboxHasMore'] == true) TextButton(onPressed: loading ? null : () => (state['olderInbox'] as Future<void> Function())(),
+              child: const Text('Older pending approvals')),
+            if (state['inboxHasNewer'] == true) TextButton(onPressed: loading ? null : () => (state['openInbox'] as Future<void> Function())(),
+              child: const Text('Newest pending approvals')),
+            if (selected != null && items.any((item) => item['id'] == selected && item['deferred'] == true))
+              const Text('This approval is too large for inline review. Confirmation is unavailable until its full details can be reviewed.')
+            else if (selected != null) HandrailApprovalDecisionsView(binding: binding, proposalId: selected,
+              reviewBuilder: reviewBuilder, titleFor: titleFor),
+          ],
+        ])),
+      ));
+    });
 }

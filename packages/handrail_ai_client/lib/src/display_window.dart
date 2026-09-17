@@ -38,10 +38,13 @@ class HandrailDisplayWindow {
   final HandrailAiClient client;
   final HandrailDisplayHistoryCapability capability;
   final int pageSize, pageBytes, maximumMessages, maximumBytes;
+  final void Function(HandrailDisplayPage)? onChanges;
   final _changes =
       StreamController<HandrailDisplayWindowState>.broadcast(sync: true);
   HandrailDisplayWindowState _state = const HandrailDisplayWindowState._();
   Completer<void> _selection = Completer<void>();
+  Completer<void>? _contentRequest;
+  Completer<void>? _readRequest;
   Future<void>? _pending;
   String? _conversationId, _activeTurnId, _changesCursor;
   String _status = 'empty';
@@ -67,6 +70,7 @@ class HandrailDisplayWindow {
   HandrailDisplayWindow(
       {required this.client,
       required this.capability,
+      this.onChanges,
       this.pageSize = 30,
       this.pageBytes = 65536,
       this.maximumMessages = 90,
@@ -109,6 +113,7 @@ class HandrailDisplayWindow {
               'version': state.version,
               'activeTurnId': state.activeTurnId,
               'setFollowingLatest': setFollowingLatest,
+              if (capability.messageText) 'readMessageText': _readMessageText,
               'records': List.unmodifiable(state.records
                   .map((record) => Map<String, Object?>.unmodifiable({
                         'kind': record.kind,
@@ -185,12 +190,59 @@ class HandrailDisplayWindow {
   bool _current(Completer<void> selection) =>
       !_disposed && identical(selection, _selection) && !selection.isCompleted;
 
+  Future<Map<String, Object?>> _readMessageText(
+      String conversationId,
+      String id,
+      int generation,
+      int revision,
+      int offset,
+      Future<void> cancellation) async {
+    final selection = _selection;
+    if (!capability.messageText ||
+        !_current(selection) ||
+        conversationId != _conversationId) {
+      return {'errorCode': 'cancelled'};
+    }
+    if (_contentRequest?.isCompleted == false) _contentRequest!.complete();
+    final contentRequest = _contentRequest = Completer<void>();
+    void cancel() {
+      if (!contentRequest.isCompleted) contentRequest.complete();
+    }
+
+    unawaited(cancellation.then((_) => cancel(), onError: (_) => cancel()));
+    try {
+      final chunk = await client.displayHistoryContent(
+          conversationId: conversationId,
+          generation: generation,
+          kind: 'message',
+          id: id,
+          revision: revision,
+          offset: offset,
+          messageText: true,
+          cancellation: contentRequest.future);
+      if (!_current(selection)) return {'errorCode': 'cancelled'};
+      return {
+        'encoding': chunk.encoding,
+        'text': chunk.text,
+        'revision': chunk.revision,
+        'nextOffset': chunk.nextOffset
+      };
+    } on HandrailGatewayException catch (error) {
+      return {'errorCode': error.code};
+    } finally {
+      cancel();
+      if (identical(_contentRequest, contentRequest)) _contentRequest = null;
+    }
+  }
+
   Future<void> select(String? conversationId, {HandrailDisplayAnchor? anchor}) {
     if (_disposed)
       return Future.error(StateError('Display window is disposed.'));
     if (conversationId != null && !_historyId(conversationId))
       return Future.error(ArgumentError('Invalid conversation.'));
+    if (_contentRequest?.isCompleted == false) _contentRequest!.complete();
     if (!_selection.isCompleted) _selection.complete();
+    if (_readRequest?.isCompleted == false) _readRequest!.complete();
     _selection = Completer<void>();
     _pending = null;
     _initialAnchor = anchor;
@@ -234,6 +286,7 @@ class HandrailDisplayWindow {
     if (id == null) return Future.value();
     return _pending = Future<void>.microtask(() async {
       if (!_current(selection)) return;
+      final request = _readRequest = Completer<void>();
       _loading = operation;
       _error = null;
       _failedOperation = null;
@@ -248,7 +301,7 @@ class HandrailDisplayWindow {
               cursor: _changesCursor,
               limit: pageSize,
               maximumBytes: pageBytes,
-              cancellation: selection.future);
+              cancellation: request.future);
           if (!_current(selection)) return;
           final page = changed.page;
           if (page.preparing) {
@@ -278,6 +331,7 @@ class HandrailDisplayWindow {
               trimmed ||
               updates.values
                   .any((record) => !record.deleted && !ids.contains(record.id));
+          onChanges?.call(page);
           _changesCursor = page.nextCursor;
           if (page.nextCursor == null) _changesAfter = changed.throughRevision;
           _revision = page.revision;
@@ -308,7 +362,7 @@ class HandrailDisplayWindow {
               anchor: anchor,
               limit: pageSize,
               maximumBytes: pageBytes,
-              cancellation: selection.future);
+              cancellation: request.future);
           if (!_current(selection)) return;
           if (page.preparing) {
             _preparing();
@@ -373,6 +427,8 @@ class HandrailDisplayWindow {
         _error = cause;
         _publish();
       } finally {
+        if (!request.isCompleted) request.complete();
+        if (identical(_readRequest, request)) _readRequest = null;
         if (_current(selection)) {
           _pending = null;
           _loading = null;
@@ -425,6 +481,8 @@ class HandrailDisplayWindow {
 
   Future<void> dispose() async {
     if (_disposed) return;
+    if (_readRequest?.isCompleted == false) _readRequest!.complete();
+    if (_contentRequest?.isCompleted == false) _contentRequest!.complete();
     if (!_selection.isCompleted) _selection.complete();
     _disposed = true;
     _pending = null;

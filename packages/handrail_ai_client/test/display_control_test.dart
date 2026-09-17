@@ -34,12 +34,19 @@ Map<String, Object?> control() {
 }
 
 void main() {
+  test('pending approval indicator is optional and strictly boolean', () {
+    expect(HandrailDisplayControl.fromJson(control()).hasPendingApprovals, isNull);
+    expect(HandrailDisplayControl.fromJson({...control(), 'hasPendingApprovals': true}).hasPendingApprovals, true);
+    expect(() => HandrailDisplayControl.fromJson({...control(), 'status': 'preparing', 'activeTurn': null,
+      'latestTurn': null, 'requestedTurn': null, 'hasPendingApprovals': true}), throwsFormatException);
+  });
   test(
       'rejects incomplete, future and contradictory controls before session use',
       () {
     for (final invalid in [
       {...control()}..remove('activeTurn'),
       {...control(), 'activeTurn': null},
+      {...control(), 'hasPendingApprovals': 'yes'},
       {
         ...control(),
         'activeTurn': {...(control()['activeTurn'] as Map), 'revision': 101}

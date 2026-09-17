@@ -37,6 +37,7 @@ class Fixture {
   Future<void> Function(String?)? onSelect;
   bool hasOlder = true, hasNewer = false, deferred = false;
   bool retryable = true;
+  HandrailMessageTextReader? textReader;
   final heights = <int, double>{};
   HandrailDisplayTranscriptBinding get binding => (
     scope: this,
@@ -52,6 +53,7 @@ class Fixture {
       'loading': null,
       'error': error,
       'retryable': retryable,
+      if (textReader != null) 'readMessageText': textReader,
       'change': 'changes',
       'records': id == null
           ? <Map<String, Object?>>[]
@@ -112,6 +114,7 @@ Widget surface(
   bool defaultRenderer = false,
   List<int>? visible,
   double scale = 1,
+  double width = 390,
   Duration? pollInterval,
   bool manageSelection = true,
 }) => MaterialApp(
@@ -121,7 +124,7 @@ Widget surface(
   ),
   home: Scaffold(
     body: SizedBox(
-      width: 390,
+      width: width,
       height: 500,
       child: HandrailDisplayTranscript(
         binding: f.binding,
@@ -154,6 +157,112 @@ Future<void> settle(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets(
+    'default transcript reads large text on demand and retains one bounded section',
+    (tester) async {
+      final fixture = Fixture()..deferred = true;
+      final reads = <int>[];
+      final first = '😀' * 8192;
+      fixture.textReader =
+          (conversation, id, generation, revision, offset, cancellation) async {
+            expect(conversation, 'chat');
+            expect(id, 'message-40');
+            expect(generation, 0);
+            expect(revision, 40);
+            reads.add(offset);
+            return {
+              'encoding': 'plain-text',
+              'revision': revision,
+              'text': offset == 0 ? first : 'Final message part',
+              'nextOffset': offset == 0 ? 8192 : null,
+            };
+          };
+      await tester.pumpWidget(surface(fixture, 'chat', defaultRenderer: true));
+      await tester.pumpAndSettle();
+      expect(reads, isEmpty);
+      await tester.ensureVisible(find.text('Read message'));
+      await tester.tap(find.text('Read message'));
+      await tester.pumpAndSettle();
+      expect(find.text(first), findsOneWidget);
+      expect(reads, [0]);
+      await tester.ensureVisible(find.text('Next part'));
+      await tester.tap(find.text('Next part'));
+      await tester.pumpAndSettle();
+      expect(find.text(first), findsNothing);
+      expect(find.text('Final message part'), findsOneWidget);
+      expect(reads, [0, 8192]);
+      await tester.ensureVisible(find.text('Previous part'));
+      await tester.tap(find.text('Previous part'));
+      await tester.pumpAndSettle();
+      expect(reads, [0, 8192, 0]);
+      await tester.ensureVisible(find.text('Close message'));
+      await tester.tap(find.text('Close message'));
+      await tester.pumpAndSettle();
+      expect(find.text(first), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      await fixture.changes.close();
+    },
+  );
+
+  testWidgets(
+    'scope replacement aborts large text reads and cannot expose their late content',
+    (tester) async {
+      final fixture = Fixture()..deferred = true;
+      final pending = Completer<Map<String, Object?>>();
+      var cancelled = false;
+      fixture.textReader = (_, __, ___, ____, _____, cancellation) {
+        unawaited(
+          cancellation.then((_) {
+            cancelled = true;
+          }),
+        );
+        return pending.future;
+      };
+      await tester.pumpWidget(surface(fixture, 'one'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Read message'));
+      await tester.tap(find.text('Read message'));
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(surface(fixture, 'two'));
+      await tester.pumpAndSettle();
+      expect(cancelled, isTrue);
+      pending.complete({
+        'encoding': 'plain-text',
+        'revision': 40,
+        'text': 'private old text',
+        'nextOffset': null,
+      });
+      await tester.pumpAndSettle();
+      expect(find.text('private old text'), findsNothing);
+      expect(find.text('Read message'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await fixture.changes.close();
+    },
+  );
+
+  testWidgets(
+    'a changed large message requires explicit reload without displaying mixed revisions',
+    (tester) async {
+      final fixture = Fixture()..deferred = true;
+      fixture.textReader = (_, __, ___, ____, _____, ______) async => {
+        'errorCode': 'content_changed',
+      };
+      await tester.pumpWidget(surface(fixture, 'chat'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Read message'));
+      await tester.tap(find.text('Read message'));
+      await tester.pumpAndSettle();
+      expect(find.text('Reload message'), findsOneWidget);
+      expect(find.text('Retry reading'), findsNothing);
+      await tester.ensureVisible(find.text('Reload message'));
+      await tester.tap(find.text('Reload message'));
+      await tester.pumpAndSettle();
+      expect(fixture.refreshes, 1);
+      expect(find.text('Read message'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await fixture.changes.close();
+    },
+  );
   testWidgets(
     'session-owned windows restore durable anchors without another initial read',
     (tester) async {
@@ -250,7 +359,8 @@ void main() {
       await f.binding.older();
       await settle(tester);
       expect(tester.getTopLeft(anchor).dy, closeTo(before, 0.1));
-      f.heights[12] = 350;
+      // A mounted overscan row above the first visible message grows.
+      f.heights[21] = 350;
       f.publish();
       await settle(tester);
       expect(tester.getTopLeft(anchor).dy, closeTo(before, 0.1));
@@ -259,15 +369,59 @@ void main() {
       await f.binding.older();
       await settle(tester);
       expect(
-        find.byWidgetPredicate(
-          (widget) => widget is SizedBox && widget.key is ValueKey<String>,
-        ),
-        findsNWidgets(40),
+        find
+            .byWidgetPredicate(
+              (widget) => widget is SizedBox && widget.key is ValueKey<String>,
+            )
+            .evaluate()
+            .length,
+        inInclusiveRange(1, 20),
+      );
+      expect(
+        f.end - f.start + 1,
+        40,
+        reason: 'Records remain retained while offscreen bodies unmount',
       );
       expect(find.text('Jump to latest'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       expect(f.reads.last.$1, isNull);
+    },
+  );
+
+  testWidgets(
+    'virtualized bodies keep their visible anchor through width changes and remount on navigation',
+    (tester) async {
+      final f = Fixture();
+      addTearDown(f.changes.close);
+      await tester.pumpWidget(surface(f, 'chat'));
+      await tester.pumpAndSettle();
+      final scroll = tester
+          .widget<SingleChildScrollView>(find.byType(SingleChildScrollView))
+          .controller!;
+      scroll.jumpTo(240);
+      await tester.pumpAndSettle();
+      final anchor = find.byKey(const ValueKey('message-24'));
+      final before = tester.getTopLeft(anchor).dy;
+      await f.binding.older();
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(surface(f, 'chat', width: 320));
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(anchor).dy, closeTo(before, 0.1));
+      expect(
+        find.byKey(const ValueKey('message-40')),
+        findsNothing,
+        reason: 'Offscreen bodies are unmounted',
+      );
+      await tester.tap(find.text('Jump to latest'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('message-40')), findsOneWidget);
+      expect(
+        tester.getRect(find.byKey(const ValueKey('message-40'))).bottom,
+        closeTo(484, 0.1),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
     },
   );
 
@@ -367,7 +521,10 @@ void main() {
         surface(f, 'chat', defaultRenderer: true, visible: visible, scale: 2),
       );
       await settle(tester);
-      expect(find.byType(HandrailTranscriptMessage), findsNWidgets(20));
+      expect(
+        find.byType(HandrailTranscriptMessage).evaluate().length,
+        inInclusiveRange(1, 19),
+      );
       expect(
         MediaQuery.textScalerOf(
           tester.element(find.byType(HandrailDisplayTranscript)),

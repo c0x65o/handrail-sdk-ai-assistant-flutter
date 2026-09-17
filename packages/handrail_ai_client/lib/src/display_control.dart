@@ -58,6 +58,7 @@ class HandrailDisplayControl {
   final String conversationId;
   final int generation, revision, canonicalRevision;
   final bool preparing;
+  final bool? hasPendingApprovals;
   final String? activeTurnId;
   final HandrailDisplayTurnControl? activeTurn, latestTurn, requestedTurn;
   const HandrailDisplayControl._(
@@ -69,7 +70,8 @@ class HandrailDisplayControl {
       this.activeTurnId,
       this.activeTurn,
       this.latestTurn,
-      this.requestedTurn);
+      this.requestedTurn,
+      this.hasPendingApprovals);
   factory HandrailDisplayControl.fromJson(Map<String, Object?> json) {
     if (!['activeTurn', 'latestTurn', 'requestedTurn']
         .every(json.containsKey)) {
@@ -82,7 +84,9 @@ class HandrailDisplayControl {
     final active = parse(json['activeTurn']),
         latest = parse(json['latestTurn']),
         requested = parse(json['requestedTurn']);
-    if ([active, latest, requested]
+    if (json['hasPendingApprovals'] != null && json['hasPendingApprovals'] is! bool ||
+        header.preparing && json['hasPendingApprovals'] == true ||
+        [active, latest, requested]
             .any((turn) => turn != null && turn.revision > header.revision) ||
         (header.preparing
             ? active != null || latest != null || requested != null
@@ -100,7 +104,7 @@ class HandrailDisplayControl {
         header.activeTurnId,
         active,
         latest,
-        requested);
+        requested, json['hasPendingApprovals'] as bool?);
   }
 }
 

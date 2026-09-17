@@ -357,6 +357,8 @@ class HandrailAssistantController {
               'displayWindow': session?.displayWindow?.uiBinding,
               'hasMoreRelated': session?.hasMoreRelated ?? false,
               'loadMoreRelated': session?.loadMoreRelated,
+              'relatedTruncated': session?.relatedTruncated ?? false,
+              'showLatestRelated': session?.showLatestRelated,
               'readPosition': _positions?.readPosition,
               'writePosition': _positions?.writePosition,
               'loading': document == null &&
@@ -404,6 +406,7 @@ class HandrailAssistantController {
 
   void _publish() {
     if (_disposed) return;
+    approvals._syncInbox();
     final monitor = voiceWorkspace;
     if (monitor != null) {
       final ids = _descriptors.keys
@@ -1196,6 +1199,7 @@ class HandrailAssistantController {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    approvals._disposeInbox();
     _pollTimer?.cancel();
     _historyGeneration++;
     _selectionGeneration++;

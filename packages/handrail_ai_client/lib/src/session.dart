@@ -128,11 +128,19 @@ class HandrailConversationSession {
   HandrailConversationView? _document;
   final _lifetime = Completer<void>();
   Completer<void> _displayActivation = Completer<void>();
+  final Set<Completer<void>> _displayRequests = {};
   bool _displayActive = true;
   HandrailDisplayControl? _control;
   HandrailDisplayWindow? _displayWindow;
   StreamSubscription<HandrailDisplayWindowState>? _displaySubscription;
   List<HandrailDisplayRecord> _related = const [];
+  bool _relatedTruncated = false;
+  bool _relatedInitialized = false;
+  int _relatedVersion = 0, _presentationVersion = 0;
+  String? _publishedDisplayStamp;
+  String? _relatedViewKey;
+  List<Map<String, Object?>> _relatedGroups = const [];
+  int _relatedGroup = 0;
   String? _relatedTurnId, _relatedCursor;
   int? _relatedRevision;
   int? _relatedWindowVersion;
@@ -186,9 +194,17 @@ class HandrailConversationSession {
     if (_disposed || active == _displayActive) return;
     _displayActive = active;
     _displayActivation.complete();
+    for (final request in _displayRequests) {
+      if (!request.isCompleted) request.complete();
+    }
     _displayActivation = Completer<void>();
     _relatedEpoch++;
+    if (_related.isNotEmpty) _relatedVersion++;
     _related = const [];
+    _relatedTruncated = false;
+    _relatedViewKey = null;
+    _relatedGroups = const [];
+    _relatedGroup = 0;
     _relatedCursor = null;
     _relatedRevision = null;
     if (!active) {
@@ -200,16 +216,80 @@ class HandrailConversationSession {
     }
   }
 
-  bool get hasMoreRelated => _relatedCursor != null;
+  bool get supportsPendingApprovals => _capabilities?.displayHistory?.pendingApprovals == true;
+  bool get hasPendingApprovals => _control?.hasPendingApprovals == true;
+  /// Explicit bounded inbox or proposal/tool review, independent of messages.
+  Future<HandrailDisplayPage> readApprovals({String? proposalId, String? cursor, Future<void>? cancellation}) async {
+    if (_disposed || !_displayActive || !supportsPendingApprovals || _control == null || _control!.preparing) {
+      throw const HandrailGatewayException('approval_inbox_unavailable', 'Pending approvals are unavailable.', retryable: true);
+    }
+    final generation = _control!.generation, activation = _displayActivation;
+    final page = await _displayRead((closed) => client.displayHistoryPage(
+      conversationId: conversationId, capability: _capabilities!.displayHistory!,
+      view: proposalId == null ? {'type': 'pending_approvals'} : {'type': 'approval', 'proposalId': proposalId},
+      cursor: cursor, limit: proposalId == null ? 30 : 2, maximumBytes: proposalId == null ? 65536 : 131072,
+      cancellation: cancellation == null ? closed : Future.any([closed, cancellation])));
+    if (_disposed || activation.isCompleted) throw StateError('Approval read cancelled');
+    if (page.preparing || page.generation != generation || _control?.generation != generation ||
+        page.revision < (_control?.revision ?? 0) || page.revision < (_displayWindow?.state.revision ?? 0)) {
+      throw const HandrailGatewayException('stale_approvals', 'Approval details changed. Try again.', retryable: true);
+    }
+    return page;
+  }
+
+  bool get hasMoreRelated =>
+      _relatedCursor != null || _relatedGroup + 1 < _relatedGroups.length;
+  bool get relatedTruncated => _relatedTruncated;
+  Future<void> showLatestRelated() async {
+    if (_disposed) throw StateError('Conversation session is disposed');
+    await _refreshing;
+    _relatedViewKey = null;
+    _relatedGroups = const [];
+    _relatedGroup = 0;
+    _relatedRevision = null;
+    await refresh();
+  }
+
   Future<void> loadMoreRelated() {
     if (_disposed)
       return Future.error(StateError('Conversation session is disposed'));
-    if (_relatedCursor == null) return Future.value();
+    if (!hasMoreRelated) return Future.value();
     return _loadingRelated ??= _readRelated().then((_) {
       if (!_disposed) {
+        _error = null;
         _publishDisplay();
         _publish();
       }
+    }).catchError((Object cause) async {
+      if (_disposed) return;
+      if (cause is HandrailGatewayException &&
+          const {
+            'forbidden',
+            'permission_denied',
+            'unauthenticated',
+            'not_found'
+          }.contains(cause.code)) {
+        _control = null;
+        _document = null;
+        if (_related.isNotEmpty) _relatedVersion++;
+        _related = const [];
+        _relatedGroups = const [];
+        _relatedGroup = 0;
+        _relatedViewKey = null;
+        _relatedTruncated = false;
+        _relatedInitialized = false;
+        _relatedCursor = null;
+        _relatedEpoch++;
+        _relatedRevision = null;
+        await _displayWindow?.select(null);
+      }
+      _error = cause is HandrailGatewayException
+          ? cause
+          : const HandrailGatewayException('activity_unavailable',
+              'Activity could not be loaded. Try again.',
+              retryable: true);
+      _publish();
+      throw _error!;
     }).whenComplete(() {
       _loadingRelated = null;
     });
@@ -309,11 +389,24 @@ class HandrailConversationSession {
       if (_disposed) return;
       if (_displayWindow != null &&
           cause is HandrailGatewayException &&
-          const {'forbidden', 'unauthenticated', 'not_found'}
-              .contains(cause.code)) {
+          const {
+            'forbidden',
+            'permission_denied',
+            'unauthenticated',
+            'not_found'
+          }.contains(cause.code)) {
         _control = null;
         _document = null;
+        if (_related.isNotEmpty) _relatedVersion++;
         _related = const [];
+        _relatedTruncated = false;
+        _relatedViewKey = null;
+        _relatedGroups = const [];
+        _relatedGroup = 0;
+        _relatedCursor = null;
+        _relatedEpoch++;
+        _relatedRevision = null;
+        _relatedInitialized = false;
         await _displayWindow!.select(null);
       }
       _error = cause is HandrailGatewayException
@@ -742,10 +835,19 @@ class HandrailConversationSession {
     _disposed = true;
     if (!_lifetime.isCompleted) _lifetime.complete();
     if (!_displayActivation.isCompleted) _displayActivation.complete();
+    for (final request in _displayRequests) {
+      if (!request.isCompleted) request.complete();
+    }
+    _displayRequests.clear();
     _relatedEpoch++;
     _control = null;
     _document = null;
+    if (_related.isNotEmpty) _relatedVersion++;
     _related = const [];
+    _relatedTruncated = false;
+    _relatedViewKey = null;
+    _relatedGroups = const [];
+    _relatedGroup = 0;
     _relatedMessageIds = const [];
     _relatedCursor = null;
     _submittingJson = null;

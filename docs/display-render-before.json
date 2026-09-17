@@ -1,0 +1,107 @@
+{
+  "sourceMessages": 200,
+  "initial": {
+    "rssBytes": 335527936,
+    "memoryUsage": {
+      "type": "MemoryUsage",
+      "heapUsage": 147869200,
+      "heapCapacity": 160104448,
+      "externalUsage": 174352
+    },
+    "largestClasses": [
+      {
+        "class": "_List",
+        "bytes": 37935104,
+        "instances": 206981
+      },
+      {
+        "class": "_OneByteString",
+        "bytes": 23462208,
+        "instances": 52296
+      },
+      {
+        "class": "_Uint64List",
+        "bytes": 19682816,
+        "instances": 2094
+      },
+      {
+        "class": "_TwoByteString",
+        "bytes": 11764864,
+        "instances": 1569
+      },
+      {
+        "class": "Instructions",
+        "bytes": 9353312,
+        "instances": 14570
+      },
+      {
+        "class": "Function",
+        "bytes": 5263488,
+        "instances": 41121
+      },
+      {
+        "class": "ICData",
+        "bytes": 4770624,
+        "instances": 74541
+      },
+      {
+        "class": "_Uint32List",
+        "bytes": 3630016,
+        "instances": 2185
+      }
+    ]
+  },
+  "retained": {
+    "rssBytes": 728535040,
+    "memoryUsage": {
+      "type": "MemoryUsage",
+      "heapUsage": 458535568,
+      "heapCapacity": 521478144,
+      "externalUsage": 492112
+    },
+    "largestClasses": [
+      {
+        "class": "_List",
+        "bytes": 108744624,
+        "instances": 507394
+      },
+      {
+        "class": "_Uint64List",
+        "bytes": 66764976,
+        "instances": 39746
+      },
+      {
+        "class": "SemanticsConfiguration",
+        "bytes": 31108608,
+        "instances": 54008
+      },
+      {
+        "class": "_OneByteString",
+        "bytes": 24667968,
+        "instances": 69455
+      },
+      {
+        "class": "_Closure",
+        "bytes": 16246272,
+        "instances": 253848
+      },
+      {
+        "class": "_Map",
+        "bytes": 11850176,
+        "instances": 185159
+      },
+      {
+        "class": "_TwoByteString",
+        "bytes": 11780224,
+        "instances": 2049
+      },
+      {
+        "class": "Instructions",
+        "bytes": 10804240,
+        "instances": 17002
+      }
+    ]
+  },
+  "implementation": "Before viewport body virtualization; bounded 90-record Column",
+  "qualification": "Failed 128 MiB warm RSS-growth budget; VM allocation profile requested GC"
+}

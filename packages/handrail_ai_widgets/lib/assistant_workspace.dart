@@ -381,6 +381,8 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>> with Widge
     );
     final conversation = Column(
       children: [
+        HandrailPendingApprovalInbox(binding: widget.binding.approvals,
+          reviewBuilder: widget.approvalReviewBuilder, titleFor: widget.approvalTitle),
         Expanded(
           child: HandrailConversationTranscript(
             key: widget.transcriptKey,

@@ -35,6 +35,56 @@ Map<String, Object?> page({String id = 'chat'}) => {
 
 void main() {
   test(
+      'negotiated large message text enforces encoding, Unicode offsets and revision binding',
+      () async {
+    final capability = HandrailDisplayHistoryCapability.fromJson({
+      'version': 1,
+      'maximumPageSize': 50,
+      'maximumPageBytes': 262144,
+      'messageText': true
+    });
+    expect(capability.messageText, isTrue);
+    var encoding = 'plain-text', revision = 4;
+    final client = HandrailAiClient(
+        baseUri: base,
+        httpClient: MockClient((request) async {
+          final input = (jsonDecode(request.body) as Map)['input'] as Map;
+          expect(input['format'], 'message-text');
+          expect(input['revision'], 4);
+          final offset = input['offset'] as int;
+          return http.Response(
+              jsonEncode({
+                'ok': true,
+                'value': {
+                  'encoding': encoding,
+                  'revision': revision,
+                  'text': offset == 0 ? '😀' * 8192 : 'last',
+                  'nextOffset': offset == 0 ? 8192 : null
+                }
+              }),
+              200, headers: {'content-type': 'application/json; charset=utf-8'});
+        }));
+    addTearDown(client.close);
+    Future<HandrailDisplayContentChunk> read(int offset) =>
+        client.displayHistoryContent(
+            conversationId: 'chat',
+            generation: 0,
+            kind: 'message',
+            id: 'large',
+            revision: 4,
+            offset: offset,
+            messageText: true);
+    final first = await read(0);
+    expect(first.text.runes.length, 8192);
+    expect(first.nextOffset, 8192);
+    expect((await read(8192)).text, 'last');
+    encoding = 'json-text';
+    await expectLater(read(0), throwsFormatException);
+    encoding = 'plain-text';
+    revision = 5;
+    await expectLater(read(0), throwsFormatException);
+  });
+  test(
       'reads bounded changes with tombstones and preserves the paging watermark',
       () async {
     final requests = <Map<String, Object?>>[];

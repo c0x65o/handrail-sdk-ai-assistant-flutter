@@ -324,6 +324,50 @@ void main() {
           ? 'Requires explicit local SDK source qualification with PostgreSQL stores.'
           : false);
 
+  test(
+      'large message reader uses bounded plaintext HTTP and rejects content after deletion',
+      () async {
+    final api = client(), id = await conversation(api), text = '😀' * 12000;
+    final seeded = await http.post(origin.resolve('/test/history-seed'),
+        headers: {'content-type': 'application/json; charset=utf-8'},
+        body: jsonEncode({'conversationId': id, 'count': 1, 'text': text}));
+    expect(seeded.statusCode, 200);
+    final view = session(api, id), before = await stats();
+    await view.initialize();
+    expect(view.capabilities!.displayHistory!.messageText, isTrue);
+    final record = view.displayWindow!.state.records.single;
+    expect(record.deferred, isTrue);
+    expect(record.value, isNull);
+    final read = view.displayWindow!.uiBinding.read()['readMessageText']
+        as Future<Map<String, Object?>> Function(
+            String, String, int, int, int, Future<void>);
+    final cancellation = Completer<void>().future;
+    final first =
+        await read(id, record.id, 0, record.revision, 0, cancellation);
+    expect(first['encoding'], 'plain-text');
+    expect((first['text'] as String).runes.length, 8192);
+    expect(first['nextOffset'], 8192);
+    final last =
+        await read(id, record.id, 0, record.revision, 8192, cancellation);
+    expect(last['nextOffset'], isNull);
+    expect('${first['text']}${last['text']}', text);
+    expect(view.displayWindow!.state.records.single.value, isNull);
+    final after = await stats();
+    expect(after['snapshotReads'], before['snapshotReads']);
+    expect(after['maximumDisplayBytes'], lessThanOrEqualTo(65536 + 1024));
+    await api.permanentlyDeleteConversation({
+      'conversationId': id,
+      'expectedVersion': 1,
+      'idempotencyKey': 'delete-large-${identity++}'
+    });
+    final cleared =
+        await read(id, record.id, 0, record.revision, 0, cancellation);
+    expect(cleared['errorCode'], anyOf('stale_cursor', 'not_found'));
+  },
+      skip: Platform.environment['HANDRAIL_TEST_JS_SDK_DIST'] == null
+          ? 'Requires explicit local SDK source qualification with PostgreSQL stores.'
+          : false);
+
   for (final failCancel in [false, true]) {
     test(
         'Stop queued before admission targets its original chat; failed cancel=$failCancel',

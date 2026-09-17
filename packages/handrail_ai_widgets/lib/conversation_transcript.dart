@@ -521,6 +521,35 @@ class _TranscriptState extends State<HandrailConversationTranscript>
         },
         trailing: [
           ..._defaultContents(context, includeMessages: false),
+          if ((_map(
+                        _map(_state['document'])['display_history'],
+                      )['unresolvedCitationCount']
+                      as int? ??
+                  0) >
+              0)
+            const Text(
+              'Some citation sources are not loaded in this activity window.',
+            ),
+          if (_state['relatedTruncated'] == true &&
+              _state['showLatestRelated'] is Future<void> Function())
+            Column(
+              children: [
+                const Text('Showing part of this chat’s activity.'),
+                TextButton(
+                  onPressed: () => unawaited(
+                    (_state['showLatestRelated'] as Future<void> Function())()
+                        .catchError((Object _) {
+                          if (mounted)
+                            setState(
+                              () => _localError =
+                                  'Activity could not be loaded. Try again.',
+                            );
+                        }),
+                  ),
+                  child: const Text('Show latest activity'),
+                ),
+              ],
+            ),
           if (_state['hasMoreRelated'] == true &&
               _state['loadMoreRelated'] is Future<void> Function())
             TextButton(

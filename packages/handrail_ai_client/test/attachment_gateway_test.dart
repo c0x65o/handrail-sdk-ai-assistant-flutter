@@ -67,7 +67,7 @@ void main() {
     expect(assistant.selectedId, isNot(original));
     final cancellation = Completer<void>().future;
     final result = await upload(
-        bytes: [37, 80, 68, 70],
+        bytes: [37, 80, 68, 70, 45], // Complete %PDF- signature for byte validation.
         filename: 'report.pdf',
         mediaType: 'application/pdf',
         idempotencyKey: 'file-one',
@@ -116,9 +116,9 @@ void main() {
         load(
             attachmentId: fileId,
             mediaType: 'application/pdf',
-            byteSize: 4,
+            byteSize: 5,
             cancellation: cancellation);
-    expect((await read(download)).bytes, [37, 80, 68, 70]);
+    expect((await read(download)).bytes, [37, 80, 68, 70, 45]);
     expect(
         (await read(assistant.uiBinding.downloaderFor(assistant.selectedId)!))
             .errorCode,

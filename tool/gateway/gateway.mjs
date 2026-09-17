@@ -92,8 +92,9 @@ const server = createServer(async (request, response) => {
       response.setHeader('content-type', 'application/json'); response.end(JSON.stringify(stats)); return;
     }
     if (request.url === '/test/history-seed' && dist) {
-      const { conversationId, count } = JSON.parse(body);
+      const { conversationId, count, text } = JSON.parse(body);
       if (!Number.isSafeInteger(count) || count < 1 || count > 1000) throw new Error('Invalid fixture count');
+      if (text !== undefined && (typeof text !== 'string' || text.length * count > 1_000_000)) throw new Error('Invalid fixture text');
       const revision = await bundle.events.getLatestRevision(conversationId);
       const events = Array.from({ length: count }, (_, index) => {
         const sequence = (revision ?? 0) + index + 1;
@@ -101,7 +102,7 @@ const server = createServer(async (request, response) => {
           revision: sequence, occurred_at: new Date(Date.UTC(2026, 8, 1, 0, 0, sequence)).toISOString(),
           actor: { type: 'user' }, source: { type: 'runtime' }, payload: {
             type: 'message.created', message_id: `history-${sequence}`, role: 'user',
-            content: [{ type: 'text', text: `Saved message ${sequence}: ${'bounded history '.repeat(64)}` }] } });
+            content: [{ type: 'text', text: text ?? `Saved message ${sequence}: ${'bounded history '.repeat(64)}` }] } });
       });
       await bundle.events.append({ conversationId, expectedRevision: revision, events });
       response.end('{}'); return;

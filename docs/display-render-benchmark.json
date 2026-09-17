@@ -1,0 +1,253 @@
+{
+  "engine": "Flutter test offscreen renderer",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "metrics": [
+    {
+      "sourceMessages": 200,
+      "equivalentStreamingEvents": 20000,
+      "samples": 12,
+      "selectionAndPumpP50Ms": 117.187,
+      "selectionAndPumpP95Ms": 222.258,
+      "retainedMessagesAfterScrolling": 90,
+      "mountedMessageWidgets": 8,
+      "cachedSessions": 4,
+      "initialMemoryAfterGc": {
+        "rssBytes": 283013120,
+        "memoryUsage": {
+          "type": "MemoryUsage",
+          "heapUsage": 105695824,
+          "heapCapacity": 113442816,
+          "externalUsage": 144880
+        },
+        "largestClasses": [
+          {
+            "class": "_OneByteString",
+            "bytes": 23423056,
+            "instances": 51840
+          },
+          {
+            "class": "_List",
+            "bytes": 19798448,
+            "instances": 197291
+          },
+          {
+            "class": "_TwoByteString",
+            "bytes": 11768720,
+            "instances": 1529
+          },
+          {
+            "class": "Instructions",
+            "bytes": 9460624,
+            "instances": 14801
+          },
+          {
+            "class": "Function",
+            "bytes": 5289472,
+            "instances": 41324
+          },
+          {
+            "class": "ICData",
+            "bytes": 4864640,
+            "instances": 76010
+          },
+          {
+            "class": "_Uint32List",
+            "bytes": 3519808,
+            "instances": 1071
+          },
+          {
+            "class": "PcDescriptors",
+            "bytes": 2686976,
+            "instances": 13286
+          }
+        ]
+      },
+      "retainedMemoryAfterGc": {
+        "rssBytes": 389107712,
+        "memoryUsage": {
+          "type": "MemoryUsage",
+          "heapUsage": 179673104,
+          "heapCapacity": 268877824,
+          "externalUsage": 206032
+        },
+        "largestClasses": [
+          {
+            "class": "_List",
+            "bytes": 38570832,
+            "instances": 263741
+          },
+          {
+            "class": "_OneByteString",
+            "bytes": 23782560,
+            "instances": 57183
+          },
+          {
+            "class": "_Uint64List",
+            "bytes": 15705776,
+            "instances": 8034
+          },
+          {
+            "class": "_TwoByteString",
+            "bytes": 11772496,
+            "instances": 1647
+          },
+          {
+            "class": "Instructions",
+            "bytes": 10280080,
+            "instances": 16202
+          },
+          {
+            "class": "SemanticsConfiguration",
+            "bytes": 7168320,
+            "instances": 12445
+          },
+          {
+            "class": "Function",
+            "bytes": 5330816,
+            "instances": 41647
+          },
+          {
+            "class": "ICData",
+            "bytes": 4985856,
+            "instances": 77904
+          }
+        ]
+      },
+      "maximumSerializedResponseBytes": 13067,
+      "processRssBeforeBytes": 163303424,
+      "processRssAfterBytes": 389107712
+    },
+    {
+      "sourceMessages": 1000,
+      "equivalentStreamingEvents": 100000,
+      "samples": 12,
+      "selectionAndPumpP50Ms": 86.14,
+      "selectionAndPumpP95Ms": 115.774,
+      "retainedMessagesAfterScrolling": 90,
+      "mountedMessageWidgets": 8,
+      "cachedSessions": 4,
+      "initialMemoryAfterGc": {
+        "rssBytes": 310906880,
+        "memoryUsage": {
+          "type": "MemoryUsage",
+          "heapUsage": 109439536,
+          "heapCapacity": 246554624,
+          "externalUsage": 144528
+        },
+        "largestClasses": [
+          {
+            "class": "_OneByteString",
+            "bytes": 23490800,
+            "instances": 53371
+          },
+          {
+            "class": "_List",
+            "bytes": 20936336,
+            "instances": 206579
+          },
+          {
+            "class": "_TwoByteString",
+            "bytes": 11768688,
+            "instances": 1528
+          },
+          {
+            "class": "Instructions",
+            "bytes": 10367600,
+            "instances": 16439
+          },
+          {
+            "class": "Function",
+            "bytes": 5337600,
+            "instances": 41700
+          },
+          {
+            "class": "ICData",
+            "bytes": 5058944,
+            "instances": 79046
+          },
+          {
+            "class": "_Uint32List",
+            "bytes": 3533920,
+            "instances": 1192
+          },
+          {
+            "class": "Code",
+            "bytes": 2893264,
+            "instances": 16439
+          }
+        ]
+      },
+      "retainedMemoryAfterGc": {
+        "rssBytes": 410279936,
+        "memoryUsage": {
+          "type": "MemoryUsage",
+          "heapUsage": 175418064,
+          "heapCapacity": 262717440,
+          "externalUsage": 203600
+        },
+        "largestClasses": [
+          {
+            "class": "_List",
+            "bytes": 36664880,
+            "instances": 264486
+          },
+          {
+            "class": "_OneByteString",
+            "bytes": 23776640,
+            "instances": 57131
+          },
+          {
+            "class": "_Uint64List",
+            "bytes": 13558864,
+            "instances": 7859
+          },
+          {
+            "class": "_TwoByteString",
+            "bytes": 11772272,
+            "instances": 1640
+          },
+          {
+            "class": "Instructions",
+            "bytes": 10658064,
+            "instances": 16847
+          },
+          {
+            "class": "SemanticsConfiguration",
+            "bytes": 6962688,
+            "instances": 12088
+          },
+          {
+            "class": "Function",
+            "bytes": 5337600,
+            "instances": 41700
+          },
+          {
+            "class": "ICData",
+            "bytes": 5041344,
+            "instances": 78771
+          }
+        ]
+      },
+      "maximumSerializedResponseBytes": 13104,
+      "processRssBeforeBytes": 380997632,
+      "processRssAfterBytes": 410279936
+    }
+  ],
+  "budgets": {
+    "selectionAndPumpMaximumMs": 1000,
+    "processRssGrowthBytes": 134217728,
+    "warmIsolateHeapGrowthBytes": 100663296,
+    "maximumSerializedResponseBytes": 65536,
+    "retainedMessages": 90,
+    "cachedSessions": 4
+  },
+  "limitations": [
+    "Mock HTTP transport, actual SDK account controller/window and standard transcript widgets.",
+    "Stopwatch measures host selection plus offscreen pumps; this is not native-device frame timing or production latency.",
+    "Process RSS includes the Dart VM, Flutter engine and test harness; warm growth is reported separately from cold startup. VM allocation profiles request GC and report isolate heap separately.",
+    "No provider, upload, voice, or production account data is used."
+  ]
+}

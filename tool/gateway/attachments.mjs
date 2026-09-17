@@ -4,11 +4,31 @@ import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
+import { createRequire } from 'node:module';
 const dist = process.env.HANDRAIL_TEST_JS_SDK_DIST;
 const sdk = await import(dist ? pathToFileURL(resolve(dist, 'index.js')).href : '@handrail/ai-assistant');
 const { createHandrailAssistant, createProviderToolLoopTransport } = await import(dist
   ? pathToFileURL(resolve(dist, 'server/assistant.js')).href : '@handrail/ai-assistant/server/assistant');
 const limits = { maximumBytes: 1024, acceptedMediaTypes: ['application/pdf'], ttlMilliseconds: 60_000 };
+let postgres;
+if (dist) {
+  // The current high-level SDK owns indexed history in PostgreSQL. Source
+  // qualification must supply that declared contract, not a partial mock.
+  const { PGlite } = createRequire(resolve(dist, '../package.json'))('@electric-sql/pglite');
+  const { postgresFromClient } = await import(pathToFileURL(resolve(dist, 'postgres/index.js')).href);
+  const database = new PGlite();
+  const adapt = db => {
+    const client = { async query(sql, values = []) {
+      const result = await db.query(sql, [...values]);
+      return { rows: result.rows, rowCount: result.affectedRows ?? result.rows.length };
+    }, transaction: operation => operation(client) };
+    return client;
+  };
+  const client = { query: adapt(database).query,
+    transaction: operation => database.transaction(tx => operation(adapt(tx))) };
+  postgres = postgresFromClient(client, { attachmentLimits: limits });
+  await postgres.persistence.migrate();
+}
 const bundles = new Map();
 let clock = Date.now();
 function bundleFor(context) {
@@ -26,7 +46,9 @@ function bundleFor(context) {
       async listExpired(before) { return [...metadata.values()].filter(r => r.expiresAt <= before); },
       async delete(ref) { metadata.delete(ref); },
     } });
-  const bundle = { attachments, events: new sdk.InMemoryConversationEventStore(),
+  const bundle = postgres ? { ...postgres.forScope(context, { createConversationId: randomUUID,
+    authorizeConversation: () => 'allow', authorizeApproval: () => 'allow' }), attachments }
+    : { attachments, events: new sdk.InMemoryConversationEventStore(),
     approvals: new sdk.InMemoryApprovalProposalStore({ authorize: () => 'allow' }),
     catalog: new sdk.InMemoryConversationCatalog({ authorize: () => 'allow' }),
     durableTurns: new sdk.InMemoryDurableApplicationTurnStore(), toolLedger: new sdk.InMemoryToolExecutionLedger(),
@@ -46,7 +68,7 @@ const assistant = await createHandrailAssistant({ id: 'dart-attachments', attach
   authorize: (request) => { const user = request.headers.get('x-fixture-user');
     if (!['alice', 'bob'].includes(user)) throw new Error('Unauthenticated fixture');
     return { tenantId: 'fixture', scopeId: user, principalId: user, attribution: attribution(user) }; },
-  persistence: { attachmentLimits: limits, persistence: {}, forScope: bundleFor },
+  persistence: { ...(postgres ?? { persistence: {} }), attachmentLimits: limits, forScope: bundleFor },
   provider: { metadata, createTransport(input) {
     const adapter = { metadata, provider_context: metadata.capabilities.provider_context,
       async *invoke(invocation) {

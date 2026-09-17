@@ -43,6 +43,8 @@ class Fixture {
   Future<void> Function()? retryOperation;
   int reads = 0, retries = 0;
   HandrailDisplayTranscriptBinding? display;
+  bool relatedTruncated = false;
+  Future<void> Function()? showLatestRelated;
   HandrailTranscriptUiBinding get binding => (
     scope: this,
     changes: changes.stream,
@@ -52,6 +54,8 @@ class Fixture {
       'running': running,
       'pending': pending,
       'displayWindow': display,
+      'relatedTruncated': relatedTruncated,
+      'showLatestRelated': showLatestRelated,
       'error': error,
     },
     retry: () async {
@@ -167,9 +171,36 @@ void main() {
       expect(selects, 0);
       expect(older, 0);
       expect(find.byType(HandrailDisplayTranscript), findsOneWidget);
-      expect(find.byType(HandrailTranscriptMessage), findsNWidgets(20));
+      expect(
+        find.byType(HandrailTranscriptMessage).evaluate().length,
+        inInclusiveRange(1, 19),
+      );
       expect(find.text('Source for this answer'), findsOneWidget);
       expect(find.text('Business result: Lookup'), findsOneWidget);
+      var restarted = 0;
+      f.document['display_history'] = {
+        'partial': true,
+        'unresolvedCitationCount': 1,
+      };
+      f.relatedTruncated = true;
+      f.showLatestRelated = () async {
+        restarted++;
+        f.relatedTruncated = false;
+        f.publish();
+      };
+      f.publish();
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'Some citation sources are not loaded in this activity window.',
+        ),
+        findsOneWidget,
+      );
+      await tester.ensureVisible(find.text('Show latest activity'));
+      await tester.tap(find.text('Show latest activity'));
+      await tester.pumpAndSettle();
+      expect(restarted, 1);
+      expect(find.text('Show latest activity'), findsNothing);
       expect(f.reads, 0);
       f.running = false;
       f.publish();
@@ -186,7 +217,10 @@ void main() {
       scroll.jumpTo(0);
       await tester.pumpAndSettle();
       expect(older, 1);
-      expect(find.byType(HandrailTranscriptMessage), findsNWidgets(40));
+      expect(
+        find.byType(HandrailTranscriptMessage).evaluate().length,
+        inInclusiveRange(1, 20),
+      );
       expect(tester.takeException(), null);
       await tester.pumpWidget(const SizedBox());
       expect(

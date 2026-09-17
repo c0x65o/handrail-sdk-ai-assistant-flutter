@@ -142,7 +142,7 @@ extension HandrailClientAttachments on HandrailAiClient {
             403 => 'forbidden',
             409 => 'upload_conflict',
             413 => 'attachment_too_large',
-            415 || 422 => 'invalid_attachment',
+            400 || 415 || 422 => 'invalid_attachment',
             429 => 'rate_limited',
             >= 500 => 'upload_unavailable',
             _ => 'invalid_upload_response',

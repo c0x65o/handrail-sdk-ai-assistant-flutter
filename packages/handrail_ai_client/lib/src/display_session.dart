@@ -1,5 +1,27 @@
 part of '../handrail_ai_client.dart';
 
+List<Map<String, Object?>> _relatedViews(
+    List<String> messageIds, String? turnId) {
+  final groups = <Map<String, Object?>>[];
+  var ids = <String>[], turn = turnId;
+  Map<String, Object?> view() => {
+        'type': 'context',
+        'messageIds': List.of(ids),
+        if (turn != null) 'turnId': turn
+      };
+  for (final id in messageIds.reversed) {
+    ids.add(id);
+    if (utf8.encode(jsonEncode(view())).length > 2048) {
+      ids.removeLast();
+      groups.add(view());
+      ids = [id];
+      turn = null;
+    }
+  }
+  if (ids.isNotEmpty || turn != null) groups.add(view());
+  return groups;
+}
+
 Map<String, Object?> _controlTurn(HandrailDisplayTurnControl turn) =>
     Map.unmodifiable({
       'turn_id': turn.turnId,
@@ -7,6 +29,15 @@ Map<String, Object?> _controlTurn(HandrailDisplayTurnControl turn) =>
       'remote_may_still_be_running': turn.remoteMayStillBeRunning,
       'error': turn.error,
     });
+
+bool _resolvedCitation(
+        HandrailDisplayRecord record, List<HandrailDisplayRecord> related) =>
+    record.value != null &&
+    related.any((source) =>
+        source.kind == 'source' &&
+        !source.deleted &&
+        source.value != null &&
+        source.value!['source_id'] == record.value!['source_id']);
 
 /// Explicit partial presentation document. It has no audit IDs, replay marker,
 /// or checkpoint shape and cannot be parsed as a canonical snapshot.
@@ -17,17 +48,24 @@ class HandrailConversationDisplayView extends HandrailConversationView {
   final Map<String, Object?> state;
   HandrailConversationDisplayView._(
       this.control, this.window, List<HandrailDisplayRecord> related,
-      {required bool hasMoreRelated})
+      {required bool hasMoreRelated, required int presentationVersion})
       : state = Map.unmodifiable({
           'conversation_id': control.conversationId,
           'revision': control.revision,
           'active_turn_id': control.activeTurnId,
           'display_history': Map.unmodifiable({
             'partial': true,
+            'version': presentationVersion,
             'generation': window.generation,
             'hasOlder': window.hasOlder,
             'hasNewer': window.hasNewer,
-            'hasMoreRelated': hasMoreRelated
+            'hasMoreRelated': hasMoreRelated,
+            'unresolvedCitationCount': related
+                .where((record) =>
+                    record.kind == 'citation' &&
+                    !record.deleted &&
+                    !_resolvedCitation(record, related))
+                .length
           }),
           'messages': List.unmodifiable(window.records
               .where((r) => r.value != null)
@@ -47,7 +85,10 @@ class HandrailConversationDisplayView extends HandrailConversationView {
             'budget': 'tool_loop_budget_exhaustions'
           }.entries)
             entry.value: List.unmodifiable(related
-                .where((r) => r.kind == entry.key && r.value != null)
+                .where((r) =>
+                    r.kind == entry.key &&
+                    r.value != null &&
+                    (r.kind != 'citation' || _resolvedCitation(r, related)))
                 .map((r) => r.value!)),
           'deferred_records': List.unmodifiable([...window.records, ...related]
               .where((r) => r.deferred)
@@ -75,15 +116,28 @@ class HandrailConversationDisplayView extends HandrailConversationView {
 }
 
 extension _HandrailBoundedSession on HandrailConversationSession {
+  Future<T> _displayRead<T>(Future<T> Function(Future<void>) read) async {
+    if (_disposed) throw StateError('Conversation session is disposed');
+    final request = Completer<void>();
+    _displayRequests.add(request);
+    try {
+      return await read(request.future);
+    } finally {
+      if (!request.isCompleted) request.complete();
+      _displayRequests.remove(request);
+    }
+  }
+
   Future<void> _refreshDisplay() async {
     final capability = _capabilities!.displayHistory!;
     final activation = _displayActivation;
     late HandrailDisplayControl control;
     try {
-      control = await client.displayHistoryControl(
-          conversationId: conversationId,
-          capability: capability,
-          cancellation: Future.any([_lifetime.future, activation.future]));
+      control = await _displayRead((cancellation) =>
+          client.displayHistoryControl(
+              conversationId: conversationId,
+              capability: capability,
+              cancellation: cancellation));
     } catch (_) {
       if (_disposed || activation.isCompleted) return;
       rethrow;
@@ -103,7 +157,12 @@ extension _HandrailBoundedSession on HandrailConversationSession {
     final previous = _control;
     if (previous?.generation != control.generation) {
       _relatedEpoch++;
+      if (_related.isNotEmpty) _relatedVersion++;
       _related = const [];
+      _relatedTruncated = false;
+      _relatedViewKey = null;
+      _relatedGroups = const [];
+      _relatedGroup = 0;
       _relatedCursor = null;
       _relatedRevision = null;
     }
@@ -114,8 +173,10 @@ extension _HandrailBoundedSession on HandrailConversationSession {
     }
     var window = _displayWindow;
     if (window == null) {
-      window = _displayWindow =
-          HandrailDisplayWindow(client: client, capability: capability);
+      window = _displayWindow = HandrailDisplayWindow(
+          client: client,
+          capability: capability,
+          onChanges: (page) => _mergeRelated(page.records, 'changes'));
       _displaySubscription = window.changes.listen((_) {
         if (_disposed) return;
         _publishDisplay();
@@ -158,11 +219,21 @@ extension _HandrailBoundedSession on HandrailConversationSession {
       _relatedWindowVersion = window.state.version;
       _relatedEpoch++;
       _relatedMessageIds = window.state.records.map((r) => r.id).toList();
-      _related = const [];
-      _relatedCursor = null;
+      final viewKey =
+          jsonEncode([control.generation, turn?.turnId, _relatedMessageIds]);
+      if (_relatedViewKey != viewKey) {
+        if (_related.isNotEmpty) _relatedVersion++;
+        _related = const [];
+        _relatedTruncated = false;
+        _relatedCursor = null;
+        _relatedGroups = _relatedViews(_relatedMessageIds, turn?.turnId);
+        _relatedGroup = 0;
+        _relatedInitialized = false;
+      }
+      _relatedViewKey = viewKey;
       if (turn != null || _relatedMessageIds.isNotEmpty) {
         try {
-          await _readRelated();
+          await _readRelated(latest: true);
         } catch (_) {
           _relatedRevision = null;
           rethrow;
@@ -190,36 +261,95 @@ extension _HandrailBoundedSession on HandrailConversationSession {
       _document = null;
       return;
     }
+    final stamp =
+        '${control.generation}/${control.revision}/${window.version}/$_relatedVersion/$_displayActive';
+    if (_publishedDisplayStamp != stamp) {
+      _publishedDisplayStamp = stamp;
+      _presentationVersion++;
+    }
     _document = HandrailConversationDisplayView._(control, window, _related,
-        hasMoreRelated: _relatedCursor != null);
+        hasMoreRelated: hasMoreRelated,
+        presentationVersion: _presentationVersion);
     workspace.open(_document!.runtimeState,
         select: _displayActive &&
             workspace.snapshot.selectedConversationId == null);
   }
 
-  Future<void> _readRelated() async {
-    final turnId = _relatedTurnId,
-        generation = _control?.generation,
-        epoch = _relatedEpoch;
+  void _mergeRelated(List<HandrailDisplayRecord> incoming, String direction) {
+    String key(HandrailDisplayRecord record) =>
+        jsonEncode([record.kind, record.id]);
+    final old = {for (final record in _related) key(record): record};
+    final updates = {for (final record in incoming) key(record): record};
+    final merged = <String, HandrailDisplayRecord>{};
+    for (final record in direction == 'older'
+        ? [...incoming, ..._related]
+        : [..._related, ...incoming]) {
+      final id = key(record), previous = old[id], update = updates[id];
+      if (direction == 'changes' && previous == null) continue;
+      final value = previous != null &&
+              (update == null || previous.revision >= update.revision)
+          ? previous
+          : update ?? record;
+      if (!value.deleted && value.kind != 'message') merged[id] = value;
+    }
+    final records = merged.values.toList();
+    final sizes = records
+        .map((record) =>
+            utf8
+                .encode(jsonEncode({
+                  'kind': record.kind,
+                  'id': record.id,
+                  'turnId': record.turnId,
+                  'revision': record.revision,
+                  'bytes': record.bytes,
+                  'deferred': record.deferred,
+                  'value': record.value,
+                }))
+                .length +
+            1)
+        .toList();
+    var bytes = sizes.fold<int>(2, (sum, size) => sum + size);
+    while (records.length > 90 || bytes > 262144) {
+      final index = direction == 'older' ? records.length - 1 : 0;
+      records.removeAt(index);
+      bytes -= sizes.removeAt(index);
+      _relatedTruncated = true;
+    }
+    if (records.length != _related.length ||
+        records
+            .asMap()
+            .entries
+            .any((entry) => !identical(entry.value, _related[entry.key]))) {
+      _related = List.unmodifiable(records);
+      _relatedVersion++;
+    }
+  }
+
+  Future<void> _readRelated({bool latest = false}) async {
+    final generation = _control?.generation, epoch = _relatedEpoch;
+    final windowRevision = _displayWindow?.state.revision;
+    final group = latest
+        ? 0
+        : _relatedCursor != null
+            ? _relatedGroup
+            : _relatedGroup + 1;
+    if (group >= _relatedGroups.length) return;
     final activation = _displayActivation;
     late HandrailDisplayPage page;
     try {
-      page = await client.displayHistoryPage(
+      page = await _displayRead((cancellation) => client.displayHistoryPage(
           conversationId: conversationId,
           capability: _capabilities!.displayHistory!,
-          view: {
-            'type': 'context',
-            'messageIds': _relatedMessageIds,
-            if (turnId != null) 'turnId': turnId
-          },
-          cursor: _relatedCursor,
-          cancellation: Future.any([_lifetime.future, activation.future]));
+          view: _relatedGroups[group],
+          cursor: latest ? null : _relatedCursor,
+          cancellation: cancellation));
     } catch (_) {
       if (_disposed || activation.isCompleted || epoch != _relatedEpoch) return;
       rethrow;
     }
     if (_disposed ||
         epoch != _relatedEpoch ||
+        _displayWindow?.state.revision != windowRevision ||
         _control?.generation != generation) return;
     if (page.preparing || page.generation != generation) {
       _relatedRevision = null;
@@ -227,8 +357,17 @@ extension _HandrailBoundedSession on HandrailConversationSession {
           'history_preparing', 'Preparing saved activity…',
           retryable: true);
     }
-    // Keep one bounded related-state page; activity paging is explicit.
-    _related = page.records;
-    _relatedCursor = page.nextCursor;
+    if (page.revision < (windowRevision ?? 0)) {
+      throw const HandrailGatewayException(
+          'stale_activity', 'Saved activity is temporarily behind. Try again.',
+          retryable: true);
+    }
+    final initial = !_relatedInitialized;
+    _mergeRelated(page.records, latest ? 'latest' : 'older');
+    _relatedInitialized = true;
+    if (!latest || initial) {
+      _relatedCursor = page.nextCursor;
+      _relatedGroup = group;
+    }
   }
 }

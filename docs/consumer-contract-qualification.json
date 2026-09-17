@@ -1,0 +1,109 @@
+{
+  "qualification": "local compiler/test resolution only; dependency declarations and lockfiles unchanged",
+  "reports": [
+    {
+      "projectRoot": "/opt/handrail/repos/hitcents/hitcents-erp/hitcents-erp-mobile",
+      "roots": [
+        "lib/features/cents/cents_sdk.dart",
+        "lib/features/cents/cents_sheet.dart"
+      ],
+      "qualification": "local Flutter frontend source compile; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 7967
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/mills/mills-family-erp-v4/mills-family-erp-v4-mobile",
+      "roots": [
+        "lib/repositories/sdk_assistant_repository.dart",
+        "lib/screens/assistant_screen.dart"
+      ],
+      "qualification": "local Flutter frontend source compile; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 12681
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/spartan-cyber-services/spartan-cyber-erp-v3/scs-erp-mobile",
+      "roots": [
+        "lib/src/aegis/aegis_sdk_repository.dart",
+        "lib/src/aegis/aegis_conversation_screen.dart"
+      ],
+      "qualification": "local Flutter frontend source compile; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 10210
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/spartan-cyber-services/spartan-cyber-erp-v3/scs-erp-mobile",
+      "roots": [
+        "test/aegis_sdk_repository_test.dart",
+        "test/aegis_sdk_projection_test.dart"
+      ],
+      "qualification": "local Flutter tests; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 11355
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/mills/mills-family-erp-v4/mills-family-erp-v4-mobile",
+      "roots": [
+        "test/repositories/sdk_assistant_history_test.dart",
+        "test/repositories/assistant_review_contract_test.dart",
+        "test/repositories/sdk_assistant_repository_test.dart"
+      ],
+      "qualification": "local Flutter tests; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 34686
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/mills/mills-family-erp-v4/mills-family-erp-v4-mobile",
+      "roots": [
+        "test/repositories/sdk_assistant_projection_test.dart"
+      ],
+      "qualification": "local Flutter tests; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 22720
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/hitcents/hitcents-erp/hitcents-erp-mobile",
+      "roots": [
+        "test/cents_sdk_test.dart",
+        "test/cents_sheet_test.dart"
+      ],
+      "qualification": "local Flutter tests; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 12756
+    }
+  ],
+  "postVirtualizationTests": [
+    {
+      "projectRoot": "/opt/handrail/repos/hitcents/hitcents-erp/hitcents-erp-mobile",
+      "roots": [
+        "test/cents_sdk_test.dart",
+        "test/cents_sheet_test.dart"
+      ],
+      "qualification": "local Flutter tests; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 12070
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/spartan-cyber-services/spartan-cyber-erp-v3/scs-erp-mobile",
+      "roots": [
+        "test/aegis_sdk_repository_test.dart",
+        "test/aegis_sdk_projection_test.dart"
+      ],
+      "qualification": "local Flutter tests; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 4145
+    },
+    {
+      "projectRoot": "/opt/handrail/repos/mills/mills-family-erp-v4/mills-family-erp-v4-mobile",
+      "roots": [
+        "test/repositories/sdk_assistant_history_test.dart",
+        "test/repositories/assistant_review_contract_test.dart",
+        "test/repositories/sdk_assistant_repository_test.dart",
+        "test/repositories/sdk_assistant_projection_test.dart"
+      ],
+      "qualification": "local Flutter tests; installed Git dependencies unchanged",
+      "exitCode": 0,
+      "milliseconds": 26230
+    }
+  ]
+}

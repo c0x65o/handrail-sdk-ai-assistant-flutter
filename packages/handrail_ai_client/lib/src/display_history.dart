@@ -5,13 +5,17 @@ class HandrailDisplayHistoryCapability {
   final int maximumPageSize;
   final int maximumPageBytes;
   final bool control;
-  const HandrailDisplayHistoryCapability._(
-      this.maximumPageSize, this.maximumPageBytes, this.control);
+  final bool messageText;
+  final bool pendingApprovals;
+  const HandrailDisplayHistoryCapability._(this.maximumPageSize,
+      this.maximumPageBytes, this.control, this.messageText, this.pendingApprovals);
   factory HandrailDisplayHistoryCapability.fromJson(
       Map<String, Object?> value) {
     final size = value['maximumPageSize'], bytes = value['maximumPageBytes'];
     if (value['version'] != 1 ||
         value['control'] != null && value['control'] is! bool ||
+        value['messageText'] != null && value['messageText'] is! bool ||
+        value['pendingApprovals'] != null && value['pendingApprovals'] is! bool ||
         size is! int ||
         size < 1 ||
         size > 50 ||
@@ -21,7 +25,7 @@ class HandrailDisplayHistoryCapability {
       throw const FormatException('Invalid display history capability.');
     }
     return HandrailDisplayHistoryCapability._(
-        size, bytes, value['control'] == true);
+        size, bytes, value['control'] == true, value['messageText'] == true, value['pendingApprovals'] == true);
   }
 }
 
@@ -174,18 +178,19 @@ class HandrailDisplayChanges {
 }
 
 class HandrailDisplayContentChunk {
+  final String encoding;
   final String text;
   final int revision;
 
   /// Unicode code-point offset, not a Dart String/UTF-16 offset.
   final int? nextOffset;
   const HandrailDisplayContentChunk._(
-      this.text, this.revision, this.nextOffset);
+      this.text, this.revision, this.nextOffset, this.encoding);
   factory HandrailDisplayContentChunk.fromJson(Map<String, Object?> json) {
     final text = json['text'],
         revision = json['revision'],
         next = json['nextOffset'];
-    if (json['encoding'] != 'json-text' ||
+    if (!const {'json-text', 'plain-text'}.contains(json['encoding']) ||
         text is! String ||
         text.runes.length > 8192 ||
         revision is! int ||
@@ -193,7 +198,8 @@ class HandrailDisplayContentChunk {
         next != null && (next is! int || next < 1)) {
       throw const FormatException('Invalid display history content.');
     }
-    return HandrailDisplayContentChunk._(text, revision, next as int?);
+    return HandrailDisplayContentChunk._(
+        text, revision, next as int?, json['encoding'] as String);
   }
 }
 
@@ -320,11 +326,13 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
       required String id,
       int? revision,
       int offset = 0,
+      bool messageText = false,
       Future<void>? cancellation,
       Duration timeout = const Duration(seconds: 30)}) async {
     if (!_historyId(conversationId) ||
         !_historyId(id) ||
         !HandrailDisplayRecord.kinds.contains(kind) ||
+        messageText && kind != 'message' ||
         generation < 0 ||
         offset < 0 ||
         offset > 2147483646 ||
@@ -339,14 +347,18 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
           'kind': kind,
           'id': id,
           'offset': offset,
+          if (messageText) 'format': 'message-text',
           if (revision != null) 'revision': revision,
         },
         65536,
         cancellation,
         timeout));
-    if (revision != null && chunk.revision != revision ||
+    if (chunk.encoding != (messageText ? 'plain-text' : 'json-text') ||
+        revision != null && chunk.revision != revision ||
         chunk.nextOffset != null &&
-            chunk.nextOffset != offset + chunk.text.runes.length) {
+            (chunk.text.isEmpty ||
+                chunk.nextOffset != offset + chunk.text.runes.length ||
+                messageText && chunk.text.runes.length != 8192)) {
       throw const FormatException(
           'Display history content changed while reading.');
     }
@@ -436,6 +448,7 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
       return await cancellable(execute());
     } finally {
       deadline.cancel();
+      cancel();
     }
   }
 }

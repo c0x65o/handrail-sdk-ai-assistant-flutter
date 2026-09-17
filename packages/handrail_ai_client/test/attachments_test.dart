@@ -132,7 +132,7 @@ void main() {
   });
   test('uploader binding preserves safe retry policy without server text',
       () async {
-    for (final status in [403, 409, 413, 429, 503]) {
+    for (final status in [400, 403, 409, 413, 415, 422, 429, 503]) {
       final client = HandrailAiClient(
           baseUri: base,
           httpClient: MockClient(
@@ -147,6 +147,9 @@ void main() {
         expect(result.reference, isNull);
         expect(result.retryable, status == 429 || status == 503);
         expect(result.errorCode, isNot(contains('private')));
+        if ([400, 415, 422].contains(status)) {
+          expect(result.errorCode, 'invalid_attachment');
+        }
       } finally {
         client.close();
       }

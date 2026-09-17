@@ -6,7 +6,8 @@ import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
 http.Response ok(Object? value) =>
-    http.Response(jsonEncode({'ok': true, 'value': value}), 200);
+    http.Response(jsonEncode({'ok': true, 'value': value}), 200,
+        headers: {'content-type': 'application/json; charset=utf-8'});
 
 class Fixture {
   final requests = <Map<String, Object?>>[];
@@ -17,7 +18,9 @@ class Fixture {
   Future<void>? holdControl;
   Future<void>? holdRelatedPage;
   List<Map<String, Object?>> related = [];
+  List<Map<String, Object?>>? changed;
   String? relatedCursor;
+  String messagePrefix = 'message';
   late final HandrailAiClient client = HandrailAiClient(
       baseUri: Uri.parse('https://test.invalid/ai'),
       httpClient: MockClient(handle));
@@ -38,13 +41,13 @@ class Fixture {
 
   Map<String, Object?> record(int id) => {
         'kind': 'message',
-        'id': 'message-$id',
+        'id': '$messagePrefix-$id',
         'turnId': latest,
         'revision': revision,
         'bytes': 220,
         'deferred': false,
         'value': {
-          'message_id': 'message-$id',
+          'message_id': '$messagePrefix-$id',
           'turn_id': latest,
           'role': 'assistant',
           'content': [
@@ -131,8 +134,10 @@ class Fixture {
           return ok({
             ...header(),
             'throughRevision': revision,
-            'records':
-                (input['afterRevision'] as int) < revision ? [record(99)] : [],
+            'records': changed ??
+                ((input['afterRevision'] as int) < revision
+                    ? [record(99)]
+                    : []),
             'nextCursor': null
           });
       }
@@ -180,6 +185,21 @@ class Fixture {
 }
 
 void main() {
+  test('presentation version changes for paging but not an unchanged poll',
+      () async {
+    final f = Fixture();
+    addTearDown(f.dispose);
+    await f.session.initialize();
+    int version() =>
+        (f.session.document!.state['display_history'] as Map)['version'] as int;
+    final initial = version(), canonical = f.session.document!.revision;
+    await f.session.refresh();
+    expect(version(), initial);
+    await f.session.displayWindow!.loadOlder();
+    expect(version(), greaterThan(initial));
+    expect(f.session.document!.revision, canonical);
+  });
+
   test(
       'related state covers the retained window and ignores an obsolete activity page',
       () async {
@@ -208,11 +228,14 @@ void main() {
     final view = (f.requests.lastWhere((r) =>
         r['operation'] == 'page' &&
         (r['input'] as Map)['view'] != null)['input'] as Map)['view'] as Map;
-    expect(view['messageIds'],
-        f.session.displayWindow!.state.records.map((r) => r.id).toList());
+    expect(
+        view['messageIds'],
+        unorderedEquals(
+            f.session.displayWindow!.state.records.map((r) => r.id).toList()));
     expect((view['messageIds'] as List).length, 90);
     final hold = Completer<void>();
     f.holdRelatedPage = hold.future;
+    f.related = [tool('obsolete-page')];
     final more = f.session.loadMoreRelated();
     await Future<void>.delayed(Duration.zero);
     f.turn('active', 'completed');
@@ -221,12 +244,195 @@ void main() {
     await f.session.refresh();
     hold.complete();
     await more;
-    expect((f.session.document!.state['tool_calls'] as List).single['name'],
-        'current');
-    expect(f.session.hasMoreRelated, false);
+    expect(
+        (f.session.document!.state['tool_calls'] as List)
+            .map((tool) => tool['name']),
+        containsAll(['original', 'current']));
+    expect(
+        (f.session.document!.state['tool_calls'] as List)
+            .any((tool) => tool['name'] == 'obsolete-page'),
+        false);
     await f.session.dispose();
     expect(f.session.document, null);
     expect(f.session.displayWindow!.state.records, isEmpty);
+  });
+
+  test('a live removal overtakes a held activity page without resurrection',
+      () async {
+    final f = Fixture()..relatedCursor = 'older';
+    addTearDown(f.dispose);
+    final tool = <String, Object?>{
+      'kind': 'tool',
+      'id': 'gone',
+      'revision': f.revision,
+      'turnId': null,
+      'bytes': 100,
+      'deferred': false,
+      'value': {'tool_call_id': 'gone', 'status': 'completed'}
+    };
+    f.related = [tool];
+    await f.session.initialize();
+    final hold = Completer<void>();
+    f.holdRelatedPage = hold.future;
+    final more = f.session.loadMoreRelated();
+    await Future<void>.delayed(Duration.zero);
+    f.revision++;
+    f.changed = [
+      {...tool, 'revision': f.revision, 'value': null, 'deleted': true}
+    ];
+    await f.session.displayWindow!.refresh();
+    hold.complete();
+    await more;
+    expect(f.session.document!.state['tool_calls'], isEmpty);
+  });
+
+  test(
+      'partial presentation pairs citations with retained sources across pages and removals',
+      () async {
+    final f = Fixture()..relatedCursor = 'source';
+    addTearDown(f.dispose);
+    final citation = <String, Object?>{
+      'kind': 'citation',
+      'id': 'c',
+      'revision': f.revision,
+      'turnId': null,
+      'bytes': 150,
+      'deferred': false,
+      'value': {
+        'citation_id': 'c',
+        'source_id': 's',
+        'order': 0,
+        'target': {'type': 'assistant_message', 'message_id': 'message-99'}
+      }
+    };
+    final source = <String, Object?>{
+      'kind': 'source',
+      'id': 's',
+      'revision': f.revision,
+      'turnId': null,
+      'bytes': 100,
+      'deferred': false,
+      'value': {'source_id': 's', 'label': 'Source', 'type': 'record'}
+    };
+    int unresolved() => (f.session.document!.state['display_history']
+        as Map)['unresolvedCitationCount'] as int;
+    f.related = [citation];
+    await f.session.initialize();
+    expect(f.session.document!.state['citations'], isEmpty);
+    expect(unresolved(), 1);
+    f.related = [source];
+    f.relatedCursor = null;
+    await f.session.loadMoreRelated();
+    expect(f.session.document!.state['citations'], [citation['value']]);
+    expect(unresolved(), 0);
+    f.revision++;
+    f.changed = [
+      {...source, 'revision': f.revision, 'value': null, 'deleted': true}
+    ];
+    await f.session.displayWindow!.refresh();
+    expect(f.session.document!.state['citations'], isEmpty);
+    expect(unresolved(), 1);
+    expect(f.session.document!.state['citation_sources'], isEmpty);
+  });
+
+  test(
+      'activity pages retain loaded records, apply live tombstones and explicitly bound memory',
+      () async {
+    final f = Fixture()..turn('active', 'running');
+    addTearDown(f.dispose);
+    Map<String, Object?> tool(int id, {int size = 0}) => {
+          'kind': 'tool',
+          'id': 'tool-$id',
+          'revision': f.revision,
+          'bytes': size + 200,
+          'turnId': 'active',
+          'deferred': false,
+          'value': {
+            'tool_call_id': 'tool-$id',
+            'turn_id': 'active',
+            'name': 'Tool $id',
+            'status': 'completed',
+            'text': 'x' * size
+          },
+        };
+    f.related = [for (var i = 90; i < 120; i++) tool(i)];
+    f.relatedCursor = 'more';
+    await f.session.initialize();
+    for (var page = 2; page >= 0; page--) {
+      f.related = [for (var i = page * 30; i < (page + 1) * 30; i++) tool(i)];
+      await f.session.loadMoreRelated();
+      expect((f.session.document!.state['tool_calls'] as List).length,
+          lessThanOrEqualTo(90));
+    }
+    expect(f.session.relatedTruncated, true);
+    f.turn('active', 'running');
+    f.changed = [
+      {...tool(70), 'deleted': true, 'value': null}
+    ];
+    f.related = [for (var i = 90; i < 120; i++) tool(i)];
+    await f.session.refresh();
+    final tools = f.session.document!.state['tool_calls'] as List;
+    expect(tools.any((tool) => tool['tool_call_id'] == 'tool-70'), false);
+    expect(tools.any((tool) => tool['tool_call_id'] == 'tool-30'), true);
+    f.changed = [];
+    await f.session.showLatestRelated();
+    expect(f.session.relatedTruncated, false);
+    expect(f.session.document!.state['tool_calls'] as List, hasLength(30));
+    for (var page = 0; page < 6; page++) {
+      f.related = [
+        tool(200 + page * 2, size: 30000),
+        tool(201 + page * 2, size: 30000)
+      ];
+      await f.session.loadMoreRelated();
+    }
+    expect(
+        (f.session.document!.state['tool_calls'] as List).length, lessThan(9));
+    expect(
+        utf8.encode(jsonEncode(f.session.document!.state['tool_calls'])).length,
+        lessThanOrEqualTo(262144));
+    expect(f.session.relatedTruncated, true);
+  });
+
+  test(
+      'denied activity page clears all presentation and publishes a nonretryable error',
+      () async {
+    final f = Fixture()..relatedCursor = 'more';
+    addTearDown(f.dispose);
+    await f.session.initialize();
+    f.denied = true;
+    await expectLater(
+        f.session.loadMoreRelated(), throwsA(isA<HandrailGatewayException>()));
+    expect(f.session.document, null);
+    expect(f.session.displayWindow!.state.records, isEmpty);
+    expect(f.session.error!.code, 'forbidden');
+    expect(f.session.error!.retryable, false);
+  });
+
+  test(
+      'long context references remain bounded and later groups load only on demand',
+      () async {
+    final f = Fixture()..messagePrefix = '界' * 250;
+    addTearDown(f.dispose);
+    await f.session.initialize();
+    List<Map> contexts() => f.requests
+        .where((r) =>
+            r['operation'] == 'page' &&
+            ((r['input'] as Map)['view'] as Map?)?['type'] == 'context')
+        .toList();
+    expect(contexts(), hasLength(1));
+    for (var i = 0; f.session.hasMoreRelated && i < 40; i++) {
+      await f.session.loadMoreRelated();
+    }
+    expect(f.session.hasMoreRelated, false);
+    final references = contexts()
+        .expand(
+            (r) => ((r['input'] as Map)['view'] as Map)['messageIds'] as List)
+        .toSet();
+    expect(references,
+        f.session.displayWindow!.state.records.map((r) => r.id).toSet());
+    for (final request in contexts()) {
+      expect(utf8.encode(jsonEncode(request)).length, lessThanOrEqualTo(8192));
+    }
   });
 
   test(

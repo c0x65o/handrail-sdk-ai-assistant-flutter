@@ -144,6 +144,60 @@ typedef HandrailApprovalUiBinding = ({
 class HandrailApprovalDecisions {
   HandrailApprovalDecisions._(this._owner);
   final HandrailAssistantController _owner;
+  HandrailDisplayPage? _inbox;
+  String? _inboxContext, _inboxCursor, _inboxSelected, _inboxError;
+  int? _inboxSelection;
+  bool _inboxOpen = false;
+  Completer<void>? _inboxRequest;
+  String get _currentInboxContext => jsonEncode([_owner._selectionGeneration,
+    _owner.session?._control?.generation, _owner.session?._control?.revision]);
+  bool get _inboxCurrent => _inboxContext == _currentInboxContext;
+
+  /// One inbox page is retained only while explicitly open for this selection.
+  Future<void> openPendingApprovals({String? cursor}) async {
+    _owner._assertActive();
+    final session = _owner.session;
+    if (session == null || !session.supportsPendingApprovals) return;
+    _cancelInboxRead();
+    final request = Completer<void>(); _inboxRequest = request;
+    _reviews.clear();
+    _inboxOpen = true; _inbox = null; _inboxError = null; _inboxSelected = null;
+    _inboxContext = _currentInboxContext; _inboxSelection = _owner._selectionGeneration; _inboxCursor = cursor;
+    _owner._publish();
+    try {
+      final page = await session.readApprovals(cursor: cursor, cancellation: request.future);
+      if (!request.isCompleted && _inboxCurrent) _inbox = page;
+    } catch (_) {
+      if (!request.isCompleted && _inboxCurrent) _inboxError = 'Pending approvals could not be loaded. Try again.';
+    } finally {
+      if (identical(_inboxRequest, request)) {
+        _cancelInboxRead();
+        _owner._publish();
+      }
+    }
+  }
+  void _cancelInboxRead() { final request = _inboxRequest; _inboxRequest = null;
+    if (request != null && !request.isCompleted) request.complete(); }
+  void closePendingApprovals() {
+    _cancelInboxRead(); _reviews.clear(); _inboxOpen = false; _inbox = null; _inboxSelected = null; _inboxError = null;
+    _owner._publish();
+  }
+  void selectPendingApproval(String id) {
+    if (!_inboxCurrent || !_inboxOpen || _inbox == null || !_inbox!.records.any((r) => r.kind == 'approval' && r.id == id)) return;
+    if (_inboxSelected != id) _reviews.clear();
+    _inboxSelected = id; _owner._publish();
+  }
+  void _disposeInbox() { _cancelInboxRead(); _inbox = null; _reviews.clear(); _errors.clear(); }
+  void _syncInbox() {
+    if (!_inboxOpen || _inboxCurrent) return;
+    _cancelInboxRead(); _reviews.clear(); _inbox = null; _inboxSelected = null;
+    if (_inboxSelection != _owner._selectionGeneration) { _inboxOpen = false; return; }
+    _inboxContext = _currentInboxContext;
+    // Reads never block control publication. A changed generation restarts the
+    // bounded first page; no opaque cursor from before a clear is reused.
+    scheduleMicrotask(() { if (!_owner._disposed && _inboxOpen && _inboxCurrent) unawaited(openPendingApprovals()); });
+  }
+
   final _reviews = <String, HandrailApprovalReview>{};
   final _reviewing = <String>{};
   final _errors = <String, String>{};
@@ -158,11 +212,20 @@ class HandrailApprovalDecisions {
   bool pendingFor(String id) =>
       _pending.values.any((r) => r.conversationId == id);
   String _key(String id) => jsonEncode([_owner.selectedId, id]);
-  List<HandrailApprovalProposal> get _proposals => _owner.selectedId == null
-      ? []
-      : _records(_owner.document?.state['approval_proposals'])
-          .map((v) => HandrailApprovalProposal(_owner.selectedId!, v))
-          .toList();
+  List<HandrailApprovalProposal> get _proposals {
+    final id = _owner.selectedId;
+    if (id == null) return [];
+    final records = _records(_owner.document?.state['approval_proposals']);
+    final selected = _inboxCurrent ? _inbox?.records.where((r) => r.id == _inboxSelected && r.kind == 'approval' && r.value != null).firstOrNull : null;
+    final proposals = records.map((v) => HandrailApprovalProposal(id, v)).toList();
+    if (selected?.value != null) {
+      final candidate = HandrailApprovalProposal(id, selected!.value!);
+      final index = proposals.indexWhere((p) => p.id == candidate.id);
+      if (index < 0) proposals.add(candidate);
+      else if (proposals[index].version < candidate.version) proposals[index] = candidate;
+    }
+    return proposals;
+  }
   HandrailApprovalProposal _current(String id, int version) {
     _owner._assertActive();
     final proposals = _proposals.where((p) => p.id == id).toList();
@@ -186,6 +249,23 @@ class HandrailApprovalDecisions {
     }
   }
 
+  Future<HandrailApprovalReview> _readBoundReview(HandrailApprovalProposal p) async {
+    final session = _owner.session;
+    if (session?.supportsPendingApprovals == true) {
+      final page = await session!.readApprovals(proposalId: p.id);
+      final record = page.records.where((r) => r.kind == 'approval' && r.id == p.id).firstOrNull;
+      if (record?.value != null && HandrailApprovalProposal(p.conversationId, record!.value!).binding == p.binding) {
+        final tool = page.records.where((r) => r.kind == 'tool' && r.id == p.json['tool_call_id']).firstOrNull?.value;
+        final args = tool?['arguments'];
+        if (tool?['turn_id'] == p.json['turn_id'] && tool?['name'] == p.json['tool_name'] && args is Map &&
+            p.reviewedArguments['argument_ref'] == 'args-sha256-${_approvalHash(args)}') {
+          return HandrailApprovalReview.forProposal(p, arguments: Map<String, Object?>.from(args), complete: true);
+        }
+      }
+    }
+    throw const HandrailGatewayException('review_unavailable', 'Complete verified action details are unavailable. Reload the review.');
+  }
+
   Future<void> review(String id, int version) async {
     final p = _current(id, version), generation = _owner._selectionGeneration;
     if (!_reviewing.add(p.binding)) return;
@@ -200,8 +280,7 @@ class HandrailApprovalDecisions {
                   arguments: Map<String, Object?>.from(
                       p.reviewedArguments['value'] as Map),
                   complete: true)
-              : throw const HandrailGatewayException('review_unavailable',
-                  'This change requires a verified review from the application.');
+              : await _readBoundReview(p);
       _owner._assertActive();
       if (generation != _owner._selectionGeneration ||
           _current(id, version).binding != p.binding ||
@@ -370,6 +449,7 @@ class HandrailApprovalDecisions {
           _store != null;
       items.add({
         ...p.json,
+        'inboxOnly': !_records(_owner.document?.state['approval_proposals']).any((r) => r['proposal_id'] == p.id),
         'conversationId': p.conversationId,
         'binding': p.binding,
         'expired': p.expired,
@@ -400,7 +480,17 @@ class HandrailApprovalDecisions {
         'error': _errors[r.key]
       });
     }
-    return {'conversationId': _owner.selectedId, 'items': items};
+    final retained = proposals.map((p) => p.binding).toSet();
+    _reviews.removeWhere((key, _) => !retained.contains(key));
+    return {'conversationId': _owner.selectedId, 'items': items,
+      'pendingApprovalsAvailable': _owner.session?.supportsPendingApprovals == true && _owner.session?.hasPendingApprovals == true,
+      'inboxOpen': _inboxOpen, 'inboxLoading': _inboxRequest != null, 'inboxError': _inboxError,
+      'inboxSelected': _inboxSelected, 'inboxHasMore': _inbox?.nextCursor != null, 'inboxHasNewer': _inboxCursor != null,
+      'inboxItems': [for (final r in _inboxCurrent ? _inbox?.records ?? <HandrailDisplayRecord>[] : <HandrailDisplayRecord>[])
+        if (r.kind == 'approval') {'id': r.id, 'title': r.value?['tool_name'] ?? 'Action', 'deferred': r.deferred}],
+      'openInbox': () => openPendingApprovals(), 'olderInbox': () => openPendingApprovals(cursor: _inbox?.nextCursor),
+      'closeInbox': closePendingApprovals, 'selectInbox': selectPendingApproval,
+    };
   }
 
   HandrailApprovalUiBinding get uiBinding => (

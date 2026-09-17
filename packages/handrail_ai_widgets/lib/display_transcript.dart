@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'conversation_transcript.dart';
+import 'large_message.dart';
 
 /// Matches HandrailDisplayWindow.uiBinding without a dependency on the client.
 typedef HandrailDisplayTranscriptBinding = ({
@@ -86,8 +87,8 @@ class _CallbackDisplayPositionStore implements HandrailDisplayPositionStore {
 /// A bounded display window, explicitly separate from the canonical transcript.
 /// Only the selected page is loaded. Older/newer pages require scrolling or a
 /// button; following live output replaces the tail in one bounded request.
-/// Exact layout of the controller's bounded rows preserves anchors for Markdown
-/// and images whose height changes after loading, without estimated row heights.
+/// Only viewport-adjacent message bodies are mounted. Measured placeholders
+/// preserve scroll extent and message anchors when older pages are evicted.
 class HandrailDisplayTranscript extends StatefulWidget {
   const HandrailDisplayTranscript({
     super.key,
@@ -133,6 +134,10 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
     with WidgetsBindingObserver {
   final _scroll = ScrollController(), _viewport = GlobalKey();
   final _keys = <String, GlobalKey>{};
+  final _heights = <String, double>{};
+  final _rendered = <String>{};
+  double _renderedOffset = 0;
+  double? _layoutWidth;
   final _positions = LinkedHashMap<String, HandrailDisplayPosition>();
   StreamSubscription<Object?>? _subscription;
   Timer? _poll;
@@ -147,6 +152,7 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
   bool _restoring = false;
   int _epoch = 0;
   String? _localError, _readIdentity;
+  String? _expandedMessage;
 
   @override
   void initState() {
@@ -187,9 +193,13 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
   }
 
   void _connect() {
+    _expandedMessage = null;
     final epoch = ++_epoch;
     _state = const {};
     _keys.clear();
+    _heights.clear();
+    _rendered.clear();
+    _layoutWidth = null;
     _anchor = null;
     _follow = true;
     _requesting = false;
@@ -297,7 +307,9 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
       _anchor = null;
     }
     final ids = _records.map((record) => record['id']).toSet();
+    if (!ids.contains(_expandedMessage)) _expandedMessage = null;
     _keys.removeWhere((id, _) => !ids.contains(id));
+    _heights.removeWhere((id, _) => !ids.contains(id));
     _schedule();
   }
 
@@ -363,7 +375,18 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
       if (!mounted || epoch != _epoch || !_scroll.hasClients || _restoring)
         return;
       _adjusting = true;
+      var measured = false;
       try {
+        for (final id in _rendered) {
+          final box = _keys[id]?.currentContext?.findRenderObject();
+          if (box is RenderBox &&
+              box.hasSize &&
+              box.size.height > 0 &&
+              ((_heights[id] ?? -1) - box.size.height).abs() > 0.1) {
+            _heights[id] = box.size.height;
+            measured = true;
+          }
+        }
         final viewport = _viewport.currentContext?.findRenderObject();
         final anchor = _anchor;
         final row = _keys[anchor?.messageId]?.currentContext
@@ -390,6 +413,11 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
         }
       } finally {
         _adjusting = false;
+      }
+      // Programmatic anchor/follow movement also changes the visible body set.
+      // Rebuild only when measurements or the scroll offset actually changed.
+      if (measured || (_renderedOffset - _scroll.offset).abs() > 0.1) {
+        setState(() {});
       }
       _anchor = _capture();
       if (_follow &&
@@ -469,98 +497,159 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
     final loading = _state['status'] == 'preparing'
         ? 'Preparing saved conversation…'
         : 'Loading conversation…';
-    return Stack(
-      children: [
-        NotificationListener<SizeChangedLayoutNotification>(
-          onNotification: (_) {
-            _schedule();
-            return false;
-          },
-          child: SingleChildScrollView(
-            key: _viewport,
-            controller: _scroll,
-            padding: widget.padding,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (_state['hasOlder'] == true)
-                  TextButton(
-                    onPressed: _busy
-                        ? null
-                        : () => unawaited(_request(widget.binding.older)),
-                    child: const Text('Load older messages'),
-                  ),
-                if (_records.isEmpty && error == null)
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Semantics(
-                      liveRegion: true,
-                      child: Text(
-                        widget.conversationId == null
-                            ? 'Select a conversation.'
-                            : _state['status'] == 'ready'
-                            ? 'No messages yet.'
-                            : loading,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (_layoutWidth != constraints.maxWidth) {
+          _layoutWidth = constraints.maxWidth;
+          _heights.clear();
+          _schedule();
+        }
+        final height = constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : 844.0;
+        _renderedOffset = _scroll.hasClients ? _scroll.offset : 0;
+        var top =
+            widget.padding.vertical / 2 + (_state['hasOlder'] == true ? 48 : 0);
+        _rendered.clear();
+        for (final record in _records) {
+          final id = record['id'] as String, rowHeight = _heights[id] ?? 240.0;
+          // One viewport of overscan on each side. A tall message is mounted
+          // whole, so Markdown and accessibility never see text fragments.
+          if (top + rowHeight >= _renderedOffset - height &&
+              top <= _renderedOffset + height * 2)
+            _rendered.add(id);
+          top += rowHeight;
+        }
+        return Stack(
+          children: [
+            NotificationListener<SizeChangedLayoutNotification>(
+              onNotification: (_) {
+                _schedule();
+                return false;
+              },
+              child: SingleChildScrollView(
+                key: _viewport,
+                controller: _scroll,
+                padding: widget.padding,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (_state['hasOlder'] == true)
+                      TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () => unawaited(_request(widget.binding.older)),
+                        child: const Text('Load older messages'),
                       ),
-                    ),
-                  ),
-                for (final record in _records)
-                  SizeChangedLayoutNotifier(
-                    child: KeyedSubtree(
-                      key: _keys.putIfAbsent(
-                        record['id'] as String,
-                        GlobalKey.new,
+                    if (_records.isEmpty && error == null)
+                      Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            widget.conversationId == null
+                                ? 'Select a conversation.'
+                                : _state['status'] == 'ready'
+                                ? 'No messages yet.'
+                                : loading,
+                          ),
+                        ),
                       ),
-                      child: record['deferred'] == true
-                          ? widget.deferredBuilder?.call(context, record) ??
-                                const HandrailTranscriptNotice(
-                                  message:
-                                      'This message is too large for the preview. Open its full content to read it.',
+                    for (final record in _records)
+                      SizeChangedLayoutNotifier(
+                        child: KeyedSubtree(
+                          key: _keys.putIfAbsent(
+                            record['id'] as String,
+                            GlobalKey.new,
+                          ),
+                          child: !_rendered.contains(record['id'])
+                              ? SizedBox(
+                                  height: _heights[record['id']] ?? 240.0,
                                 )
-                          : widget.messageBuilder?.call(context, record) ??
-                                HandrailTranscriptMessage(
-                                  message:
-                                      record['value'] as Map<String, Object?>,
-                                  style: widget.style,
-                                  onOpenLink: widget.onOpenLink,
-                                  attachmentBuilder: widget.attachmentBuilder,
-                                ),
-                    ),
-                  ),
-                if (_state['hasNewer'] == true)
-                  TextButton(
-                    onPressed: _busy
-                        ? null
-                        : () => unawaited(_request(widget.binding.newer)),
-                    child: const Text('Load newer messages'),
-                  ),
-                ...widget.trailing,
-                if (error != null)
-                  HandrailTranscriptNotice(
-                    message: error,
-                    isError: true,
-                    actionLabel: 'Retry',
-                    onAction: _busy
-                        ? null
-                        : () => unawaited(_request(widget.binding.retry)),
-                  ),
-              ],
+                              : record['deferred'] == true
+                              ? widget.deferredBuilder?.call(context, record) ??
+                                    _deferredMessage(record)
+                              : widget.messageBuilder?.call(context, record) ??
+                                    HandrailTranscriptMessage(
+                                      message:
+                                          record['value']
+                                              as Map<String, Object?>,
+                                      style: widget.style,
+                                      onOpenLink: widget.onOpenLink,
+                                      attachmentBuilder:
+                                          widget.attachmentBuilder,
+                                    ),
+                        ),
+                      ),
+                    if (_state['hasNewer'] == true)
+                      TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () => unawaited(_request(widget.binding.newer)),
+                        child: const Text('Load newer messages'),
+                      ),
+                    ...widget.trailing,
+                    if (error != null)
+                      HandrailTranscriptNotice(
+                        message: error,
+                        isError: true,
+                        actionLabel: 'Retry',
+                        onAction: _busy
+                            ? null
+                            : () => unawaited(_request(widget.binding.retry)),
+                      ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
-        if (!_follow || _state['hasNewer'] == true)
-          Positioned(
-            right: 16,
-            bottom: 12,
-            child: FilledButton.tonalIcon(
-              onPressed: _busy
-                  ? null
-                  : () => unawaited(_request(widget.binding.latest)),
-              icon: const Icon(Icons.arrow_downward),
-              label: const Text('Jump to latest'),
-            ),
-          ),
-      ],
+            if (!_follow || _state['hasNewer'] == true)
+              Positioned(
+                right: 16,
+                bottom: 12,
+                child: FilledButton.tonalIcon(
+                  onPressed: _busy
+                      ? null
+                      : () {
+                          setState(() {
+                            _follow = true;
+                            _anchor = null;
+                          });
+                          final follow = widget.binding
+                              .read()['setFollowingLatest'];
+                          if (follow is void Function(bool)) follow(true);
+                          unawaited(_request(widget.binding.latest));
+                        },
+                  icon: const Icon(Icons.arrow_downward),
+                  label: const Text('Jump to latest'),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _deferredMessage(Map<String, Object?> record) {
+    final reader = _state['readMessageText'];
+    if (record['kind'] != 'message' ||
+        reader is! HandrailMessageTextReader ||
+        widget.conversationId == null) {
+      return const HandrailTranscriptNotice(
+        message:
+            'This message is too large for the preview. Open its full content to read it.',
+      );
+    }
+    final id = record['id'] as String;
+    return HandrailLargeMessage(
+      conversationId: widget.conversationId!,
+      id: id,
+      generation: _state['generation'] as int,
+      revision: record['revision'] as int,
+      reader: reader,
+      expanded: _expandedMessage == id,
+      onOpen: () => setState(() => _expandedMessage = id),
+      onClose: () => setState(() => _expandedMessage = null),
+      onRefresh: () => unawaited(_request(widget.binding.refresh)),
     );
   }
 }
