@@ -1,0 +1,17 @@
+{
+  "scenario": "30 growing Markdown updates, then 10 unchanged activity notifications",
+  "network": "none; in-memory bindings",
+  "answerCharacters": 6933,
+  "updateP50Ms": 218.956,
+  "updateP95Ms": 399.811,
+  "streamingRebuilds": {
+    "HandrailMarkdown": 45,
+    "SelectableText": 2670
+  },
+  "unchangedRebuilds": {
+    "HandrailMarkdown": 10
+  },
+  "mountedSelectableTextWidgets": 89,
+  "processRssBytes": 768434176,
+  "limitations": "Debug offscreen Flutter renderer; timings and total process RSS include test framework and VM, not native-device or provider latency."
+}

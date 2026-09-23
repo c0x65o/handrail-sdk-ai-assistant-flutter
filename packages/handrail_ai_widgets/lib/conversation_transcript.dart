@@ -322,6 +322,7 @@ class _TranscriptState extends State<HandrailConversationTranscript>
         .toList();
     final turns = _records(document['turns']);
     final tools = _records(document['tool_calls']);
+    final activity = _placeActivity(document);
     final sources = {
       for (final source in _records(document['citation_sources']))
         source['source_id']: source,
@@ -366,6 +367,19 @@ class _TranscriptState extends State<HandrailConversationTranscript>
               (b['order'] as num?) ?? 0,
             ),
           );
+      if (widget.showToolActivity && activity.beforeMessage.containsKey(id))
+        children.add(
+          _ToolActivity(
+            key: ValueKey((
+              widget.binding.scope,
+              _conversationId,
+              'activity',
+              id,
+            )),
+            tools: activity.beforeMessage[id]!,
+            turns: turns,
+          ),
+        );
       children.add(
         HandrailTranscriptMessage(
           key: ValueKey((widget.binding.scope, _conversationId, id)),
@@ -398,6 +412,37 @@ class _TranscriptState extends State<HandrailConversationTranscript>
       }
     }
     for (final tool in tools) addTool(tool);
+    final outgoing = _map(_state['outgoingMessage']);
+    if (outgoing.isNotEmpty &&
+        !messages.any(
+          (message) => message['message_id'] == outgoing['message_id'],
+        ))
+      children.add(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            HandrailTranscriptMessage(
+              key: ValueKey((
+                widget.binding.scope,
+                _conversationId,
+                outgoing['message_id'],
+              )),
+              message: outgoing,
+              style: widget.style,
+              showCopy: false,
+              attachmentBuilder: widget.attachmentBuilder,
+            ),
+            Semantics(
+              liveRegion: true,
+              child: Text(switch (outgoing['delivery_status']) {
+                'sent' => 'Sent',
+                'unconfirmed' => 'Waiting for confirmation',
+                _ => 'Sending…',
+              }),
+            ),
+          ],
+        ),
+      );
     if (widget.trailing.isNotEmpty)
       children.add(
         KeyedSubtree(
@@ -408,18 +453,30 @@ class _TranscriptState extends State<HandrailConversationTranscript>
           ),
         ),
       );
-    if (widget.showToolActivity && tools.isNotEmpty)
+    if (widget.showToolActivity && activity.trailing.isNotEmpty)
       children.add(
         _ToolActivity(
           key: ValueKey((widget.binding.scope, _conversationId, 'activity')),
-          tools: tools,
+          tools: activity.trailing,
+          turns: turns,
         ),
       );
-    if (_state['running'] == true || _state['submitting'] == true)
+    if (_state['submitting'] == true ||
+        _state['running'] == true &&
+            !activity.hasCurrentAnswer &&
+            (!widget.showToolActivity || activity.trailing.isEmpty))
       children.add(
         Padding(
           padding: const EdgeInsets.all(12),
-          child: Semantics(liveRegion: true, child: Text(widget.workingLabel)),
+          child: Semantics(
+            liveRegion: true,
+            child: Text(
+              _state['submitting'] == true &&
+                      outgoing['delivery_status'] == 'sending'
+                  ? 'Sending message…'
+                  : widget.workingLabel,
+            ),
+          ),
         ),
       );
     final error = _state['error'] as String? ?? _localError;
@@ -461,6 +518,8 @@ class _TranscriptState extends State<HandrailConversationTranscript>
     if (display is HandrailDisplayTranscriptBinding &&
         widget.contentBuilder == null) {
       final document = _map(_state['document']);
+      final activity = _placeActivity(document);
+      final turns = _records(document['turns']);
       final sources = {
         for (final source in _records(document['citation_sources']))
           source['source_id']: source,
@@ -502,7 +561,7 @@ class _TranscriptState extends State<HandrailConversationTranscript>
                     (b['order'] as num?) ?? 0,
                   ),
                 );
-          return HandrailTranscriptMessage(
+          final body = HandrailTranscriptMessage(
             message: message,
             style: widget.style,
             showCopy: widget.showCopy,
@@ -519,7 +578,30 @@ class _TranscriptState extends State<HandrailConversationTranscript>
                   ]
                 : const [],
           );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (widget.showToolActivity &&
+                  activity.beforeMessage.containsKey(message['message_id']))
+                _ToolActivity(
+                  key: ValueKey((
+                    widget.binding.scope,
+                    _conversationId,
+                    'activity',
+                    message['message_id'],
+                  )),
+                  tools: activity.beforeMessage[message['message_id']]!,
+                  turns: turns,
+                ),
+              body,
+            ],
+          );
         },
+        loadEarlierActivity:
+            _state['hasMoreRelated'] == true &&
+                _state['loadMoreRelated'] is Future<void> Function()
+            ? _state['loadMoreRelated'] as Future<void> Function()
+            : null,
         trailing: [
           ..._defaultContents(context, includeMessages: false),
           if (display.read()['readRecordText']
@@ -562,21 +644,6 @@ class _TranscriptState extends State<HandrailConversationTranscript>
                   child: const Text('Show latest activity'),
                 ),
               ],
-            ),
-          if (_state['hasMoreRelated'] == true &&
-              _state['loadMoreRelated'] is Future<void> Function())
-            TextButton(
-              onPressed: () => unawaited(
-                (_state['loadMoreRelated'] as Future<void> Function())()
-                    .catchError((Object _) {
-                      if (mounted)
-                        setState(
-                          () => _localError =
-                              'Activity could not be loaded. Try again.',
-                        );
-                    }),
-              ),
-              child: const Text('Load earlier activity'),
             ),
         ],
       );
@@ -945,9 +1012,74 @@ class HandrailTranscriptNotice extends StatelessWidget {
   );
 }
 
+/// Place execution details before the answer they produced, so following the
+/// live tail follows response text instead of a cumulative diagnostics footer.
+({
+  Map<Object?, List<Map<String, Object?>>> beforeMessage,
+  List<Map<String, Object?>> trailing,
+  bool hasCurrentAnswer,
+})
+_placeActivity(Map<String, Object?> document) {
+  final turns = _records(document['turns']);
+  final outputTurns = <Object?, Object?>{
+    for (final turn in turns)
+      for (final id in turn['output_message_ids'] as List? ?? const [])
+        id: turn['turn_id'],
+  };
+  final firstAnswers = <Object?, Object?>{};
+  for (final message in _records(document['messages'])) {
+    if (message['role'] != 'assistant' ||
+        !_records(message['content']).any(
+              (part) =>
+                  part['type'] == 'text' &&
+                  (part['text'] as String? ?? '').trim().isNotEmpty,
+            ) &&
+            _records(message['attachments']).isEmpty)
+      continue;
+    final turnId = message['turn_id'] ?? outputTurns[message['message_id']];
+    if (turnId != null)
+      firstAnswers.putIfAbsent(turnId, () => message['message_id']);
+  }
+  final before = <Object?, List<Map<String, Object?>>>{};
+  final trailing = <Map<String, Object?>>[];
+  for (final tool in _records(document['tool_calls'])) {
+    final anchor = firstAnswers[tool['turn_id']];
+    if (anchor == null) {
+      trailing.add(tool);
+    } else {
+      (before[anchor] ??= []).add(tool);
+    }
+  }
+  return (
+    beforeMessage: before,
+    trailing: trailing,
+    hasCurrentAnswer: firstAnswers.containsKey(
+      document['active_turn_id'] ?? turns.lastOrNull?['turn_id'],
+    ),
+  );
+}
+
 class _ToolActivity extends StatelessWidget {
-  const _ToolActivity({super.key, required this.tools});
+  const _ToolActivity({super.key, required this.tools, required this.turns});
   final List<Map<String, Object?>> tools;
+  final List<Map<String, Object?>> turns;
+
+  String _status(Map<String, Object?> tool) {
+    final result = tool['result'];
+    if (result != null)
+      return _map(result)['is_error'] == true ? 'Failed' : 'Completed';
+    final turn = turns
+        .where((turn) => turn['turn_id'] == tool['turn_id'])
+        .firstOrNull;
+    if (turn?['status'] == 'cancelled') return 'Cancelled';
+    if (turn?['status'] == 'failed' ||
+        turn?['status'] == 'completed' && turn?['outcome'] != 'tool_calls')
+      return 'Incomplete';
+    if (tool['started_at'] != null) return 'Working';
+    if (tool['approval_required_at'] != null) return 'Awaiting approval';
+    return 'Queued';
+  }
+
   @override
   Widget build(BuildContext context) {
     final failed = tools
@@ -957,18 +1089,36 @@ class _ToolActivity extends StatelessWidget {
       title: Text(
         '${tools.length} ${tools.length == 1 ? 'tool called' : 'tools called'}${failed == 0 ? '' : ' · $failed failed'}',
       ),
+      // Keep tool identity visible even when the detailed list is collapsed.
+      subtitle: Semantics(
+        liveRegion: true,
+        child: Text(
+          [
+            for (final tool in tools.where(
+              (tool) => const [
+                'Working',
+                'Queued',
+                'Awaiting approval',
+              ].contains(_status(tool)),
+            ))
+              '${tool['name'] ?? 'Tool'} · ${_status(tool)}',
+            if (!tools.any(
+              (tool) => const [
+                'Working',
+                'Queued',
+                'Awaiting approval',
+              ].contains(_status(tool)),
+            ))
+              '${tools.last['name'] ?? 'Tool'} · ${_status(tools.last)}',
+          ].join('\n'),
+        ),
+      ),
       children: [
         for (final tool in tools)
           ListTile(
             dense: true,
             title: Text(tool['name'] as String? ?? 'Tool'),
-            subtitle: Text(
-              _map(tool['result'])['is_error'] == true
-                  ? 'Failed'
-                  : tool['result'] == null
-                  ? 'Working'
-                  : 'Completed',
-            ),
+            subtitle: Text(_status(tool)),
           ),
       ],
     );

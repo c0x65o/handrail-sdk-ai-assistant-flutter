@@ -96,6 +96,7 @@ class HandrailDisplayTranscript extends StatefulWidget {
     required this.conversationId,
     this.positionStore,
     this.manageSelection = true,
+    this.loadEarlierActivity,
     this.trailing = const [],
     this.style = const HandrailTranscriptStyle(),
     this.messageBuilder,
@@ -113,6 +114,9 @@ class HandrailDisplayTranscript extends StatefulWidget {
 
   /// False when an account-owned session already manages selection and cleanup.
   final bool manageSelection;
+
+  /// Loads one bounded page of related activity at the history edge.
+  final Future<void> Function()? loadEarlierActivity;
   final List<Widget> trailing;
   final HandrailTranscriptStyle style;
   final Widget Function(BuildContext, Map<String, Object?>)? messageBuilder;
@@ -358,8 +362,15 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
     });
     if (mounted) setState(() {});
     if (_busy || _state['error'] != null) return;
-    if (_scroll.position.extentBefore < 64 && _state['hasOlder'] == true) {
-      unawaited(_request(widget.binding.older));
+    if (_scroll.position.extentBefore < 64 &&
+        (_state['hasOlder'] == true || widget.loadEarlierActivity != null)) {
+      unawaited(
+        _request(
+          _state['hasOlder'] == true
+              ? widget.binding.older
+              : widget.loadEarlierActivity!,
+        ),
+      );
     } else if (_scroll.position.extentAfter < 64 &&
         _state['hasNewer'] == true) {
       unawaited(_request(widget.binding.newer));
@@ -447,8 +458,10 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
   Future<void> _request(Future<void> Function() operation) async {
     if (_requesting) return;
     final epoch = _epoch;
-    _requesting = true;
-    _localError = null;
+    setState(() {
+      _requesting = true;
+      _localError = null;
+    });
     try {
       await operation();
     } catch (_) {
@@ -509,7 +522,9 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
             : 844.0;
         _renderedOffset = _scroll.hasClients ? _scroll.offset : 0;
         var top =
-            widget.padding.vertical / 2 + (_state['hasOlder'] == true ? 48 : 0);
+            widget.padding.vertical / 2 +
+            (_state['hasOlder'] == true ? 48 : 0) +
+            (widget.loadEarlierActivity != null ? 48 : 0);
         _rendered.clear();
         for (final record in _records) {
           final id = record['id'] as String, rowHeight = _heights[id] ?? 240.0;
@@ -534,6 +549,13 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    if (widget.loadEarlierActivity case final load?)
+                      TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () => unawaited(_request(load)),
+                        child: const Text('Load earlier activity'),
+                      ),
                     if (_state['hasOlder'] == true)
                       TextButton(
                         onPressed: _busy

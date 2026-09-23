@@ -16,8 +16,11 @@ class Fixture {
   bool preparing = false, denied = false;
   String? active, latest;
   Future<void>? holdControl;
+  Future<void>? holdAdmission;
+  Future<void>? holdAfterAdmission;
+  bool rejectAdmission = false, omitAcknowledgements = false;
   Future<void>? holdRelatedPage;
-  List<Map<String, Object?>> related = [];
+  List<Map<String, Object?>> related = [], additionalMessages = [];
   List<Map<String, Object?>>? changed;
   String? relatedCursor;
   String messagePrefix = 'message';
@@ -123,10 +126,15 @@ class Fixture {
             'records': preparing
                 ? []
                 : [
-                    for (var i = older ? end - 30 : end + 1;
+                    for (var i = older
+                            ? end -
+                                30 +
+                                (anchor == null ? additionalMessages.length : 0)
+                            : end + 1;
                         i < (older ? end : end + 31);
                         i++)
-                      record(i)
+                      record(i),
+                    if (anchor == null) ...additionalMessages,
                   ],
             'nextCursor': 'more'
           });
@@ -145,6 +153,10 @@ class Fixture {
     if (request.url.path.endsWith('/synchronization')) {
       expect(body['operation'], 'append_mutations',
           reason: 'Opening/refreshing must never pull a canonical snapshot');
+      await holdAdmission;
+      if (rejectAdmission)
+        return ok({'status': 'rejected', 'reason': 'invalid_message'});
+      holdControl = holdAfterAdmission;
       final mutations = (input['mutations'] as List).cast<Map>();
       final events = mutations
           .expand((mutation) => mutation['events'] as List)
@@ -155,7 +167,7 @@ class Fixture {
       return ok({
         'status': 'mutations',
         'acknowledgements': [
-          for (final mutation in mutations)
+          for (final mutation in omitAcknowledgements ? <Map>[] : mutations)
             {'mutationId': mutation['mutationId'], 'status': 'accepted'}
         ]
       });
@@ -185,6 +197,108 @@ class Fixture {
 }
 
 void main() {
+  Map<String, Object?> request() => {
+        'protocol_version': 'handrail.ai-runtime.v1',
+        'messages': [
+          {
+            'role': 'user',
+            'content': [
+              {'type': 'text', 'text': 'Hello'}
+            ]
+          }
+        ],
+      };
+
+  test(
+      'acknowledges delivery before a held history refresh and replaces the local echo by identity',
+      () async {
+    final f = Fixture();
+    addTearDown(f.dispose);
+    await f.session.initialize();
+    final admission = Completer<void>(), history = Completer<void>();
+    f.holdAdmission = admission.future;
+    f.holdAfterAdmission = history.future;
+    final submission = await f.session.prepareTurn(
+        operationId: 'delivery', clientId: 'client', request: request());
+    final accepted = Completer<void>();
+    final sending = f.session
+        .submitTurn(submission, onAccepted: (_) => accepted.complete());
+    expect(f.session.outgoingMessage?['delivery_status'], 'sending');
+    admission.complete();
+    await accepted.future.timeout(const Duration(seconds: 2));
+    expect(f.session.outgoingMessage?['delivery_status'], 'sent');
+    expect(f.session.isSubmitting, isTrue);
+    expect(f.requests.where((r) => r['path'] == '/ai/turns/start'), isEmpty);
+    history.complete();
+    await sending;
+    expect(f.session.document!.activeTurnId, submission.turnId);
+    final admittedAt =
+        f.requests.indexWhere((r) => r['operation'] == 'append_mutations');
+    expect(
+        f.requests.skip(admittedAt + 1).where(
+            (r) => r['operation'] == 'page' || r['operation'] == 'changes'),
+        isEmpty,
+        reason:
+            'History and tool paging must not hold an admitted turn in the queue');
+    f.changed = [
+      {
+        ...f.record(100),
+        'id': 'message_delivery',
+        'value': {
+          'message_id': 'message_delivery',
+          'role': 'user',
+          'content': [
+            {'type': 'text', 'text': 'Hello'}
+          ],
+          'attachments': [],
+        },
+      }
+    ];
+    // A deferred saved row still replaces the local echo, even without its body.
+    f.additionalMessages = [
+      {...f.changed!.single, 'deferred': true, 'value': null}
+    ];
+    await f.session.refresh();
+    expect(f.session.outgoingMessage, isNull);
+  });
+
+  test('clearing saved history releases an unprojected sent message', () async {
+    final f = Fixture();
+    addTearDown(f.dispose);
+    await f.session.initialize();
+    final submission = await f.session.prepareTurn(
+        operationId: 'clear-echo', clientId: 'client', request: request());
+    await f.session.submitTurn(submission);
+    expect(f.session.outgoingMessage?['delivery_status'], 'sent');
+    f.generation++;
+    f.revision++;
+    f.active = f.latest = null;
+    await f.session.refresh();
+    expect(f.session.outgoingMessage, isNull);
+  });
+
+  for (final rejected in [false, true]) {
+    test(
+        'does not acknowledge ${rejected ? 'rejected' : 'uncertain'} admission',
+        () async {
+      final f = Fixture();
+      addTearDown(f.dispose);
+      await f.session.initialize();
+      f.rejectAdmission = rejected;
+      f.omitAcknowledgements = !rejected;
+      final submission = await f.session.prepareTurn(
+          operationId: 'unconfirmed', clientId: 'client', request: request());
+      var accepted = false;
+      await expectLater(
+          f.session.submitTurn(submission, onAccepted: (_) => accepted = true),
+          throwsA(isA<HandrailGatewayException>()));
+      expect(accepted, isFalse);
+      expect(f.session.outgoingMessage?['delivery_status'],
+          rejected ? null : 'unconfirmed');
+      expect(f.requests.where((r) => r['path'] == '/ai/turns/start'), isEmpty);
+    });
+  }
+
   test('presentation version changes for paging but not an unchanged poll',
       () async {
     final f = Fixture();

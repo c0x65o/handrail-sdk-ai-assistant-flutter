@@ -840,9 +840,10 @@ void main() {
         jsonDecode(jsonEncode(prepared.toJson())) as Map<String, dynamic>);
     final accepted = <String>[];
     final first = view.submitTurn(saved, onAccepted: (submission) {
-      expect(view.document!.activeTurnId, submission.turnId);
-      expect(view.document!.messages.where((m) => m['role'] == 'user'),
-          hasLength(1));
+      // Admission feedback precedes the optional transcript refresh.
+      expect(view.outgoingMessage?['delivery_status'], 'sent');
+      expect(view.outgoingMessage?['message_id'],
+          'message_${submission.turnId.substring(5)}');
       accepted.add('first:${submission.turnId}');
       throw StateError('Presentation callback failure');
     });

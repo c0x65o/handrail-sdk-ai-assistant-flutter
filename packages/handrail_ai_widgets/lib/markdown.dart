@@ -30,11 +30,16 @@ class HandrailMarkdown extends StatelessWidget {
           ? SelectableText(data, style: styleSheet?.p)
           : Text(data, style: styleSheet?.p);
     }
-    final theme =
-        MarkdownStyleSheet.fromTheme(Theme.of(context)).merge(styleSheet);
-    return MarkdownBody(
+    final theme = MarkdownStyleSheet.fromTheme(
+      Theme.of(context),
+    ).merge(styleSheet);
+    final body = MarkdownBody(
       data: data,
-      selectable: selectable,
+      // Per-paragraph SelectableText creates an editable-text/selection stack
+      // for every paragraph and table cell. Markdown reparses growing answers
+      // with fresh child keys, repeatedly recreating all those stacks. One
+      // selection region keeps formatted text selectable without those editors.
+      selectable: false,
       extensionSet: md.ExtensionSet.gitHubFlavored,
       styleSheet: theme.copyWith(
         tableColumnWidth: const IntrinsicColumnWidth(),
@@ -46,6 +51,7 @@ class HandrailMarkdown extends StatelessWidget {
         if (href != null && _safeLink(href)) onTapLink?.call(text, href, title);
       },
     );
+    return selectable ? SelectionArea(child: body) : body;
   }
 }
 
@@ -53,7 +59,8 @@ bool _safeLink(String value) {
   final trimmed = value.trim();
   if (RegExp(r'[\x00-\x1f\x7f]').hasMatch(trimmed) ||
       trimmed.contains(r'\') ||
-      trimmed.startsWith('//')) return false;
+      trimmed.startsWith('//'))
+    return false;
   final uri = Uri.tryParse(trimmed);
   return uri != null &&
       (!uri.hasScheme ||

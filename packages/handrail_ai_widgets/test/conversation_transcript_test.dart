@@ -44,6 +44,9 @@ class Fixture {
   int reads = 0, retries = 0;
   HandrailDisplayTranscriptBinding? display;
   bool relatedTruncated = false;
+  bool hasMoreRelated = false;
+  Future<void> Function()? loadMoreRelated;
+  Map<String, Object?>? outgoingMessage;
   Future<void> Function()? showLatestRelated;
   HandrailTranscriptUiBinding get binding => (
     scope: this,
@@ -51,6 +54,9 @@ class Fixture {
     read: () => {
       'conversationId': conversationId,
       'document': document,
+      'outgoingMessage': outgoingMessage,
+      'hasMoreRelated': hasMoreRelated,
+      'loadMoreRelated': loadMoreRelated,
       'running': running,
       'pending': pending,
       'displayWindow': display,
@@ -96,6 +102,138 @@ Widget surface(
 );
 
 void main() {
+  testWidgets(
+    'answer takes over progress and keeps tool details before its response',
+    (tester) async {
+      final f = Fixture();
+      addTearDown(f.changes.close);
+      f.running = true;
+      f.document['active_turn_id'] = 'turn';
+      (f.document['turns'] as List).first['status'] = 'running';
+      f.document['messages'] = [message('question', 'Question', role: 'user')];
+      await tester.pumpWidget(surface(f));
+      await tester.pumpAndSettle();
+      expect(find.text('Working…'), findsOneWidget);
+      f.document['tool_calls'] = [
+        <String, Object?>{
+          'tool_call_id': 'lookup',
+          'turn_id': 'turn',
+          'name': 'Search invoices',
+          'started_at': '2026-09-23T00:00:00Z',
+          'result': null,
+        },
+      ];
+      f.publish();
+      await tester.pumpAndSettle();
+      expect(find.text('Search invoices · Working'), findsOneWidget);
+      expect(
+        find.text('Working…'),
+        findsNothing,
+        reason:
+            'Named tool progress does not also need a generic working footer',
+      );
+      (f.document['messages'] as List).add(
+        message('answer', 'The answer is arriving.'),
+      );
+      (f.document['tool_calls'] as List).first['result'] = {'is_error': false};
+      f.publish();
+      await tester.pumpAndSettle();
+      expect(find.text('Working…'), findsNothing);
+      expect(
+        tester.getTopLeft(find.text('1 tool called')).dy,
+        lessThan(
+          tester.getTopLeft(find.byType(HandrailTranscriptMessage).last).dy,
+        ),
+      );
+      await tester.tap(find.text('1 tool called'));
+      await tester.pumpAndSettle();
+      expect(find.text('Search invoices'), findsOneWidget);
+      // An old answer must not hide progress for the next request.
+      f.document['active_turn_id'] = 'next-turn';
+      (f.document['turns'] as List).add({
+        'turn_id': 'next-turn',
+        'status': 'running',
+      });
+      f.publish();
+      await tester.pumpAndSettle();
+      expect(find.text('Working…'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'delivery feedback reconciles the saved message without duplicate bubbles',
+    (tester) async {
+      final f = Fixture();
+      addTearDown(f.changes.close);
+      f.outgoingMessage = {
+        ...message('sent', 'My new message', role: 'user'),
+        'delivery_status': 'sending',
+      };
+      await tester.pumpWidget(surface(f));
+      await tester.pumpAndSettle();
+      expect(find.text('My new message'), findsOneWidget);
+      expect(find.text('Sending…'), findsOneWidget);
+      f.outgoingMessage = {...f.outgoingMessage!, 'delivery_status': 'sent'};
+      f.publish();
+      await tester.pumpAndSettle();
+      expect(find.text('Sending…'), findsNothing);
+      expect(find.text('Sent'), findsOneWidget);
+      (f.document['messages'] as List).add(
+        message('sent', 'My new message', role: 'user'),
+      );
+      f.publish();
+      await tester.pumpAndSettle();
+      expect(find.text('My new message'), findsOneWidget);
+      expect(find.text('Sent'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'current tool names and changing status remain visible with activity collapsed',
+    (tester) async {
+      final f = Fixture();
+      addTearDown(f.changes.close);
+      final tool = <String, Object?>{
+        'tool_call_id': 'lookup',
+        'turn_id': 'turn',
+        'name': 'Search invoices',
+        'started_at': '2026-09-23T00:00:00Z',
+        'result': null,
+        'arguments': {'secret': 'never display this'},
+      };
+      f.document['tool_calls'] = [tool];
+      (f.document['turns'] as List).first['status'] = 'running';
+      await tester.pumpWidget(surface(f));
+      await tester.pumpAndSettle();
+      expect(find.text('Search invoices · Working'), findsOneWidget);
+      expect(find.textContaining('never display this'), findsNothing);
+      tool['started_at'] = null;
+      f.publish();
+      await tester.pumpAndSettle();
+      expect(find.text('Search invoices · Queued'), findsOneWidget);
+      tool['approval_required_at'] = '2026-09-23T00:00:00Z';
+      f.publish();
+      await tester.pumpAndSettle();
+      expect(find.text('Search invoices · Awaiting approval'), findsOneWidget);
+      tool['result'] = {'is_error': false};
+      f.publish();
+      await tester.pumpAndSettle();
+      expect(find.text('Search invoices · Completed'), findsOneWidget);
+      tool['result'] = {'is_error': true};
+      f.publish();
+      await tester.pumpAndSettle();
+      expect(find.text('Search invoices · Failed'), findsOneWidget);
+      tool['result'] = null;
+      (f.document['turns'] as List).first['status'] = 'cancelled';
+      f.publish();
+      await tester.pumpAndSettle();
+      expect(find.text('Search invoices · Cancelled'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets(
     'standard transcript uses bounded pages with citations, activity and no duplicate selection',
     (tester) async {
@@ -160,6 +298,13 @@ void main() {
         refresh: () async {},
         retry: () async {},
       );
+      var earlierActivity = 0;
+      f.hasMoreRelated = true;
+      f.loadMoreRelated = () async {
+        earlierActivity++;
+        f.hasMoreRelated = false;
+        f.publish();
+      };
       await tester.pumpWidget(
         surface(
           f,
@@ -170,6 +315,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(selects, 0);
       expect(older, 0);
+      expect(earlierActivity, 0);
+      expect(
+        tester.getTopLeft(find.text('Load earlier activity')).dy,
+        lessThan(0),
+        reason:
+            'Earlier activity belongs above messages and is offscreen at the live tail',
+      );
       expect(find.byType(HandrailDisplayTranscript), findsOneWidget);
       expect(
         find.byType(HandrailTranscriptMessage).evaluate().length,
@@ -217,6 +369,11 @@ void main() {
       scroll.jumpTo(0);
       await tester.pumpAndSettle();
       expect(older, 1);
+      expect(earlierActivity, 0);
+      scroll.jumpTo(0);
+      await tester.pumpAndSettle();
+      expect(earlierActivity, 1);
+      expect(find.text('Load earlier activity'), findsNothing);
       expect(
         find.byType(HandrailTranscriptMessage).evaluate().length,
         inInclusiveRange(1, 20),

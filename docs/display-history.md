@@ -464,3 +464,41 @@ attachments, drafts, responsive layouts and stale account/selection handling. Fu
 Dart/Flutter analysis and all three mobile source compiles pass. See
 `chatbot-foundation-final-qualification.json`. Published-pin installation, native
 device performance and production deployment remain later adoption checks.
+
+
+### Delivery feedback and history-edge activity
+
+The standard Flutter transcript places **Load earlier activity** above messages.
+Scrolling to the history edge loads one older message page, or one related
+activity page when there are no older messages; requests remain bounded and keep
+message anchors. No older activity is loaded just because a chat opens.
+
+Durable accepted/duplicate admission receipts now trigger exact draft cleanup
+and `onAccepted` before transcript/activity refreshes. The callback proves that
+the message was saved; it does not guarantee that `session.document` has caught
+up or that execution has finished. The session's optional `outgoingMessage`
+presentation shows Sending, Sent or Waiting for confirmation until the saved
+message replaces it by message ID. Rejected admissions never show Sent. Later
+draft edits survive. The pending journal still remains until start is confirmed,
+so a lost start response can retry its original identity safely. Bounded gateways
+verify the requested turn through scalar controls without paging history before
+starting it.
+
+Collapsed tool activity now shows current tool names and their queued, working,
+approval, completed, failed or cancelled status. An unfinished call in a terminal
+turn is labelled incomplete. Arguments and result payloads remain outside this
+summary.
+
+These changes are local SDK source. Consumer Git SHA pins and lockfiles are
+unchanged; application delivery requires a later authorized SDK commit/adoption
+and mobile build. Qualification includes SDK analysis, targeted client/gateway
+and widget regressions, plus the Mills mobile input, rendering and integration
+suite using the existing temporary source compiler map.
+
+
+The follow-up [streaming renderer investigation](streaming-render-performance.md)
+measures a network-free long-answer workload. Assistant Markdown now uses one
+selection region instead of an editable-text selection stack per paragraph/cell.
+Tool activity is placed before its answer, and generic Working text is suppressed
+once that request has answer content. Raw before/after measurements and their
+debug-renderer limitations are retained with that report.

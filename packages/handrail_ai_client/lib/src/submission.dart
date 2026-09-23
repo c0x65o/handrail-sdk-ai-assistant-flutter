@@ -44,6 +44,24 @@ class HandrailTurnSubmission {
   Map<String, Object?>? get localDraft =>
       _json['localDraft'] == null ? null : _object(_json['localDraft']);
   String get turnId => _start['conversationTurnId'] as String;
+
+  Map<String, Object?> get _message {
+    final payloads = _records(_admission['mutations'])
+        .expand((mutation) => _records(mutation['events']))
+        .map((event) => _object(event['payload']));
+    final message =
+        payloads.firstWhere((event) => event['type'] == 'message.created');
+    return Map.unmodifiable({
+      'message_id': message['message_id'],
+      'role': 'user',
+      'content': message['content'],
+      'attachments': [
+        for (final event in payloads)
+          if (event['type'] == 'message.attachment_referenced')
+            event['attachment']
+      ],
+    });
+  }
 }
 
 HandrailTurnSubmission _prepareSubmission({

@@ -158,6 +158,8 @@ class HandrailConversationSession {
   Future<void>? _submitting;
   String? _submittingJson;
   HandrailTurnSubmission? _admittedSubmission;
+  Map<String, Object?>? _outgoingMessage;
+  String _outgoingStatus = 'sending';
   // The account controller can honor Stop queued before admission, before a
   // provider start is allowed. This is internal SDK orchestration, not a host hook.
   Future<bool> Function(HandrailTurnSubmission)? _mayStart;
@@ -190,6 +192,25 @@ class HandrailConversationSession {
     }
   }
   HandrailConversationView? get document => _document;
+
+  /// Local delivery feedback until this exact message appears in saved history.
+  /// This is presentation only and never changes the canonical admission state.
+  Map<String, Object?>? get outgoingMessage {
+    final message = _outgoingMessage;
+    if (message == null ||
+        _document == null ||
+        _displayWindow?.followingLatest == false) return null;
+    if (_hasSavedMessage(message['message_id'])) return null;
+    return Map.unmodifiable({
+      ...message,
+      'delivery_status': _outgoingStatus,
+    });
+  }
+
+  bool _hasSavedMessage(Object? id) =>
+      (_document?.messages.any((message) => message['message_id'] == id) ??
+          false) ||
+      (_displayWindow?.state.records.any((record) => record.id == id) ?? false);
 
   /// Available only when bounded history and scalar controls are negotiated.
   HandrailDisplayWindow? get displayWindow => _displayWindow;
@@ -640,8 +661,10 @@ class HandrailConversationSession {
 
   /// Acknowledges admission/start, not completion. Repeating an uncertain send
   /// requires the exact saved submission; the server deduplicates both writes.
-  /// [onAccepted] runs after durable admission is verified, before observing the
-  /// provider response. It is a presentation notification, not execution success.
+  /// [onAccepted] runs after durable admission receipts and local draft cleanup,
+  /// before refreshing history or observing the provider response. Saved history
+  /// may still lag; [outgoingMessage] supplies delivery feedback until it catches
+  /// up. This is a presentation notification, not execution success.
   /// Callback failures cannot strand admitted work. Coalesced callers are notified too.
   Future<void> submitTurn(HandrailTurnSubmission submission,
       {void Function(HandrailTurnSubmission)? onAccepted}) {
@@ -659,11 +682,21 @@ class HandrailConversationSession {
       return Future.error(StateError('A different message is being submitted'));
     }
     _submittingJson = json;
+    final outgoing = submission._message;
+    if (_outgoingMessage?['message_id'] != outgoing['message_id'] ||
+        _outgoingStatus != 'sent') _outgoingStatus = 'sending';
+    _outgoingMessage = outgoing;
     _admittedSubmission = null;
     _admissionCallbacks.clear();
     _registerAdmissionCallback(onAccepted);
-    return _submitting = _submitTurn(submission).catchError((Object cause) {
+    final submitting =
+        _submitting = _submitTurn(submission).catchError((Object cause) {
       if (_disposed) throw cause;
+      if (cause is _RejectedAdmission) {
+        _outgoingMessage = null;
+      } else if (_outgoingStatus != 'sent') {
+        _outgoingStatus = 'unconfirmed';
+      }
       _error = cause is HandrailGatewayException
           ? cause
           : const HandrailGatewayException('send_unconfirmed',
@@ -679,6 +712,8 @@ class HandrailConversationSession {
       _startAcknowledgement = null;
       _publish();
     });
+    _publish();
+    return submitting;
   }
 
   void _registerAdmissionCallback(
@@ -697,6 +732,7 @@ class HandrailConversationSession {
   void _publishAdmission(HandrailTurnSubmission submission) {
     if (_disposed) return;
     _admittedSubmission = submission;
+    _outgoingStatus = 'sent';
     final callbacks = List.of(_admissionCallbacks);
     _admissionCallbacks.clear();
     for (final callback in callbacks) {
@@ -705,6 +741,7 @@ class HandrailConversationSession {
         callback(submission);
       } catch (_) {/* Keep admitted work recoverable. */}
     }
+    _publish();
   }
 
   Future<void> _submitTurn(HandrailTurnSubmission submission) async {
@@ -739,15 +776,11 @@ class HandrailConversationSession {
           'The message could not be confirmed. Retry the saved message.',
           retryable: true);
     }
-    await refresh();
-    if (_disposed) throw StateError('Conversation session is disposed');
-    final confirmed = await _findTurn(submission.turnId);
-    final turns =
-        confirmed == null ? const <Map<String, Object?>>[] : [confirmed];
-    if (turns.length != 1)
-      throw const HandrailGatewayException('admission_unconfirmed',
-          'The saved message is not visible yet. Retry the saved message.',
-          retryable: true);
+    _outgoingStatus = 'sent';
+    _publish();
+    // The exact accepted/duplicate receipts prove durable admission. Clear the
+    // submitted draft before potentially slow history/activity projection reads.
+    // Keep the journal until start is acknowledged so lost starts remain safe.
     if (submission.localDraft case final origin?) {
       try {
         final cleanup = reconcileAcceptedDraft;
@@ -762,6 +795,17 @@ class HandrailConversationSession {
     if (_disposed) throw StateError('Conversation session is disposed');
     _publishAdmission(submission);
     if (_disposed) throw StateError('Conversation session is disposed');
+    // Bounded gateways verify the turn using a small control read. Loading
+    // messages and tools must not delay starting an already admitted response.
+    if (_capabilities?.displayHistory?.control != true) await refresh();
+    if (_disposed) throw StateError('Conversation session is disposed');
+    final confirmed = await _findTurn(submission.turnId, publishControl: true);
+    final turns =
+        confirmed == null ? const <Map<String, Object?>>[] : [confirmed];
+    if (turns.length != 1)
+      throw const HandrailGatewayException('admission_unconfirmed',
+          'The saved message is not visible yet. Retry the saved message.',
+          retryable: true);
     if (_mayStart != null && !await _mayStart!(submission)) return;
     if (_disposed) throw StateError('Conversation session is disposed');
     // A lost start acknowledgement can arrive after the run finished. Never
@@ -781,7 +825,8 @@ class HandrailConversationSession {
     await acknowledgement.future;
   }
 
-  Future<Map<String, Object?>?> _findTurn(String turnId) async {
+  Future<Map<String, Object?>?> _findTurn(String turnId,
+      {bool publishControl = false}) async {
     if (_capabilities?.displayHistory?.control == true) {
       final control = await client.displayHistoryControl(
           conversationId: conversationId,
@@ -793,6 +838,18 @@ class HandrailConversationSession {
         throw const HandrailGatewayException(
             'history_preparing', 'The saved turn is being prepared.',
             retryable: true);
+      if (publishControl) {
+        if (_control != null &&
+            (control.generation != _control!.generation ||
+                control.revision < _control!.revision)) {
+          throw const HandrailGatewayException('stale_control',
+              'Saved conversation controls changed. Retry the saved message.',
+              retryable: true);
+        }
+        _control = control;
+        _publishDisplay();
+        _publish();
+      }
       return control.requestedTurn == null
           ? null
           : _controlTurn(control.requestedTurn!);
@@ -910,12 +967,17 @@ class HandrailConversationSession {
   }
 
   void _publish() {
+    if (_outgoingMessage != null &&
+        _hasSavedMessage(_outgoingMessage!['message_id'])) {
+      _outgoingMessage = null;
+    }
     if (!_disposed) _changes.add(this);
   }
 
   Future<void> _forgetAfterDeletion() async {
     final closing = dispose();
     _document = null;
+    _outgoingMessage = null;
     _error = null;
     _submittingJson = null;
     _checkpoint = const {
@@ -951,6 +1013,7 @@ class HandrailConversationSession {
     await _displayWindow?.dispose();
     _admissionCallbacks.clear();
     _admittedSubmission = null;
+    _outgoingMessage = null;
     _timer?.cancel();
     _streamRefreshTimer?.cancel();
     await _disconnectObservation();

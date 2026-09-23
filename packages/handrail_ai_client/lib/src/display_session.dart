@@ -156,6 +156,7 @@ extension _HandrailBoundedSession on HandrailConversationSession {
     }
     final previous = _control;
     if (previous?.generation != control.generation) {
+      if (previous != null) _outgoingMessage = null;
       _relatedEpoch++;
       if (_related.isNotEmpty) _relatedVersion++;
       _related = const [];

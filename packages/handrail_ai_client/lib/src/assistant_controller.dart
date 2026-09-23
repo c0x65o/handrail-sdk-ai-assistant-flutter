@@ -395,6 +395,7 @@ class HandrailAssistantController {
         read: () => {
               'conversationId': selectedId,
               'document': document?.state,
+              'outgoingMessage': session?.outgoingMessage,
               'displayWindow': session?.displayWindow?.uiBinding,
               'hasMoreRelated': session?.hasMoreRelated ?? false,
               'loadMoreRelated': session?.loadMoreRelated,
