@@ -380,6 +380,39 @@ class HandrailConversationSession {
     });
   }
 
+  /// Targets only the currently running or latest paused request, never older work.
+  Future<void> changeApprovalMode(String mode) async {
+    if (_disposed ||
+        !const ['required', 'automatic'].contains(mode) ||
+        _capabilities?.resources['turnApprovalMode'] != true ||
+        _document == null) {
+      throw StateError('Approval settings are unavailable');
+    }
+    final latest = _document!.latestTurn;
+    final turnId = _document!.activeTurnId ??
+        (latest?['status'] == 'waiting_for_approval'
+            ? (latest?['turn_id'] as String?)
+            : null);
+    if (turnId == null) return;
+    final input = <String, Object?>{
+      'conversationId': conversationId,
+      'turnId': turnId
+    };
+    final current = _value(await client.turnApprovalMode(input));
+    if (_disposed) throw StateError('The account has changed');
+    if (current['active'] != true) return;
+    if (current['revision'] is! int)
+      throw const FormatException('Invalid approval setting');
+    await client.turnApprovalMode({
+      ...input,
+      'mode': mode,
+      'expectedRevision': current['revision'],
+      'mutationId': _assistantIdentity()
+    });
+    if (_disposed) throw StateError('The account has changed');
+    unawaited(refresh().catchError((Object _) {}));
+  }
+
   HandrailGatewayCapabilities? get capabilities => _capabilities;
   HandrailGatewayException? get error => _error;
   bool get isRefreshing => _refreshing != null;

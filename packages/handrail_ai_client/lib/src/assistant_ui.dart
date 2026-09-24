@@ -91,6 +91,9 @@ extension HandrailAssistantOptionalUi on HandrailAssistantController {
               'error': error?.message,
             },
         capabilitiesFor: (id) => {
+              if (sessionFor(id)?.capabilities?.resources['turnApprovalMode'] ==
+                  true)
+                'changeApprovalMode': sessionFor(id)!.changeApprovalMode,
               'attachments': sessionFor(id)?.capabilities?.attachments,
               'documentInput': sessionFor(id)?.capabilities?.documentInput,
               'attachmentDownloadMaximumBytes': sessionFor(id)

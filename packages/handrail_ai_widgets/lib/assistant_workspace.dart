@@ -565,6 +565,17 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>>
                       decoration: widget.composerDecoration,
                       sendButtonStyle: widget.sendButtonStyle,
                       approvalMode: _approvalMode,
+                      onApprovalModeApply:
+                          capabilities['changeApprovalMode']
+                              is Future<void> Function(String)
+                          ? (mode) =>
+                                (capabilities['changeApprovalMode']
+                                    as Future<void> Function(String))(
+                                  mode == HandrailApprovalMode.automatic
+                                      ? 'automatic'
+                                      : 'required',
+                                )
+                          : null,
                       showApprovalControl: widget.showApprovalControl,
                       onApprovalModeChanged: (mode) {
                         setState(() => _approvalMode = mode);

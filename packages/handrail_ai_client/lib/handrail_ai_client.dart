@@ -655,6 +655,9 @@ class HandrailAiClient {
         'resumeFrom': resumeFrom,
       });
 
+  Future<Map<String, Object?>> turnApprovalMode(Map<String, Object?> input) =>
+      _post('/approvals/mode', input);
+
   Future<Map<String, Object?>> cancelTurn(Map<String, Object?> request) async {
     return _post('/turns/cancel', request);
   }

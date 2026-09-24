@@ -73,11 +73,13 @@ class HandrailApprovalBadge extends StatefulWidget {
     super.key,
     this.mode = HandrailApprovalMode.required,
     this.onChanged,
+    this.onApply,
     this.enabled = true,
     this.scope,
   });
   final HandrailApprovalMode mode;
   final ValueChanged<HandrailApprovalMode>? onChanged;
+  final Future<void> Function(HandrailApprovalMode)? onApply;
   final bool enabled;
   final Object? scope;
   @override
@@ -118,6 +120,8 @@ class _ApprovalBadgeState extends State<HandrailApprovalBadge> {
     _opening = true;
     final generation = ++_generation;
     var selected = widget.mode;
+    var saving = false;
+    String? error;
     try {
       await showModalBottomSheet<void>(
         context: context,
@@ -140,18 +144,37 @@ class _ApprovalBadgeState extends State<HandrailApprovalBadge> {
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Auto-approve changes'),
                       value: selected == HandrailApprovalMode.automatic,
-                      onChanged: !widget.enabled || widget.onChanged == null
+                      onChanged:
+                          saving || !widget.enabled || widget.onChanged == null
                           ? null
-                          : (value) {
+                          : (value) async {
                               if (!mounted ||
                                   generation != _generation ||
                                   !widget.enabled)
                                 return;
-                              selected = value
+                              final next = value
                                   ? HandrailApprovalMode.automatic
                                   : HandrailApprovalMode.required;
-                              widget.onChanged?.call(selected);
-                              update(() {});
+                              update(() {
+                                saving = true;
+                                error = null;
+                              });
+                              try {
+                                await widget.onApply?.call(next);
+                                if (!mounted || generation != _generation)
+                                  return;
+                                selected = next;
+                                widget.onChanged?.call(next);
+                              } catch (_) {
+                                if (!mounted || generation != _generation)
+                                  return;
+                                error =
+                                    'Approval setting could not be updated. Try again.';
+                              }
+                              if (mounted && generation == _generation)
+                                update(() {
+                                  saving = false;
+                                });
                             },
                     ),
                     Text(
@@ -159,10 +182,14 @@ class _ApprovalBadgeState extends State<HandrailApprovalBadge> {
                           ? 'Add, edit, and delete without asking each time, within your account permissions.'
                           : 'Review and approve additions, edits, and deletions before they run.',
                     ),
+                    if (saving) const Text('Updating approval setting…'),
+                    if (error != null) Text(error!),
                     const SizedBox(height: 12),
                     Text(
                       widget.onChanged == null
                           ? 'Approval settings are managed by this application.'
+                          : widget.onApply != null
+                          ? 'Applies immediately to this request and future messages. Turning it on approves pending changes for this request. Turning it off asks before later changes; work already approved or started continues.'
                           : 'Applies to your next message. Changes already running keep their original setting.',
                     ),
                   ],
@@ -240,6 +267,7 @@ class HandrailComposer extends StatefulWidget {
     this.stopping = false,
     this.approvalMode = HandrailApprovalMode.required,
     this.onApprovalModeChanged,
+    this.onApprovalModeApply,
     this.showApprovalControl = true,
     this.voiceControls,
     this.transcribeAudio,
@@ -284,6 +312,7 @@ class HandrailComposer extends StatefulWidget {
   final bool canSend, enabled, sending, stopping, showApprovalControl;
   final HandrailApprovalMode approvalMode;
   final ValueChanged<HandrailApprovalMode>? onApprovalModeChanged;
+  final Future<void> Function(HandrailApprovalMode)? onApprovalModeApply;
   final List<Widget>? voiceControls;
   final HandrailAudioTranscriber? transcribeAudio;
   final Object? transcriptionScope;
@@ -719,7 +748,8 @@ class _HandrailComposerState extends State<HandrailComposer> {
                   scope: (widget.controller, widget.transcriptionScope),
                   mode: widget.approvalMode,
                   onChanged: widget.onApprovalModeChanged,
-                  enabled: widget.enabled && !widget.sending,
+                  onApply: widget.onApprovalModeApply,
+                  enabled: widget.enabled,
                 ),
               const Spacer(),
               ...?widget.voiceControls,
