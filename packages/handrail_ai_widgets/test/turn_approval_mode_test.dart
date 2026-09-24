@@ -39,4 +39,35 @@ void main() {
       );
     },
   );
+  testWidgets(
+    'running composer can enable automatic approval after server acceptance',
+    (tester) async {
+      final controller = TextEditingController();
+      addTearDown(controller.dispose);
+      var mode = HandrailApprovalMode.required;
+      var applied = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HandrailComposer(
+              controller: controller,
+              sending: true,
+              onSend: () {},
+              voiceControls: const [],
+              onApprovalModeChanged: (next) => mode = next,
+              onApprovalModeApply: (_) async {
+                applied = true;
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byTooltip('Approval settings'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pumpAndSettle();
+      expect(applied, isTrue);
+      expect(mode, HandrailApprovalMode.automatic);
+    },
+  );
 }

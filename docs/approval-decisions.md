@@ -24,8 +24,8 @@ That installed server regression still requires corrected public adoption.
 `HandrailAssistantController.approvals` owns canonical proposal review and exact
 version decisions. Its `uiBinding` is included in the standard workspace, which
 renders `HandrailApprovalDecisionsView` even when messages are empty or tool
-activity is hidden. The approval preference control is separate from deciding a
-pending proposal. Custom argument formatting does not replace the standard
+activity is hidden. Individual review remains available alongside the approval
+preference control. Custom argument formatting does not replace the standard
 Review/Approve/Reject or saved-decision controls. Group membership and execution
 status are shown; this version makes one reviewed decision at a time, not a batch
 financial authorization.
@@ -109,3 +109,20 @@ and a new message can be sent without deciding the retained proposal.
 A later explicit decision resumes server-owned work; the client never executes
 it or creates consent from comments. Adoption requires the coordinated server
 SDK release with durable approval resumption and matching consumer Git pins.
+
+
+## Changing approval mode during a request
+
+When the gateway advertises `resources.turnApprovalMode`, the standard workspace
+uses the client session's `changeApprovalMode` service. It captures the running
+or latest paused turn, reads its current preference revision, and updates that
+exact turn through the authenticated `/approvals/mode` route. The switch stays
+available while sending and waits for server acceptance; failures preserve its
+previous selection and display an error.
+
+Enabling approves pending policy-based actions in that request and permits later
+ones. Disabling makes later actions require approval, without undoing work already
+approved or started. Other paused requests, mandatory reviews and host permissions
+remain independent. Older gateways retain next-message-only behavior. Release
+requires the matching JavaScript server SDK and Flutter SDK full Git pins and
+lockfiles; local source changes do not update installed applications.
