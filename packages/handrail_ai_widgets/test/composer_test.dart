@@ -14,9 +14,16 @@ void main() {
             body: HandrailComposer(
                 controller: controller, showAttachmentControl: false))));
     expect(find.bySemanticsLabel('Message input'), findsOneWidget);
+    expect(tester.getSemantics(find.bySemanticsLabel('Message input')).flagsCollection.isTextField,
+        isTrue);
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    expect(tester.getSemantics(find.bySemanticsLabel('Message input')).label,
+        'Message input');
     await tester.enterText(find.byType(TextField), 'A fresh turn');
     await tester.pump();
-    expect(find.bySemanticsLabel('Message input'), findsOneWidget);
+    expect(tester.getSemantics(find.bySemanticsLabel('Message input')).label,
+        'Message input');
     semantics.dispose();
   });
 
@@ -36,8 +43,8 @@ void main() {
     expect(find.bySemanticsLabel('Describe the issue'), findsOneWidget);
     await tester.tap(find.byTooltip('Edit full message'));
     await tester.pumpAndSettle();
-    expect(find.bySemanticsLabel(RegExp(r'^Describe the issue')),
-        findsOneWidget);
+    expect(tester.getSemantics(find.bySemanticsLabel('Describe the issue')).label,
+        'Describe the issue');
     semantics.dispose();
   });
 

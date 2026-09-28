@@ -397,24 +397,29 @@ class _HandrailComposerState extends State<HandrailComposer> {
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Semantics(
-              label: current.inputLabel,
-              child: TextField(
-                key: current.expandedInputKey,
-                controller: current.controller,
-                autofocus: true,
-                expands: true,
-                minLines: null,
-                maxLines: null,
-                maxLength: current.maxLength,
-                keyboardType: TextInputType.multiline,
-                textInputAction: TextInputAction.newline,
-                textAlignVertical: TextAlignVertical.top,
-                onChanged: current.onChanged,
-                decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
-                  hintText: current.placeholder,
+            child: TextField(
+              key: current.expandedInputKey,
+              controller: current.controller,
+              autofocus: true,
+              expands: true,
+              minLines: null,
+              maxLines: null,
+              maxLength: current.maxLength,
+              keyboardType: TextInputType.multiline,
+              textInputAction: TextInputAction.newline,
+              textAlignVertical: TextAlignVertical.top,
+              onChanged: current.onChanged,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                hint: ExcludeSemantics(
+                  child: Text(
+                    current.placeholder,
+                    style: TextStyle(color: Theme.of(context).hintColor),
+                  ),
                 ),
+                labelText: current.inputLabel,
+                floatingLabelBehavior: FloatingLabelBehavior.always,
+                floatingLabelStyle: const TextStyle(fontSize: 0, height: 0),
               ),
             ),
           ),
@@ -578,7 +583,15 @@ class _HandrailComposerState extends State<HandrailComposer> {
                 height: 1.4,
               ),
           decoration: InputDecoration(
-            hintText: widget.placeholder,
+            hint: ExcludeSemantics(
+              child: Text(
+                widget.placeholder,
+                style: TextStyle(color: theme.hintColor),
+              ),
+            ),
+            labelText: widget.inputLabel,
+            floatingLabelBehavior: FloatingLabelBehavior.always,
+            floatingLabelStyle: const TextStyle(fontSize: 0, height: 0),
             suffixIcon: widget.allowExpand
                 ? IconButton(
                     key: widget.expandKey,
@@ -716,9 +729,7 @@ class _HandrailComposerState extends State<HandrailComposer> {
           ConstrainedBox(
             key: const ValueKey('handrail-composer-editor'),
             constraints: const BoxConstraints(minHeight: 26),
-            child: widget.input == null
-                ? Semantics(label: widget.inputLabel, child: input)
-                : input,
+            child: input,
           ),
           const SizedBox(height: 4),
           Row(
