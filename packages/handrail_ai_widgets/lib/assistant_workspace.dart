@@ -35,6 +35,7 @@ class HandrailAssistantWorkspace<T> extends StatefulWidget {
     this.allowExpandedEditor = false,
     this.expandedEditorTitle = 'Message',
     this.placeholder = 'Ask anything…',
+    this.inputLabel = 'Message input',
     this.loadingLabel = 'Loading conversation',
     this.workingLabel = 'Working…',
     this.failureLabel = 'The request could not be completed.',
@@ -106,6 +107,9 @@ class HandrailAssistantWorkspace<T> extends StatefulWidget {
   final Future<void> Function()? onClearConversation;
   final String expandedEditorTitle;
   final String placeholder;
+
+  /// Accessible name for the shared composer editor.
+  final String inputLabel;
   final String loadingLabel, workingLabel, failureLabel;
   final String? errorLabel;
   final HandrailApprovalMode initialApprovalMode;
@@ -561,6 +565,7 @@ class _WorkspaceState<T> extends State<HandrailAssistantWorkspace<T>>
                       inputKey: widget.inputKey,
                       sendKey: widget.sendKey,
                       placeholder: widget.placeholder,
+                      inputLabel: widget.inputLabel,
                       inputTextStyle: widget.inputTextStyle,
                       decoration: widget.composerDecoration,
                       sendButtonStyle: widget.sendButtonStyle,

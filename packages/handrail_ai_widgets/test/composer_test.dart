@@ -4,6 +4,43 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:handrail_ai_widgets/handrail_ai_widgets.dart';
 
 void main() {
+  testWidgets('standard editor keeps an accessible name after typing',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: HandrailComposer(
+                controller: controller, showAttachmentControl: false))));
+    expect(find.bySemanticsLabel('Message input'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'A fresh turn');
+    await tester.pump();
+    expect(find.bySemanticsLabel('Message input'), findsOneWidget);
+    semantics.dispose();
+  });
+
+  testWidgets('custom named composer and expanded editor keep their label',
+      (tester) async {
+    final semantics = tester.ensureSemantics();
+    final controller = TextEditingController();
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: HandrailComposer(
+                controller: controller,
+                inputLabel: 'Describe the issue',
+                placeholder: 'Steps to reproduce…',
+                allowExpand: true,
+                showAttachmentControl: false))));
+    expect(find.bySemanticsLabel('Describe the issue'), findsOneWidget);
+    await tester.tap(find.byTooltip('Edit full message'));
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel(RegExp(r'^Describe the issue')),
+        findsOneWidget);
+    semantics.dispose();
+  });
+
   for (final brightness in Brightness.values) {
     testWidgets('minimal composer inherits host colors and font ($brightness)',
         (tester) async {

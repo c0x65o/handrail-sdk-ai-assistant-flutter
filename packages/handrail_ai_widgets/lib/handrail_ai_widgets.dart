@@ -253,6 +253,7 @@ class HandrailComposer extends StatefulWidget {
     this.showAttachmentControl = true,
     this.onChanged,
     this.placeholder = 'Message…',
+    this.inputLabel = 'Message input',
     this.maxLength,
     this.onAttach,
     this.attachmentDrafts,
@@ -305,6 +306,9 @@ class HandrailComposer extends StatefulWidget {
   final bool showAttachmentControl;
   final ValueChanged<String>? onChanged;
   final String placeholder;
+
+  /// Accessible name for the standard and expanded message editors.
+  final String inputLabel;
   final int? maxLength;
   final Key? attachKey, inputKey, sendKey;
   final VoidCallback? onAttach, onSend, onStop;
@@ -393,21 +397,24 @@ class _HandrailComposerState extends State<HandrailComposer> {
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: TextField(
-              key: current.expandedInputKey,
-              controller: current.controller,
-              autofocus: true,
-              expands: true,
-              minLines: null,
-              maxLines: null,
-              maxLength: current.maxLength,
-              keyboardType: TextInputType.multiline,
-              textInputAction: TextInputAction.newline,
-              textAlignVertical: TextAlignVertical.top,
-              onChanged: current.onChanged,
-              decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                hintText: current.placeholder,
+            child: Semantics(
+              label: current.inputLabel,
+              child: TextField(
+                key: current.expandedInputKey,
+                controller: current.controller,
+                autofocus: true,
+                expands: true,
+                minLines: null,
+                maxLines: null,
+                maxLength: current.maxLength,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                textAlignVertical: TextAlignVertical.top,
+                onChanged: current.onChanged,
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  hintText: current.placeholder,
+                ),
               ),
             ),
           ),
@@ -709,7 +716,9 @@ class _HandrailComposerState extends State<HandrailComposer> {
           ConstrainedBox(
             key: const ValueKey('handrail-composer-editor'),
             constraints: const BoxConstraints(minHeight: 26),
-            child: input,
+            child: widget.input == null
+                ? Semantics(label: widget.inputLabel, child: input)
+                : input,
           ),
           const SizedBox(height: 4),
           Row(
