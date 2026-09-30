@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' show parseHttpDate;
 import 'package:crypto/crypto.dart' as crypto;
 import 'src/platform_http_client.dart' as platform_http;
 
@@ -580,11 +581,13 @@ class HandrailGatewayException implements Exception {
   final String message;
   final bool retryable;
   final int? statusCode;
+  final Duration? retryAfter;
   const HandrailGatewayException(
     this.code,
     this.message, {
     this.retryable = false,
     this.statusCode,
+    this.retryAfter,
   });
   @override
   String toString() => 'HandrailGatewayException($code): $message';
@@ -1003,7 +1006,35 @@ class HandrailAiClient {
     );
   }
 
+  void _checkRateLimit(http.BaseResponse response) {
+    // Rate limits may come from the authenticated host, outside the SDK JSON
+    // envelope. Preserve their retry contract for every read caller.
+    if (response.statusCode == 429) {
+      final header = response.headers['retry-after'];
+      final seconds = int.tryParse(header ?? '');
+      DateTime? date;
+      if (header != null && seconds == null) {
+        try {
+          date = parseHttpDate(header);
+        } on FormatException {/* Use fallback. */}
+      }
+      final delay = seconds != null
+          ? Duration(seconds: seconds < 1 ? 1 : seconds)
+          : date?.difference(DateTime.now());
+      throw HandrailGatewayException(
+        'rate_limited',
+        'Requests are temporarily rate limited. Please wait before retrying.',
+        retryable: true,
+        statusCode: 429,
+        retryAfter: delay != null && delay > Duration.zero
+            ? delay
+            : const Duration(seconds: 60),
+      );
+    }
+  }
+
   Map<String, Object?> _success(http.Response response) {
+    _checkRateLimit(response);
     Map<String, Object?> body;
     try {
       body = Map<String, Object?>.from(jsonDecode(response.body) as Map);
@@ -1024,7 +1055,7 @@ class HandrailAiClient {
       throw HandrailGatewayException(
         error['code'] as String? ?? 'request_failed',
         error['message'] as String? ?? 'Handrail gateway request failed.',
-        retryable: error['retryable'] == true,
+        retryable: error['retryable'] == true || response.statusCode >= 500,
         statusCode: response.statusCode,
       );
     }

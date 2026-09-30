@@ -824,6 +824,7 @@ class _MessageState extends State<HandrailTranscriptMessage> {
             .copyWith(color: foreground);
     final attachments = _records(widget.message['attachments']);
     final bubble = Container(
+      width: user ? null : double.infinity,
       constraints: BoxConstraints(maxWidth: style.maximumMessageWidth),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(

@@ -68,67 +68,129 @@ class PendingHeadersClient extends http.BaseClient {
 }
 
 void main() {
-  test('outgoing feedback precedes slow preflight and disappears on pre-admission failure', () async {
+  test(
+      'outgoing feedback precedes slow preflight and disappears on pre-admission failure',
+      () async {
     final gate = Completer<void>();
     var hold = false;
     var mutations = 0;
-    final client = HandrailAiClient(baseUri: Uri.parse('https://app.example/ai'), httpClient: MockClient((request) async {
-      if (request.url.path.endsWith('/capabilities')) return ok({
-        'protocolVersion': applicationGatewayProtocolVersion, 'synchronization': true, 'activity': false});
-      final body = jsonDecode(request.body) as Map;
-      if (body['operation'] == 'append_mutations') mutations++;
-      if (hold) { await gate.future; throw StateError('preflight offline'); }
-      return ok(body['operation'] == 'read_since' ? {'status': 'events', 'events': [], 'hasMore': false}
-        : {'status': 'snapshot', 'snapshot': snapshot(running: false)});
-    }));
-    final pending = HandrailKeyValuePendingTurnStore(namespace: 'send-feedback', read: (_) async => null,
-      write: (_, __) async {}, delete: (_) async {});
-    final session = HandrailConversationSession(client: client, conversationId: 'c1', pollingInterval: null);
+    final client = HandrailAiClient(
+        baseUri: Uri.parse('https://app.example/ai'),
+        httpClient: MockClient((request) async {
+          if (request.url.path.endsWith('/capabilities'))
+            return ok({
+              'protocolVersion': applicationGatewayProtocolVersion,
+              'synchronization': true,
+              'activity': false
+            });
+          final body = jsonDecode(request.body) as Map;
+          if (body['operation'] == 'append_mutations') mutations++;
+          if (hold) {
+            await gate.future;
+            throw StateError('preflight offline');
+          }
+          return ok(body['operation'] == 'read_since'
+              ? {'status': 'events', 'events': [], 'hasMore': false}
+              : {'status': 'snapshot', 'snapshot': snapshot(running: false)});
+        }));
+    final pending = HandrailKeyValuePendingTurnStore(
+        namespace: 'send-feedback',
+        read: (_) async => null,
+        write: (_, __) async {},
+        delete: (_) async {});
+    final session = HandrailConversationSession(
+        client: client, conversationId: 'c1', pollingInterval: null);
     try {
-      await session.initialize(); hold = true;
-      final request = <String, Object?>{'protocol_version': 'handrail.ai-runtime.v1', 'messages': [
-        {'role': 'user', 'content': [{'type': 'text', 'text': 'Immediate feedback'}]}
-      ]};
-      final sending = session.sendMessage(operationId: 'instant', clientId: 'client', request: request, pendingStore: pending);
+      await session.initialize();
+      hold = true;
+      final request = <String, Object?>{
+        'protocol_version': 'handrail.ai-runtime.v1',
+        'messages': [
+          {
+            'role': 'user',
+            'content': [
+              {'type': 'text', 'text': 'Immediate feedback'}
+            ]
+          }
+        ]
+      };
+      final sending = session.sendMessage(
+          operationId: 'instant',
+          clientId: 'client',
+          request: request,
+          pendingStore: pending);
       final failure = expectLater(sending, throwsA(anything));
-      expect(session.outgoingMessage, containsPair('delivery_status', 'sending'));
-      expect(session.outgoingMessage, containsPair('message_id', 'message_instant'));
-      expect(session.outgoingMessage!['content'], [{'type': 'text', 'text': 'Immediate feedback'}]);
+      expect(
+          session.outgoingMessage, containsPair('delivery_status', 'sending'));
+      expect(session.outgoingMessage,
+          containsPair('message_id', 'message_instant'));
+      expect(session.outgoingMessage!['content'], [
+        {'type': 'text', 'text': 'Immediate feedback'}
+      ]);
       expect(mutations, 0);
-      await expectLater(session.sendMessage(operationId: 'duplicate', clientId: 'client', request: request, pendingStore: pending), throwsStateError);
-      gate.complete(); await failure;
+      await expectLater(
+          session.sendMessage(
+              operationId: 'duplicate',
+              clientId: 'client',
+              request: request,
+              pendingStore: pending),
+          throwsStateError);
+      gate.complete();
+      await failure;
       expect(session.outgoingMessage, isNull);
       expect(mutations, 0);
-    } finally { await session.dispose(); client.close(); }
+    } finally {
+      await session.dispose();
+      client.close();
+    }
   });
 
-  test('approval waits restore without a running observer and leave comments available', () async {
+  test(
+      'approval waits restore without a running observer and leave comments available',
+      () async {
     final saved = snapshot(running: false);
     final state = saved['state'] as Map<String, Object?>;
     (state['turns'] as List).first['status'] = 'waiting_for_approval';
-    state['approval_proposals'] = [{'proposal_id': 'p', 'status': 'pending'}];
+    state['approval_proposals'] = [
+      {'proposal_id': 'p', 'status': 'pending'}
+    ];
     final requests = <http.Request>[];
-    final client = HandrailAiClient(baseUri: Uri.parse('https://app.example/ai'), httpClient: MockClient((request) async {
-      requests.add(request);
-      if (request.url.path.endsWith('/capabilities')) return ok({
-        'protocolVersion': applicationGatewayProtocolVersion, 'synchronization': true, 'activity': false});
-      expect(request.url.path, endsWith('/synchronization'));
-      final body = jsonDecode(request.body) as Map;
-      return ok(body['operation'] == 'read_since' ? {'status': 'events', 'events': [], 'hasMore': false}
-        : {'status': 'snapshot', 'snapshot': saved});
-    }));
-    final session = HandrailConversationSession(client: client, conversationId: 'c1', pollingInterval: null);
+    final client = HandrailAiClient(
+        baseUri: Uri.parse('https://app.example/ai'),
+        httpClient: MockClient((request) async {
+          requests.add(request);
+          if (request.url.path.endsWith('/capabilities'))
+            return ok({
+              'protocolVersion': applicationGatewayProtocolVersion,
+              'synchronization': true,
+              'activity': false
+            });
+          expect(request.url.path, endsWith('/synchronization'));
+          final body = jsonDecode(request.body) as Map;
+          return ok(body['operation'] == 'read_since'
+              ? {'status': 'events', 'events': [], 'hasMore': false}
+              : {'status': 'snapshot', 'snapshot': saved});
+        }));
+    final session = HandrailConversationSession(
+        client: client, conversationId: 'c1', pollingInterval: null);
     try {
       await session.initialize();
-      expect(session.document!.runtimeState.status, HandrailTurnStatus.waitingForApproval);
+      expect(session.document!.runtimeState.status,
+          HandrailTurnStatus.waitingForApproval);
       expect(session.workspace.snapshot.runningCount, 0);
       expect(session.observationConnected, false);
-      expect((await session.waitForTurn('t1'))['status'], 'waiting_for_approval');
+      expect(
+          (await session.waitForTurn('t1'))['status'], 'waiting_for_approval');
       expect(session.document!.activeTurnId, isNull);
-      expect(session.document!.runtimeState.approvals.single['status'], 'pending');
+      expect(
+          session.document!.runtimeState.approvals.single['status'], 'pending');
       await session.refresh();
-      expect(requests.any((request) => request.url.path.contains('/turns/')), false);
-    } finally { await session.dispose(); client.close(); }
+      expect(requests.any((request) => request.url.path.contains('/turns/')),
+          false);
+    } finally {
+      await session.dispose();
+      client.close();
+    }
   });
   test(
       'disconnect aborts pending response headers without closing the shared HTTP client',
@@ -294,43 +356,88 @@ void main() {
     client.close();
   });
 
-  test('an expired upload rejects admission without a retry or provider start', () async {
+  test('an expired upload rejects admission without a retry or provider start',
+      () async {
     var admissions = 0, accepted = 0;
     final client = HandrailAiClient(
         baseUri: Uri.parse('https://app.example/api/ai'),
         httpClient: MockClient((request) async {
           if (request.url.path.endsWith('/capabilities'))
-            return ok({'protocolVersion': applicationGatewayProtocolVersion, 'synchronization': true});
+            return ok({
+              'protocolVersion': applicationGatewayProtocolVersion,
+              'synchronization': true
+            });
           expect(request.url.path, endsWith('/synchronization'));
           final body = jsonDecode(request.body) as Map;
           if (body['operation'] == 'append_mutations') {
             admissions++;
-            return ok({'status': 'rejected', 'code': 'attachment_expired',
-              'message': 'A file upload expired before the message was saved. Select the file again.'});
+            return ok({
+              'status': 'rejected',
+              'code': 'attachment_expired',
+              'message':
+                  'A file upload expired before the message was saved. Select the file again.'
+            });
           }
           return ok(body['operation'] == 'pull_snapshot'
               ? {'status': 'snapshot', 'snapshot': snapshot(running: false)}
-              : {'status': 'events', 'events': [], 'revision': 1, 'latestRevision': 1, 'hasMore': false});
+              : {
+                  'status': 'events',
+                  'events': [],
+                  'revision': 1,
+                  'latestRevision': 1,
+                  'hasMore': false
+                });
         }));
-    final session = HandrailConversationSession(client: client, conversationId: 'c1', pollingInterval: null);
+    final session = HandrailConversationSession(
+        client: client, conversationId: 'c1', pollingInterval: null);
     try {
-      final submission = await session.prepareTurn(operationId: 'expired-file', clientId: 'flutter', request: {
-        'protocol_version': 'handrail.ai-runtime.v1', 'continuation_of': null,
-        'messages': [{'role': 'user', 'content': [
-          {'type': 'text', 'text': 'Read this file'},
-          {'type': 'image', 'attachment': {'attachment_id': 'att_file', 'content_ref': 'ref_file',
-            'media_type': 'image/png', 'byte_size': 4, 'filename': 'file.png'}}]}],
-        'tools': [], 'tool_results': [], 'generation': {'max_output_tokens': 100, 'temperature': 0}, 'correlation_hints': {},
-      });
-      await expectLater(session.submitTurn(submission, onAccepted: (_) { accepted++; }),
+      final submission = await session.prepareTurn(
+          operationId: 'expired-file',
+          clientId: 'flutter',
+          request: {
+            'protocol_version': 'handrail.ai-runtime.v1',
+            'continuation_of': null,
+            'messages': [
+              {
+                'role': 'user',
+                'content': [
+                  {'type': 'text', 'text': 'Read this file'},
+                  {
+                    'type': 'image',
+                    'attachment': {
+                      'attachment_id': 'att_file',
+                      'content_ref': 'ref_file',
+                      'media_type': 'image/png',
+                      'byte_size': 4,
+                      'filename': 'file.png'
+                    }
+                  }
+                ]
+              }
+            ],
+            'tools': [],
+            'tool_results': [],
+            'generation': {'max_output_tokens': 100, 'temperature': 0},
+            'correlation_hints': {},
+          });
+      await expectLater(
+          session.submitTurn(submission, onAccepted: (_) {
+            accepted++;
+          }),
           throwsA(isA<HandrailGatewayException>()
               .having((error) => error.code, 'code', 'synchronization_rejected')
               .having((error) => error.retryable, 'retryable', isFalse)
-              .having((error) => error.message, 'message', contains('Select the file again'))));
-      expect(admissions, 1); expect(accepted, 0);
+              .having((error) => error.message, 'message',
+                  contains('Select the file again'))));
+      expect(admissions, 1);
+      expect(accepted, 0);
       expect(session.error?.retryable, isFalse);
-      expect(session.document!.runtimeState.status, HandrailTurnStatus.completed);
-    } finally { await session.dispose(); client.close(); }
+      expect(
+          session.document!.runtimeState.status, HandrailTurnStatus.completed);
+    } finally {
+      await session.dispose();
+      client.close();
+    }
   });
 
   test('a failed synchronization keeps the last known server run', () async {
@@ -422,7 +529,11 @@ void main() {
     });
     await expectLater(
         session.initialize(), throwsA(isA<HandrailGatewayException>()));
-    await recovered.future.timeout(const Duration(seconds: 3));
+    // Even an aggressively configured caller cannot turn a transient failure
+    // into a tight retry loop. Automatic recovery still occurs after backoff.
+    await Future<void>.delayed(const Duration(seconds: 1));
+    expect(attempts, 1);
+    await recovered.future.timeout(const Duration(seconds: 7));
     expect(session.document!.runtimeState.status, HandrailTurnStatus.completed);
     await session.dispose();
     await subscription.cancel();

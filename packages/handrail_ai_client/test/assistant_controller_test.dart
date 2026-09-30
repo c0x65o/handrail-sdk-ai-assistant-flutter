@@ -208,6 +208,35 @@ class Fixture {
 }
 
 void main() {
+  test(
+      'account activity honors host throttling across polling and manual retries',
+      () async {
+    final fixture = Fixture();
+    fixture.before = (request, _) async {
+      if (request.url.path.endsWith('/capabilities'))
+        return ok({
+          'protocolVersion': applicationGatewayProtocolVersion,
+          'activity': true,
+        });
+      return http.Response('{"error":"Too many requests"}', 429,
+          headers: {'retry-after': '60'});
+    };
+    final controller = fixture.controller(autoCreate: false);
+    addTearDown(controller.dispose);
+    addTearDown(fixture.client.close);
+    await expectLater(
+        controller.refreshActivity(), throwsA(isA<HandrailGatewayException>()));
+    final count = fixture.requests.length;
+    for (var i = 0; i < 10; i++) {
+      await controller.refreshObservations(
+          refreshVoice: false, automatic: true);
+      await expectLater(controller.refreshActivity(),
+          throwsA(isA<HandrailGatewayException>()));
+    }
+    expect(fixture.requests.length, count);
+    expect(controller.historyError?.code, 'rate_limited');
+  });
+
   for (final recover in [false, true]) {
     test(
         'definite attachment rejection keeps drafts and unlocks correction; recovery=$recover',

@@ -438,6 +438,7 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
       }
       final stream = StreamIterator<List<int>>(response.stream);
       try {
+        _checkRateLimit(response);
         final bytes = BytesBuilder(copy: false);
         while (await cancellable(stream.moveNext())) {
           if (bytes.length + stream.current.length > maximumBytes) {
@@ -462,7 +463,8 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
                   ? resource['code'] as String
                   : error['code'] as String? ?? 'history_unavailable',
               error['message'] as String? ?? 'History could not be loaded.',
-              retryable: error['retryable'] == true,
+              retryable:
+                  error['retryable'] == true || response.statusCode >= 500,
               statusCode: response.statusCode);
         }
         return _object(json['value']);

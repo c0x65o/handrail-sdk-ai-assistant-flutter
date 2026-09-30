@@ -2,10 +2,69 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:handrail_ai_widgets/handrail_ai_widgets.dart';
 
 void main() {
+  for (final width in [320.0, 390.0, 768.0, 1440.0]) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('ordered markers stay intact at $width and text scale $scale', (
+        tester,
+      ) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = Size(width, 1000);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetPhysicalSize);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: MediaQuery(
+                data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+                child: const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: HandrailMarkdown(
+                    data:
+                        '1. One bag\n\n---\n\n10. Ten bags\n\n---\n\n100. One hundred bags\n     1. Nested bag\n\n---\n\n111. Bronzewing Baggage',
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        for (final marker in ['1.', '10.', '100.', '111.']) {
+          final text = find.text(marker);
+          expect(text, findsWidgets);
+          for (final element in text.evaluate()) {
+            final paragraph = find.descendant(
+              of: find.byWidget(element.widget),
+              matching: find.byType(RichText),
+            );
+            for (final rich in paragraph.evaluate()) {
+              final render = rich.renderObject! as RenderParagraph;
+              expect(render.didExceedMaxLines, false, reason: marker);
+              final boxes = render.getBoxesForSelection(
+                TextSelection(baseOffset: 0, extentOffset: marker.length),
+              );
+              expect(
+                boxes.map((b) => b.top).toSet(),
+                hasLength(1),
+                reason: marker,
+              );
+              expect(
+                boxes.last.right,
+                lessThanOrEqualTo(render.size.width + 0.5),
+                reason: '$marker must not clip',
+              );
+            }
+          }
+        }
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   testWidgets(
     'formatted paragraphs and table cells share one selectable region',
     (tester) async {

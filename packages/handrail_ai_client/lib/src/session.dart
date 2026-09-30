@@ -175,6 +175,13 @@ class HandrailConversationSession {
   };
   Timer? _timer;
   Timer? _streamRefreshTimer;
+  DateTime? _lastRefreshStarted;
+  DateTime? _retryRefreshAt;
+  int _refreshFailures = 0;
+  Duration get _automaticRefreshInterval =>
+      pollingInterval != null && pollingInterval! > const Duration(seconds: 5)
+          ? pollingInterval!
+          : const Duration(seconds: 5);
   int _observationGeneration = 0;
   bool _disposed = false;
 
@@ -429,22 +436,35 @@ class HandrailConversationSession {
           _timer == null &&
           pollingInterval != null &&
           (_error == null || _error!.retryable)) {
-        _timer = Timer.periodic(pollingInterval!, (_) {
-          refresh().catchError((Object _) {});
+        _timer = Timer.periodic(_automaticRefreshInterval, (_) {
+          _scheduleStreamRefresh();
         });
       }
     }
   }
 
-  Future<void> refresh() {
+  Future<void> refresh({bool automatic = false}) {
     if (_disposed)
       return Future.error(StateError('Conversation session is disposed'));
+    if ((automatic || _error?.statusCode == 429) &&
+        _retryRefreshAt != null &&
+        DateTime.now().isBefore(_retryRefreshAt!)) {
+      return Future.error(_error!);
+    }
+    // Account polling and stream notifications share one automatic read budget.
+    if (automatic &&
+        _lastRefreshStarted != null &&
+        DateTime.now().difference(_lastRefreshStarted!) <
+            _automaticRefreshInterval) {
+      return _refreshing ?? Future<void>.value();
+    }
     return _refreshing ??= _refresh().whenComplete(() {
       _refreshing = null;
     });
   }
 
   Future<void> _refresh() async {
+    _lastRefreshStarted = DateTime.now();
     try {
       _capabilities ??= await client.capabilities();
       if (_disposed) return;
@@ -503,6 +523,8 @@ class HandrailConversationSession {
       }
       if (_disposed) return;
       _error = null;
+      _refreshFailures = 0;
+      _retryRefreshAt = null;
       _publish();
     } catch (cause) {
       if (_disposed) return;
@@ -533,6 +555,12 @@ class HandrailConversationSession {
           : const HandrailGatewayException('synchronization_failed',
               'Conversation synchronization is temporarily unavailable.',
               retryable: true);
+      _refreshFailures++;
+      final backoff = _error!.retryAfter ??
+          Duration(
+              seconds:
+                  min(60, 5 * pow(2, min(_refreshFailures - 1, 4)).toInt()));
+      _retryRefreshAt = DateTime.now().add(backoff);
       _publish();
       throw _error!;
     }
@@ -613,11 +641,18 @@ class HandrailConversationSession {
 
   void _scheduleStreamRefresh() {
     if (_disposed ||
-        _capabilities?.displayHistory?.control != true ||
+        (_error != null && !_error!.retryable) ||
         _streamRefreshTimer != null) return;
-    _streamRefreshTimer = Timer(const Duration(milliseconds: 100), () {
+    final now = DateTime.now();
+    var due = (_lastRefreshStarted ?? now).add(_automaticRefreshInterval);
+    if (_retryRefreshAt != null && _retryRefreshAt!.isAfter(due)) {
+      due = _retryRefreshAt!;
+    }
+    _streamRefreshTimer =
+        Timer(due.isAfter(now) ? due.difference(now) : Duration.zero, () {
       _streamRefreshTimer = null;
-      if (!_disposed) unawaited(refresh().catchError((Object _) {}));
+      if (!_disposed)
+        unawaited(refresh(automatic: true).catchError((Object _) {}));
     });
   }
 
@@ -977,11 +1012,14 @@ class HandrailConversationSession {
       required String idempotencyKey,
       String? expectedTurnId}) async {
     if (_disposed) throw StateError('Conversation session is disposed');
-    if (_document == null) await refresh();
+    final acceptedTarget = expectedTurnId != null &&
+        (_admittedSubmission?.turnId == expectedTurnId ||
+            _observedTurnId == expectedTurnId);
+    if (_document == null && !acceptedTarget) await refresh();
     if (_capabilities?.authoritativeCancellation != true)
       throw const HandrailGatewayException(
           'cancellation_unavailable', 'Server cancellation is unavailable.');
-    final turnId = _document?.activeTurnId;
+    final turnId = acceptedTarget ? expectedTurnId : _document?.activeTurnId;
     if (expectedTurnId != null && turnId != expectedTurnId) {
       final known = await _findTurn(expectedTurnId);
       if (known != null &&
@@ -999,7 +1037,9 @@ class HandrailConversationSession {
       'idempotencyKey': idempotencyKey,
       'reason': 'user'
     });
-    if (!_disposed) await refresh();
+    // The write was acknowledged. A throttled projection read must not turn
+    // that acknowledgement into an apparent failed cancellation.
+    if (!_disposed) await refresh().catchError((Object _) {});
   }
 
   Future<void> markRead() async {

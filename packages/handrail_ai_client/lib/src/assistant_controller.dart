@@ -208,6 +208,8 @@ class HandrailAssistantController {
   Future<void>? _readingActivity, _observing;
   Future<HandrailGatewayCapabilities>? _activityCapabilities;
   Timer? _pollTimer;
+  DateTime? _retryActivityAt;
+  int _activityFailures = 0;
   Map<String, Object?>? _createRequest;
   HandrailConversationDescriptor? _createdDescriptor;
   bool _selecting = false;
@@ -1002,19 +1004,23 @@ class HandrailAssistantController {
 
   void _startPolling() {
     if (_disposed || _pollTimer != null || pollingInterval == null) return;
-    _pollTimer = Timer.periodic(pollingInterval!, (_) {
-      unawaited(refreshObservations(refreshVoice: false));
+    final interval = pollingInterval! < const Duration(seconds: 5)
+        ? const Duration(seconds: 5)
+        : pollingInterval!;
+    _pollTimer = Timer.periodic(interval, (_) {
+      unawaited(refreshObservations(refreshVoice: false, automatic: true));
     });
   }
 
   /// One account observation cycle. Active/selected sessions stay current;
   /// closed idle transcripts do not each poll the gateway or global activity.
-  Future<void> refreshObservations({bool refreshVoice = true}) {
+  Future<void> refreshObservations(
+      {bool refreshVoice = true, bool automatic = false}) {
     _assertActive();
     if (refreshVoice) unawaited(voiceWorkspace?.refresh());
     return _observing ??= (() async {
       try {
-        await refreshActivity();
+        await refreshActivity(automatic: automatic);
       } catch (_) {/* Retry activity next cycle. */}
       if (_disposed) return;
       for (final entry in List.of(_sessions.entries)) {
@@ -1029,7 +1035,7 @@ class HandrailAssistantController {
               HandrailTurnStatus.waitingForTool
             ].contains(remote?.status)) continue;
         try {
-          await session.refresh();
+          await session.refresh(automatic: automatic);
         } catch (_) {/* Session retains its error/state. */}
         if (_disposed) return;
       }
@@ -1054,8 +1060,13 @@ class HandrailAssistantController {
 
   /// Coalesces the account-wide read across history, manual refresh and polling.
   /// A failed read retains prior activity and never changes send permissions.
-  Future<void> refreshActivity() {
+  Future<void> refreshActivity({bool automatic = false}) {
     _assertActive();
+    if ((automatic || _activityError?.statusCode == 429) &&
+        _retryActivityAt != null &&
+        DateTime.now().isBefore(_retryActivityAt!)) {
+      return Future.error(_activityError!);
+    }
     return _readingActivity ??= (() async {
       try {
         final capability = await _getActivityCapabilities();
@@ -1067,10 +1078,18 @@ class HandrailAssistantController {
           workspace.replaceRemoteActivity(records);
         }
         _activityError = null;
+        _activityFailures = 0;
+        _retryActivityAt = null;
       } catch (cause) {
-        if (!_disposed)
+        if (!_disposed) {
           _activityError = _assistantFailure(cause, 'activity_unavailable',
               'Conversation activity could not be refreshed. Retry history.');
+          _activityFailures++;
+          _retryActivityAt = DateTime.now().add(_activityError!.retryAfter ??
+              Duration(
+                  seconds: min(
+                      60, 5 * pow(2, min(_activityFailures - 1, 4)).toInt())));
+        }
         rethrow;
       } finally {
         _publish();

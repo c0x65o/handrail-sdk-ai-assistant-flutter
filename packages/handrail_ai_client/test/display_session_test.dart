@@ -13,7 +13,7 @@ class Fixture {
   final requests = <Map<String, Object?>>[];
   final turns = <String, Map<String, Object?>>{};
   int revision = 100, generation = 0;
-  bool preparing = false, denied = false;
+  bool preparing = false, denied = false, throttled = false;
   String? active, latest;
   Future<void>? holdControl;
   Future<void>? holdAdmission;
@@ -84,6 +84,10 @@ class Fixture {
       });
     final body = Map<String, Object?>.from(jsonDecode(request.body) as Map);
     requests.add({'path': request.url.path, ...body});
+    if (throttled && !request.url.path.endsWith('/turns/cancel')) {
+      return http.Response('{"error":"Too many requests"}', 429,
+          headers: {'retry-after': '1'});
+    }
     if (denied)
       return http.Response(
           jsonEncode({
@@ -197,6 +201,102 @@ class Fixture {
 }
 
 void main() {
+  test('history throttle backs off reads but preserves owned cancellation',
+      () async {
+    final f = Fixture()..turn('active', 'running');
+    addTearDown(f.dispose);
+    await f.session.initialize();
+    f.throttled = true;
+    await expectLater(
+        f.session.refresh(),
+        throwsA(isA<HandrailGatewayException>()
+            .having((e) => e.statusCode, 'status', 429)
+            .having((e) => e.retryAfter, 'retry delay',
+                const Duration(seconds: 1))));
+    final reads = f.requests.length;
+    for (var i = 0; i < 10; i++) {
+      await expectLater(
+          f.session.refresh(), throwsA(isA<HandrailGatewayException>()));
+    }
+    expect(f.requests.length, reads);
+    await f.session.requestCancellation(
+        mutationId: 'cancel',
+        idempotencyKey: 'cancel',
+        expectedTurnId: 'active');
+    expect(f.requests.last['path'], '/ai/turns/cancel');
+    expect(f.turns['active']!['status'], 'cancelled');
+    f.throttled = false;
+    await Future<void>.delayed(const Duration(milliseconds: 1100));
+    await f.session.refresh();
+    expect(f.session.document!.latestTurn!['status'], 'cancelled');
+    expect(f.session.error, isNull);
+  });
+
+  test('stream event bursts cannot bypass the configured refresh interval',
+      () async {
+    final f = Fixture()..turn('active', 'running');
+    final events = StreamController<List<int>>();
+    final client = HandrailAiClient(
+        baseUri: Uri.parse('https://test.invalid/ai'),
+        httpClient: MockClient.streaming((request, stream) async {
+          final bytes = await stream.toBytes();
+          if (request.url.path.endsWith('/turns/start')) {
+            final body = jsonDecode(utf8.decode(bytes)) as Map;
+            events.add(utf8.encode('event: started\ndata: ${jsonEncode({
+                  'conversationId': 'chat',
+                  'turnId': body['conversationTurnId']
+                })}\n\n'));
+            return http.StreamedResponse(events.stream, 200,
+                headers: {'content-type': 'text/event-stream'});
+          }
+          final plain = http.Request(request.method, request.url)
+            ..bodyBytes = bytes;
+          final response = await f.handle(plain);
+          return http.StreamedResponse(
+              Stream.value(response.bodyBytes), response.statusCode,
+              headers: response.headers);
+        }));
+    final session = HandrailConversationSession(
+        client: client,
+        conversationId: 'chat',
+        pollingInterval: const Duration(seconds: 5));
+    addTearDown(() async {
+      await session.dispose();
+      client.close();
+      await f.dispose();
+    });
+    // Start from an idle snapshot so admission is valid.
+    f.active = null;
+    await session.initialize();
+    final submission = await session
+        .prepareTurn(operationId: 'burst', clientId: 'test', request: {
+      'protocol_version': 'handrail.ai-runtime.v1',
+      'messages': [
+        {
+          'role': 'user',
+          'content': [
+            {'type': 'text', 'text': 'List luggage labels'}
+          ]
+        }
+      ]
+    });
+    await session.submitTurn(submission);
+    final baseline = f.requests.length;
+    for (var i = 0; i < 15; i++) {
+      events.add(utf8.encode('event: delta\ndata: {"text":"item"}\n\n'));
+      await session.refresh(automatic: true);
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    expect(f.requests.length, baseline,
+        reason:
+            'SSE notifications must coalesce within the five-second read budget');
+    await session.requestCancellation(
+        mutationId: 'stop',
+        idempotencyKey: 'stop',
+        expectedTurnId: submission.turnId);
+    await events.close();
+  });
+
   Map<String, Object?> request() => {
         'protocol_version': 'handrail.ai-runtime.v1',
         'messages': [
