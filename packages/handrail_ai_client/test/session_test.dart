@@ -68,6 +68,40 @@ class PendingHeadersClient extends http.BaseClient {
 }
 
 void main() {
+  test('outgoing feedback precedes slow preflight and disappears on pre-admission failure', () async {
+    final gate = Completer<void>();
+    var hold = false;
+    var mutations = 0;
+    final client = HandrailAiClient(baseUri: Uri.parse('https://app.example/ai'), httpClient: MockClient((request) async {
+      if (request.url.path.endsWith('/capabilities')) return ok({
+        'protocolVersion': applicationGatewayProtocolVersion, 'synchronization': true, 'activity': false});
+      final body = jsonDecode(request.body) as Map;
+      if (body['operation'] == 'append_mutations') mutations++;
+      if (hold) { await gate.future; throw StateError('preflight offline'); }
+      return ok(body['operation'] == 'read_since' ? {'status': 'events', 'events': [], 'hasMore': false}
+        : {'status': 'snapshot', 'snapshot': snapshot(running: false)});
+    }));
+    final pending = HandrailKeyValuePendingTurnStore(namespace: 'send-feedback', read: (_) async => null,
+      write: (_, __) async {}, delete: (_) async {});
+    final session = HandrailConversationSession(client: client, conversationId: 'c1', pollingInterval: null);
+    try {
+      await session.initialize(); hold = true;
+      final request = <String, Object?>{'protocol_version': 'handrail.ai-runtime.v1', 'messages': [
+        {'role': 'user', 'content': [{'type': 'text', 'text': 'Immediate feedback'}]}
+      ]};
+      final sending = session.sendMessage(operationId: 'instant', clientId: 'client', request: request, pendingStore: pending);
+      final failure = expectLater(sending, throwsA(anything));
+      expect(session.outgoingMessage, containsPair('delivery_status', 'sending'));
+      expect(session.outgoingMessage, containsPair('message_id', 'message_instant'));
+      expect(session.outgoingMessage!['content'], [{'type': 'text', 'text': 'Immediate feedback'}]);
+      expect(mutations, 0);
+      await expectLater(session.sendMessage(operationId: 'duplicate', clientId: 'client', request: request, pendingStore: pending), throwsStateError);
+      gate.complete(); await failure;
+      expect(session.outgoingMessage, isNull);
+      expect(mutations, 0);
+    } finally { await session.dispose(); client.close(); }
+  });
+
   test('approval waits restore without a running observer and leave comments available', () async {
     final saved = snapshot(running: false);
     final state = saved['state'] as Map<String, Object?>;

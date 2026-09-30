@@ -155,6 +155,7 @@ class HandrailConversationSession {
   HandrailGatewayException? _error;
   HandrailGatewayCapabilities? _capabilities;
   Future<void>? _refreshing;
+  bool _preparingSend = false;
   Future<void>? _submitting;
   String? _submittingJson;
   HandrailTurnSubmission? _admittedSubmission;
@@ -658,14 +659,37 @@ class HandrailConversationSession {
       required HandrailPendingTurnStore pendingStore,
       Map<String, Object?>? localDraft,
       void Function(HandrailTurnSubmission)? onAccepted}) async {
-    final submission = await prepareTurn(
+    if (_disposed) throw StateError('Conversation session is disposed');
+    if (_preparingSend || _submitting != null) {
+      throw StateError('A message is being submitted');
+    }
+    final preview = _prepareSubmission(
+        conversationId: conversationId,
+        revision: _document?.revision,
         operationId: operationId,
         clientId: clientId,
         request: request,
         localDraft: localDraft);
-    await pendingStore.retain(submission);
-    await _submitRetained(submission, pendingStore, onAccepted);
-    return submission;
+    _preparingSend = true;
+    _outgoingMessage = preview._message;
+    _outgoingStatus = 'sending';
+    _publish();
+    var retained = false;
+    try {
+      final submission = await prepareTurn(
+          operationId: operationId,
+          clientId: clientId,
+          request: _object(preview._start['request']),
+          localDraft: preview.localDraft);
+      await pendingStore.retain(submission);
+      retained = true;
+      await _submitRetained(submission, pendingStore, onAccepted);
+      return submission;
+    } finally {
+      _preparingSend = false;
+      if (!retained) _outgoingMessage = null;
+      _publish();
+    }
   }
 
   Future<HandrailTurnSubmission?> retryPendingMessage(
