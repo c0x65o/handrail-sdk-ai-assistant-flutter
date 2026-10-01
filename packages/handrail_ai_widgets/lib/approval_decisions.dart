@@ -12,7 +12,8 @@ typedef HandrailApprovalBinding = ({
   Future<void> Function(String) retry,
 });
 
-/// Standard decisions cannot be hidden by transcript/activity styling. A host
+/// Active decisions stay visible; settled decisions remain in collapsed history.
+/// A host
 /// renderer may format validated arguments, but cannot grant approval permission.
 class HandrailApprovalDecisionsView extends StatefulWidget {
   const HandrailApprovalDecisionsView({
@@ -107,125 +108,144 @@ class _ApprovalDecisionsState extends State<HandrailApprovalDecisionsView> {
         .toList();
     if (items.isEmpty && state['error'] == null) return const SizedBox.shrink();
     final binding = widget.binding;
+    bool settled(Map<String, Object?> item) =>
+        item['pendingDecision'] != true &&
+        item['busy'] != true &&
+        item['reviewing'] != true &&
+        item['error'] == null &&
+        item['failure_reason'] == null &&
+        _errors[item['proposal_id']] == null &&
+        (const [
+              'executed',
+              'completed',
+              'finished',
+              'rejected',
+              'expired',
+            ].contains(item['status']) ||
+            item['status'] == 'pending' && item['expired'] == true);
+    final history = widget.proposalId == null
+        ? items.where(settled).toList()
+        : <Map<String, Object?>>[];
+    Widget card(Map<String, Object?> item) => Builder(
+      builder: (context) {
+        final id = item['proposal_id'] as String;
+        final version = item['proposal_version'] as int;
+        final pending = item['pendingDecision'] == true;
+        final busy = item['busy'] == true;
+        final status = item['expired'] == true && item['status'] == 'pending'
+            ? 'expired'
+            : item['status'] as String? ?? 'pending';
+        final review = item['reviewed'] == true;
+        final error = item['error'] as String? ?? _errors[id];
+        return Card(
+          key: ValueKey(('approval', state['conversationId'], id)),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  widget.titleFor?.call(item) ??
+                      handrailStructuredDetailLabel(
+                        item['tool_name'] as String? ?? 'Proposed change',
+                      ),
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                Text(
+                  pending
+                      ? 'Checking saved decision'
+                      : switch (status) {
+                          'pending' => 'Review required',
+                          'confirmed' => 'Approved · awaiting execution',
+                          'rejected' => 'Rejected',
+                          'expired' => 'Expired',
+                          'executing' => 'Executing',
+                          'executed' => 'Executed',
+                          'failed' => 'Execution failed',
+                          _ => status,
+                        },
+                ),
+                if (review) ...[
+                  widget.reviewBuilder?.call(context, item) ??
+                      HandrailStructuredDetailsDisclosure(
+                        value: item['arguments'],
+                        title: 'Action details',
+                      ),
+                  if (item['complete'] != true)
+                    const Text(
+                      'This review is incomplete. Approval is unavailable.',
+                    ),
+                ],
+                if (error != null)
+                  Semantics(liveRegion: true, child: Text(error)),
+                if (busy || item['reviewing'] == true)
+                  const LinearProgressIndicator(),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (!pending && status == 'pending') ...[
+                      TextButton(
+                        onPressed: item['canReview'] == true
+                            ? () => _act(id, () => binding.review(id, version))
+                            : null,
+                        child: Text(review ? 'Reload review' : 'Review change'),
+                      ),
+                      FilledButton(
+                        onPressed: item['canConfirm'] == true
+                            ? () => _act(
+                                id,
+                                () => binding.decide(
+                                  id,
+                                  version,
+                                  item['binding'] as String,
+                                  true,
+                                ),
+                              )
+                            : null,
+                        child: const Text('Approve'),
+                      ),
+                      TextButton(
+                        onPressed: item['canReject'] == true
+                            ? () => _act(
+                                id,
+                                () => binding.decide(
+                                  id,
+                                  version,
+                                  item['binding'] as String,
+                                  false,
+                                ),
+                              )
+                            : null,
+                        child: const Text('Reject'),
+                      ),
+                    ],
+                    if (pending)
+                      TextButton(
+                        onPressed: busy
+                            ? null
+                            : () => _act(id, () => binding.retry(id)),
+                        child: const Text('Check saved decision'),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (state['error'] is String) Text(state['error'] as String),
         for (final item in items)
-          Builder(
-            builder: (context) {
-              final id = item['proposal_id'] as String;
-              final version = item['proposal_version'] as int;
-              final pending = item['pendingDecision'] == true;
-              final busy = item['busy'] == true;
-              final status =
-                  item['expired'] == true && item['status'] == 'pending'
-                  ? 'expired'
-                  : item['status'] as String? ?? 'pending';
-              final review = item['reviewed'] == true;
-              final error = item['error'] as String? ?? _errors[id];
-              return Card(
-                key: ValueKey(('approval', state['conversationId'], id)),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        widget.titleFor?.call(item) ??
-                            handrailStructuredDetailLabel(
-                              item['tool_name'] as String? ?? 'Proposed change',
-                            ),
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      Text(
-                        pending
-                            ? 'Checking saved decision'
-                            : switch (status) {
-                                'pending' => 'Review required',
-                                'confirmed' => 'Approved · awaiting execution',
-                                'rejected' => 'Rejected',
-                                'expired' => 'Expired',
-                                'executing' => 'Executing',
-                                'executed' => 'Executed',
-                                'failed' => 'Execution failed',
-                                _ => status,
-                              },
-                      ),
-                      if (review) ...[
-                        widget.reviewBuilder?.call(context, item) ??
-                            HandrailStructuredDetailsDisclosure(
-                              value: item['arguments'],
-                              title: 'Action details',
-                            ),
-                        if (item['complete'] != true)
-                          const Text(
-                            'This review is incomplete. Approval is unavailable.',
-                          ),
-                      ],
-                      if (error != null)
-                        Semantics(liveRegion: true, child: Text(error)),
-                      if (busy || item['reviewing'] == true)
-                        const LinearProgressIndicator(),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          if (!pending && status == 'pending') ...[
-                            TextButton(
-                              onPressed: item['canReview'] == true
-                                  ? () => _act(
-                                      id,
-                                      () => binding.review(id, version),
-                                    )
-                                  : null,
-                              child: Text(
-                                review ? 'Reload review' : 'Review change',
-                              ),
-                            ),
-                            FilledButton(
-                              onPressed: item['canConfirm'] == true
-                                  ? () => _act(
-                                      id,
-                                      () => binding.decide(
-                                        id,
-                                        version,
-                                        item['binding'] as String,
-                                        true,
-                                      ),
-                                    )
-                                  : null,
-                              child: const Text('Approve'),
-                            ),
-                            TextButton(
-                              onPressed: item['canReject'] == true
-                                  ? () => _act(
-                                      id,
-                                      () => binding.decide(
-                                        id,
-                                        version,
-                                        item['binding'] as String,
-                                        false,
-                                      ),
-                                    )
-                                  : null,
-                              child: const Text('Reject'),
-                            ),
-                          ],
-                          if (pending)
-                            TextButton(
-                              onPressed: busy
-                                  ? null
-                                  : () => _act(id, () => binding.retry(id)),
-                              child: const Text('Check saved decision'),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+          if (widget.proposalId != null || !settled(item)) card(item),
+        if (history.isNotEmpty)
+          ExpansionTile(
+            key: ValueKey((widget.binding.scope, state['conversationId'])),
+            title: Text('Action history (${history.length})'),
+            children: [for (final item in history) card(item)],
           ),
       ],
     );

@@ -1,3 +1,4 @@
+import 'transcript_scroll_follow.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -110,6 +111,7 @@ class HandrailConversationTranscript extends StatefulWidget {
 class _TranscriptState extends State<HandrailConversationTranscript>
     with WidgetsBindingObserver {
   final _scroll = ScrollController();
+  final _scrollFollow = HandrailTranscriptScrollFollow();
   final _viewportKey = GlobalKey(), _tailKey = GlobalKey();
   bool _adjustingScroll = false;
   final _positions = <String, ({double offset, bool follow})>{};
@@ -213,6 +215,7 @@ class _TranscriptState extends State<HandrailConversationTranscript>
           _scroll.jumpTo(_restoreOffset!.clamp(0, position.maxScrollExtent));
         }
       } finally {
+        _scrollFollow.capture(_scroll.position);
         _adjustingScroll = false;
       }
       _restoreOffset = null;
@@ -222,7 +225,7 @@ class _TranscriptState extends State<HandrailConversationTranscript>
 
   void _scrolled() {
     if (!_scroll.hasClients || !mounted) return;
-    final follow = _scroll.position.extentAfter < 72;
+    final follow = _scrollFollow.update(_scroll.position, _followEnd);
     if (!_adjustingScroll && _followEnd != follow)
       setState(() => _followEnd = follow);
     _markVisibleRead();

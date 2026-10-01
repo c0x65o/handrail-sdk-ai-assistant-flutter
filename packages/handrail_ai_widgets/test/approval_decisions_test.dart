@@ -158,6 +158,9 @@ void main() {
     f.proposal.addAll({'status': 'pending', 'expired': true});
     f.changes.add(null);
     await tester.pumpAndSettle();
+    expect(find.text('Expired'), findsNothing);
+    await tester.tap(find.text('Action history (1)'));
+    await tester.pumpAndSettle();
     expect(find.text('Expired'), findsOneWidget);
     expect(find.text('Approve'), findsNothing);
   });
