@@ -167,6 +167,23 @@ Widget surface(
 );
 
 void main() {
+  testWidgets('verified selected deletion clears the composer on publication', (
+    tester,
+  ) async {
+    final fixture = Fixture();
+    addTearDown(fixture.dispose);
+    final drafts = fixture.drafts;
+    drafts.controller.text = 'Disposable draft';
+    await tester.pumpWidget(surface(fixture));
+    fixture.state['conversationId'] = null;
+    fixture.state['deletedConversationIds'] = ['one'];
+    fixture.publish();
+    await tester.pumpAndSettle();
+    expect(drafts.selectedId, isNull);
+    expect(drafts.controller.text, isEmpty);
+    expect(drafts.draftConversationIds, isEmpty);
+  });
+
   for (final (width, scale) in [(390.0, 1.0), (320.0, 2.0)]) {
     testWidgets(
       'standard binding restores files and exposes retry at width $width, scale $scale',

@@ -225,9 +225,13 @@ extension HandrailAssistantDeletion on HandrailAssistantController {
       _selectionError = null;
     }
     final closing = _sessions.remove(id)?._forgetAfterDeletion();
-    await _sessionSubscriptions.remove(id)?.cancel();
+    final subscriptionClosing = _sessionSubscriptions.remove(id)?.cancel();
+    // Publish the verified deletion before awaiting session teardown. Closing
+    // an observation may wait for I/O; editors must lose the deleted identity
+    // immediately while the durable deletion journal retains cleanup work.
     workspace.forget(id);
     _publish();
+    await subscriptionClosing;
     await closing;
   }
 
