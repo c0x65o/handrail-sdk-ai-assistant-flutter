@@ -154,6 +154,7 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
       _adjusting = false,
       _scheduled = false,
       _foreground = true,
+      _refreshing = false,
       _requesting = false;
   bool _restoring = false;
   int _epoch = 0;
@@ -209,6 +210,7 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
     _anchor = null;
     _follow = true;
     _requesting = false;
+    _refreshing = false;
     _scheduled = false;
     _localError = _readIdentity = null;
     _restoring = true;
@@ -283,7 +285,7 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
       if (_visible &&
           widget.conversationId != null &&
           (_state['error'] == null || _state['retryable'] != false)) {
-        unawaited(_request(widget.binding.refresh));
+        unawaited(_request(widget.binding.refresh, background: true));
       }
     });
   }
@@ -293,7 +295,11 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
       _foreground &&
       TickerMode.valuesOf(context).enabled &&
       ModalRoute.of(context)?.isCurrent != false;
-  bool get _busy => _requesting || _state['loading'] != null;
+  bool get _busy => _requesting || _refreshing || _state['loading'] != null;
+  // Latest navigation queues behind synchronization in the display window.
+  bool get _navigating =>
+      _requesting ||
+      (_state['loading'] != null && _state['loading'] != 'changes');
   List<Map<String, Object?>> get _records =>
       (_state['records'] as List? ?? const []).cast<Map<String, Object?>>();
 
@@ -462,11 +468,18 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
     });
   }
 
-  Future<void> _request(Future<void> Function() operation) async {
-    if (_requesting) return;
+  Future<void> _request(
+    Future<void> Function() operation, {
+    bool background = false,
+  }) async {
+    if (_requesting || (background && _refreshing)) return;
     final epoch = _epoch;
     setState(() {
-      _requesting = true;
+      if (background) {
+        _refreshing = true;
+      } else {
+        _requesting = true;
+      }
       _localError = null;
     });
     try {
@@ -481,7 +494,11 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
     } finally {
       if (mounted && epoch == _epoch) {
         setState(() {
-          _requesting = false;
+          if (background) {
+            _refreshing = false;
+          } else {
+            _requesting = false;
+          }
           _receive();
         });
       }
@@ -648,7 +665,7 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
                 right: 16,
                 bottom: 12,
                 child: FilledButton.tonalIcon(
-                  onPressed: _busy
+                  onPressed: _navigating
                       ? null
                       : () {
                           setState(() {

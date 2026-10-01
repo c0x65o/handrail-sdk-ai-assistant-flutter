@@ -46,6 +46,8 @@ class HandrailDisplayWindow {
   Completer<void>? _contentRequest;
   Completer<void>? _readRequest;
   Future<void>? _pending;
+  Future<void>? _queuedLatest;
+  HandrailDisplayWindowOperation? _pendingOperation;
   String? _conversationId, _activeTurnId, _changesCursor;
   String _status = 'empty';
   int _generation = 0,
@@ -273,6 +275,8 @@ class HandrailDisplayWindow {
     if (_readRequest?.isCompleted == false) _readRequest!.complete();
     _selection = Completer<void>();
     _pending = null;
+    _pendingOperation = null;
+    _queuedLatest = null;
     _initialAnchor = anchor;
     _followingLatest = anchor == null;
     _clear();
@@ -295,6 +299,22 @@ class HandrailDisplayWindow {
       _hasNewer ? _read(HandrailDisplayWindowOperation.newer) : Future.value();
   Future<void> jumpToLatest() {
     _followingLatest = true;
+    if (_queuedLatest != null) return _queuedLatest!;
+    if (_pending != null &&
+        _pendingOperation == HandrailDisplayWindowOperation.changes) {
+      // Accept navigation during synchronization without overlapping reads or
+      // allowing a queued click to escape its account/conversation lifetime.
+      final selection = _selection;
+      late final Future<void> work;
+      work = _pending!.then((_) async {
+        if (_current(selection) && _status == 'ready' && _error == null) {
+          await _read(HandrailDisplayWindowOperation.latest);
+        }
+      }).whenComplete(() {
+        if (identical(_queuedLatest, work)) _queuedLatest = null;
+      });
+      return _queuedLatest = work;
+    }
     return _read(HandrailDisplayWindowOperation.latest);
   }
 
@@ -310,8 +330,13 @@ class HandrailDisplayWindow {
     if (_disposed)
       return Future.error(StateError('Display window is disposed.'));
     if (_pending != null) return _pending!;
+    if (_queuedLatest != null &&
+        operation != HandrailDisplayWindowOperation.latest) {
+      return _queuedLatest!;
+    }
     final id = _conversationId, selection = _selection;
     if (id == null) return Future.value();
+    _pendingOperation = operation;
     return _pending = Future<void>.microtask(() async {
       if (!_current(selection)) return;
       final request = _readRequest = Completer<void>();
@@ -459,6 +484,7 @@ class HandrailDisplayWindow {
         if (identical(_readRequest, request)) _readRequest = null;
         if (_current(selection)) {
           _pending = null;
+          _pendingOperation = null;
           _loading = null;
           _publish();
         }
@@ -514,6 +540,8 @@ class HandrailDisplayWindow {
     if (!_selection.isCompleted) _selection.complete();
     _disposed = true;
     _pending = null;
+    _pendingOperation = null;
+    _queuedLatest = null;
     _conversationId = null;
     _status = 'empty';
     _clear();

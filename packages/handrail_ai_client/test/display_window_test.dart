@@ -116,6 +116,76 @@ class Fixture {
 }
 
 void main() {
+  for (final outcome in [
+    'ready',
+    'select',
+    'dispose',
+    'stale_cursor',
+    'forbidden',
+    'unavailable'
+  ]) {
+    test('latest queues once behind changes and respects $outcome', () async {
+      final held = Completer<http.Response>(), started = Completer<void>();
+      var pageReads = 0;
+      final client = HandrailAiClient(
+          baseUri: Uri.parse('https://test.invalid/assistant'),
+          httpClient: MockClient((request) async {
+            final body = jsonDecode(request.body) as Map;
+            if (body['operation'] == 'changes') {
+              if (!started.isCompleted) {
+                started.complete();
+                return held.future;
+              }
+              return response({...page('a', []), 'throughRevision': 100});
+            }
+            pageReads++;
+            return response(page(body['input']['conversationId'] as String,
+                [record(pageReads)]));
+          }));
+      final window =
+          HandrailDisplayWindow(client: client, capability: capability);
+      await window.select('a');
+      final refreshing = window.refresh(), jumping = window.jumpToLatest();
+      expect(identical(window.jumpToLatest(), jumping), isTrue);
+      await started.future;
+      expect(window.state.loading, HandrailDisplayWindowOperation.changes);
+      expect(pageReads, 1);
+      if (outcome == 'select') await window.select('b');
+      if (outcome == 'dispose') await window.dispose();
+      final before = pageReads;
+      held.complete(['ready', 'select', 'dispose'].contains(outcome)
+          ? response({...page('a', []), 'throughRevision': 100})
+          : http.Response(
+              jsonEncode({
+                'ok': false,
+                'error': {
+                  'code': outcome,
+                  'message': 'Synthetic failure',
+                  'retryable': outcome == 'unavailable'
+                }
+              }),
+              400,
+              headers: {'content-type': 'application/json'}));
+      await Future.wait([refreshing, jumping]);
+      expect(pageReads, before + (outcome == 'ready' ? 1 : 0));
+      if (outcome == 'ready') {
+        expect(window.state.change, HandrailDisplayWindowOperation.latest);
+      } else if (outcome == 'select') {
+        expect(window.state.conversationId, 'b');
+      } else if (outcome == 'dispose') {
+        expect(window.state.records, isEmpty);
+      } else {
+        expect(window.state.error, isNotNull);
+        expect(window.state.records.length, outcome == 'unavailable' ? 1 : 0);
+        await window.retry();
+        expect(window.state.error, isNull);
+        await window.jumpToLatest();
+        expect(window.state.change, HandrailDisplayWindowOperation.latest);
+      }
+      await window.dispose();
+      client.close();
+    });
+  }
   for (final recordText in [false, true])
     test(
         'content ($recordText) reads cancel on replacement, selection and disposal',
