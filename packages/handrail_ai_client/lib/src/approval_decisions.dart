@@ -284,6 +284,7 @@ class HandrailApprovalDecisions {
     _inbox = null;
     _reviews.clear();
     _errors.clear();
+    _reviewErrors.clear();
   }
 
   void _syncInbox() {
@@ -314,6 +315,11 @@ class HandrailApprovalDecisions {
 
   final _reviews = <String, HandrailApprovalReview>{};
   final _reviewing = <String>{};
+  final _reviewErrors = <String, String>{};
+  // A verified decision (or definitive conflict) retires its exact binding
+  // before canonical refresh. Keep this fence if refresh fails or returns an
+  // unchanged document; neither outcome makes the old decision valid again.
+  final _retiredBindings = <String>{};
   final _errors = <String, String>{};
   final _pending = <String, HandrailApprovalDecisionRequest>{};
   final _operations = <String, Future<void>>{};
@@ -357,6 +363,7 @@ class HandrailApprovalDecisions {
     final proposals = _proposals.where((p) => p.id == id).toList();
     if (proposals.length != 1 ||
         proposals.single.version != version ||
+        _retiredBindings.contains(proposals.single.binding) ||
         decision &&
             (proposals.single.status != 'pending' ||
                 proposals.single.expired ||
@@ -406,11 +413,33 @@ class HandrailApprovalDecisions {
         'Complete verified action details are unavailable. Reload the review.');
   }
 
+  bool _reviewIsCurrent(HandrailApprovalProposal p, int generation) {
+    if (_owner._disposed ||
+        generation != _owner._selectionGeneration ||
+        _pending.containsKey(_key(p.id)) ||
+        _operations.containsKey(_key(p.id)))
+      return false;
+    try {
+      return _current(p.id, p.version, decision: false).binding == p.binding;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> review(String id, int version) async {
     final p = _current(id, version, decision: false),
         generation = _owner._selectionGeneration;
+    // Hosts may re-present an already verified review while retrying the exact
+    // durable choice. Reuse it without launching another read during recovery.
+    if (_reviews.containsKey(p.binding) &&
+        (_pending.containsKey(_key(id)) || _operations.containsKey(_key(id))))
+      return;
+    if (!_reviewIsCurrent(p, generation))
+      throw const HandrailGatewayException('approval_changed',
+          'Check the saved decision before reviewing this proposal again.');
     if (!_reviewing.add(p.binding)) return;
     _errors.remove(_key(id));
+    _reviewErrors.remove(p.binding);
     _owner._publish();
     try {
       final loader = _owner.loadApprovalReview;
@@ -423,15 +452,14 @@ class HandrailApprovalDecisions {
                   complete: true)
               : await _readBoundReview(p);
       _owner._assertActive();
-      if (generation != _owner._selectionGeneration ||
-          _current(id, version, decision: false).binding != p.binding ||
-          review.binding != p.binding)
+      if (!_reviewIsCurrent(p, generation) || review.binding != p.binding)
         throw const HandrailGatewayException('approval_changed',
             'The approval changed while loading. Review it again.');
       _reviews[p.binding] = review;
     } catch (_) {
-      if (!_owner._disposed && generation == _owner._selectionGeneration)
-        _errors[_key(id)] = 'The review could not be verified. Retry review.';
+      if (_reviewIsCurrent(p, generation))
+        _reviewErrors[p.binding] =
+            'The review could not be verified. Retry review.';
       rethrow;
     } finally {
       _reviewing.remove(p.binding);
@@ -500,6 +528,7 @@ class HandrailApprovalDecisions {
                 'Approval decision could not be verified');
         }
         _owner._assertActive();
+        _retiredBindings.add(request.json['binding'] as String);
         await _store!.acknowledgeApprovalDecision(request);
         _owner._assertActive();
         _pending.remove(key);
@@ -525,6 +554,7 @@ class HandrailApprovalDecisions {
           } else if (error is HandrailGatewayException &&
               const ['version_conflict', 'invalid_transition']
                   .contains(error.code)) {
+            _retiredBindings.add(request.json['binding'] as String);
             await _store!.acknowledgeApprovalDecision(request);
             _owner._assertActive();
             _pending.remove(key);
@@ -595,6 +625,8 @@ class HandrailApprovalDecisions {
           !_owner.hasPendingDeletion(p.conversationId) &&
           _owner.session?.capabilities?.resources['approvals'] == true &&
           !_pending.containsKey(key) &&
+          !_operations.containsKey(key) &&
+          !_retiredBindings.contains(p.binding) &&
           _store != null;
       items.add({
         ...p.json,
@@ -610,6 +642,8 @@ class HandrailApprovalDecisions {
         'canReview': !_owner.hasPendingDeletion(p.conversationId) &&
             _owner.session?.capabilities?.resources['approvals'] == true &&
             !_pending.containsKey(key) &&
+            !_operations.containsKey(key) &&
+            !_retiredBindings.contains(p.binding) &&
             !_reviewing.contains(p.binding),
         'canConfirm':
             available && review?.complete == true && _allowed(p, true),
@@ -617,6 +651,7 @@ class HandrailApprovalDecisions {
         'pendingDecision': _pending.containsKey(key),
         'busy': _operations.containsKey(key),
         'error': _errors[key] ??
+            _reviewErrors[p.binding] ??
             (_store == null && p.status == 'pending'
                 ? 'Approval decisions require durable account storage.'
                 : null),
@@ -635,6 +670,7 @@ class HandrailApprovalDecisions {
     }
     final retained = proposals.map((p) => p.binding).toSet();
     _reviews.removeWhere((key, _) => !retained.contains(key));
+    _reviewErrors.removeWhere((key, _) => !retained.contains(key));
     return {
       'conversationId': _owner.selectedId,
       'items': items,
