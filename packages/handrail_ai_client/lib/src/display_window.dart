@@ -114,6 +114,7 @@ class HandrailDisplayWindow {
               'revision': state.revision,
               'version': state.version,
               'activeTurnId': state.activeTurnId,
+              'followingLatest': followingLatest,
               'setFollowingLatest': setFollowingLatest,
               if (capability.messageText) 'readMessageText': _readMessageText,
               if (capability.recordText) 'readRecordText': _readRecordText,

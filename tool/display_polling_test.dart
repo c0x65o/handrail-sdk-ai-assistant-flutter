@@ -116,6 +116,84 @@ class Fixture {
 }
 
 void main() {
+  for (final queued in [false, true]) {
+    for (final distance in [50.0, 700.0]) {
+      testWidgets(
+        'latest completion preserves a $distance pixel pause (queued: $queued)',
+        (tester) async {
+          final f = Fixture();
+          await tester.runAsync(f.session.initialize);
+          final window = f.session.displayWindow!;
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: SizedBox(
+                  width: 390,
+                  height: 500,
+                  child: HandrailDisplayTranscript(
+                    binding: window.uiBinding,
+                    conversationId: 'chat',
+                    manageSelection: false,
+                    pollInterval: null,
+                    messageBuilder: (_, row) =>
+                        SizedBox(height: 100, child: Text(row['id'] as String)),
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final scroll = tester
+              .state<ScrollableState>(find.byType(Scrollable).first)
+              .position;
+          scroll.jumpTo(scroll.maxScrollExtent - 700);
+          await tester.pumpAndSettle();
+          if (queued) {
+            unawaited(window.refresh());
+            await tester.pump();
+          }
+          f.pageGate = Completer<void>();
+          await tester.tap(find.text('Jump to latest'));
+          await tester.pumpAndSettle();
+          expect(find.text('Jump to latest'), findsNothing);
+          scroll.jumpTo(scroll.maxScrollExtent - distance);
+          await tester.pumpAndSettle();
+          final paused = scroll.pixels;
+          expect(window.followingLatest, isFalse);
+          if (queued) {
+            f.release();
+            await tester.pumpAndSettle();
+          }
+          expect(window.state.loading, HandrailDisplayWindowOperation.latest);
+          f.pageGate!.complete();
+          await tester.pumpAndSettle();
+          expect(find.text('Jump to latest'), findsOneWidget);
+          expect(
+            tester
+                .widget<FilledButton>(
+                  find.widgetWithText(FilledButton, 'Jump to latest'),
+                )
+                .enabled,
+            isTrue,
+          );
+          expect(scroll.pixels, closeTo(paused, 0.1));
+          expect(window.followingLatest, isFalse);
+          // An external intentional latest navigation must still resume following.
+          await window.jumpToLatest();
+          await tester.pumpAndSettle();
+          expect(find.text('Jump to latest'), findsNothing);
+          expect(scroll.extentAfter, lessThanOrEqualTo(2));
+          expect(window.followingLatest, isTrue);
+          await tester.pumpWidget(const SizedBox());
+          await tester.runAsync(() async {
+            await f.session.dispose();
+            f.client.close();
+          });
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
   for (final sessionRefresh in [true, false]) {
     testWidgets(
       'Jump stays enabled during ${sessionRefresh ? 'session refresh' : 'widget polling'} and serializes navigation',

@@ -315,8 +315,12 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
         next['change'] == 'latest' && next['version'] != _state['version'];
     _state = next;
     if (replacedTail) {
-      _follow = true;
-      _anchor = null;
+      // Latest can finish after the reader has scrolled away, including when
+      // navigation queued behind a poll. Honor the current intent, not the
+      // intent that started that request. External latest navigation exposes
+      // its intent through the same window binding.
+      _follow = next['followingLatest'] as bool? ?? _follow;
+      if (_follow) _anchor = null;
     }
     final ids = _records.map((record) => record['id']).toSet();
     if (!ids.contains(_expandedMessage)) _expandedMessage = null;
