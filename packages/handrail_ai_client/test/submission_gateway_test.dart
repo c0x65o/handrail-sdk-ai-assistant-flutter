@@ -853,6 +853,7 @@ void main() {
     expect(identical(first, duplicate), isTrue);
     await first;
     expect(accepted, ['first:${saved.turnId}', 'duplicate:${saved.turnId}']);
+    await view.refresh(); // Admission may finish before the presentation refresh.
     expect(view.document!.activeTurnId, saved.turnId);
     expect(view.document!.messages.where((m) => m['role'] == 'user'),
         hasLength(1));
@@ -922,6 +923,7 @@ void main() {
     final pending = await view.prepareTurn(
         operationId: 'op-${identity++}', clientId: 'dart-test', request: wire);
     await view.submitTurn(pending);
+    await view.refresh();
     final message =
         view.document!.messages.singleWhere((m) => m['role'] == 'user');
     expect(message['attachments'], [

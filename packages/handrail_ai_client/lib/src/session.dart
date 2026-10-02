@@ -97,6 +97,14 @@ abstract class HandrailConversationView {
         conversationId: conversationId,
         turnId: turnId,
         status: status,
+        cancellationReason: switch (turn?['cancellation_reason']) {
+          null => null,
+          'user' => 'user',
+          'timeout' => 'timeout',
+          'superseded' => 'superseded',
+          'runtime_shutdown' => 'runtime_shutdown',
+          _ => throw const FormatException('Unsupported cancellation reason'),
+        },
         text: output
             .expand((message) => _records(message['content']))
             .where((part) => part['type'] == 'text')

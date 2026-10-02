@@ -103,6 +103,22 @@ Widget surface(
 );
 
 void main() {
+  for (final pair in {
+    'user': 'Response stopped by you.',
+    'timeout': 'Response timed out.',
+    'superseded': 'Response cancelled because authorization changed or it was superseded.',
+    'runtime_shutdown': 'Response stopped because the runtime shut down.',
+  }.entries) {
+    testWidgets('saved cancellation presents ${pair.key}', (tester) async {
+      final f = Fixture(); addTearDown(f.changes.close);
+      final turn = (f.document['turns'] as List).first;
+      turn['status'] = 'cancelled'; turn['cancellation_reason'] = pair.key;
+      await tester.pumpWidget(surface(f)); await tester.pumpAndSettle();
+      expect(find.text(pair.value), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+
   for (final partial in [false, true]) {
     testWidgets(
       'executed A and declined B stay settled while actual failures remain visible (partial=$partial)',

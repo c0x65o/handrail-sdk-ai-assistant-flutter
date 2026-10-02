@@ -502,3 +502,21 @@ selection region instead of an editable-text selection stack per paragraph/cell.
 Tool activity is placed before its answer, and generic Working text is suppressed
 once that request has answer content. Raw before/after measurements and their
 debug-renderer limitations are retained with that report.
+
+## Cancellation intent
+
+Live `response.cancelled` frames translate `explicit_stop` to canonical `user`,
+`deadline_exceeded` to `timeout`, `policy_revoked` to `superseded`, and
+`runtime_shutdown` to itself. Unknown reasons fail decoding. A settled turn
+ignores duplicate/replayed or late result frames; a new turn clears the old
+reason and fences events from that previous turn.
+
+`HandrailConversationState.cancellationReason` retains this canonical value
+through full snapshot reload and bounded display controls (`cancellationReason`
+on the wire). A missing reason remains unavailable; it is never inferred as a
+user Stop. The standard transcript distinguishes user Stop, timeout, revocation
+or supersession, and runtime shutdown. Old historical reasons are not rewritten.
+
+The matching JS gateway/Agent repair must be published and adopted using public
+HTTPS full-SHA pins and matching lockfiles. Source fixture and widget tests do
+not establish installed application or native device acceptance.

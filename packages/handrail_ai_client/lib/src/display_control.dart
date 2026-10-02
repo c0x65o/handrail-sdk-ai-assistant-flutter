@@ -6,15 +6,17 @@ class HandrailDisplayTurnControl {
   final String turnId, status;
   final int revision;
   final bool remoteMayStillBeRunning;
+  final String? cancellationReason;
   final Map<String, Object?>? error;
   const HandrailDisplayTurnControl._(this.turnId, this.status, this.revision,
-      this.remoteMayStillBeRunning, this.error);
+      this.remoteMayStillBeRunning, this.error, this.cancellationReason);
   factory HandrailDisplayTurnControl.fromJson(Map<String, Object?> json) {
     final id = json['turnId'],
         status = json['status'],
         revision = json['revision'],
         remote = json['remoteMayStillBeRunning'],
-        error = json['error'];
+        error = json['error'],
+        cancellationReason = json['cancellationReason'];
     if (!_historyId(id) ||
         !const {
           'queued',
@@ -33,6 +35,9 @@ class HandrailDisplayTurnControl {
                 .contains(status)) {
       throw const FormatException('Invalid display turn controls.');
     }
+    if (cancellationReason != null && !const {'user', 'timeout', 'superseded', 'runtime_shutdown'}.contains(cancellationReason)) {
+      throw const FormatException('Unsupported cancellation reason');
+    }
     Map<String, Object?>? failure;
     if (error != null) {
       if (error is! Map ||
@@ -50,7 +55,7 @@ class HandrailDisplayTurnControl {
       });
     }
     return HandrailDisplayTurnControl._(
-        id as String, status as String, revision, remote, failure);
+        id as String, status as String, revision, remote, failure, cancellationReason as String?);
   }
 }
 

@@ -105,6 +105,9 @@ class HandrailConversationState {
   final String text;
   final HandrailTurnStatus status;
 
+  /// Canonical reason: user, timeout, superseded, or runtime_shutdown.
+  final String? cancellationReason;
+
   /// Observation connectivity is independent of the server-owned run status.
   final bool observationConnected;
   final String? turnId;
@@ -120,6 +123,7 @@ class HandrailConversationState {
     required this.conversationId,
     this.text = '',
     this.status = HandrailTurnStatus.idle,
+    this.cancellationReason,
     this.observationConnected = false,
     this.turnId,
     this.turnRevision,
@@ -151,14 +155,9 @@ class HandrailConversationState {
             sequence != null &&
                 lastSequence != null &&
                 sequence <= lastSequence!)) return this;
-    if (!differentTurn &&
-        turnId != null &&
-        _terminalStatus(status) &&
-        (frame.type == 'started' ||
-            type == 'response.started' ||
-            type == 'response.text.delta' ||
-            type == 'response.tool_call')) return this;
+    if (!differentTurn && turnId != null && _terminalStatus(status)) return this;
     var nextStatus = differentTurn ? HandrailTurnStatus.idle : status;
+    var nextCancellationReason = differentTurn ? null : cancellationReason;
     var nextText = differentTurn ? '' : text;
     var connected = frame.type == 'event' || frame.type == 'started'
         ? true
@@ -187,7 +186,16 @@ class HandrailConversationState {
       nextApprovals.add(Map.unmodifiable(payload));
     if (type == 'message.attachment_referenced')
       nextAttachments.add(Map.unmodifiable(payload));
-    if (type == 'response.cancelled') nextStatus = HandrailTurnStatus.cancelled;
+    if (type == 'response.cancelled') {
+      nextStatus = HandrailTurnStatus.cancelled;
+      nextCancellationReason = switch (payload['reason']) {
+        'explicit_stop' => 'user',
+        'deadline_exceeded' => 'timeout',
+        'policy_revoked' => 'superseded',
+        'runtime_shutdown' => 'runtime_shutdown',
+        _ => throw const FormatException('Unsupported cancellation reason'),
+      };
+    }
     if (type == 'response.error') nextStatus = HandrailTurnStatus.failed;
     if (type == 'response.completed') nextStatus = HandrailTurnStatus.completed;
     if (frame.type == 'terminal') {
@@ -208,6 +216,7 @@ class HandrailConversationState {
       conversationId: conversationId,
       text: nextText,
       status: nextStatus,
+      cancellationReason: nextCancellationReason,
       observationConnected: _terminalStatus(nextStatus) ? false : connected,
       turnId: incomingTurn ?? turnId,
       turnRevision: differentTurn ? null : turnRevision,
@@ -497,11 +506,9 @@ class HandrailConversationWorkspace {
     final olderRevision = remote.turnRevision != null &&
         state.turnRevision != null &&
         remote.turnRevision! < state.turnRevision!;
-    final terminalAlreadyKnown = remote.turnId != null &&
-        remote.turnId == state.turnId &&
-        _terminalStatus(state.status) &&
-        (remote.status == HandrailTurnStatus.running ||
-            remote.status == HandrailTurnStatus.waitingForTool);
+    // Activity has coarse terminal statuses and cannot relabel canonical Stop.
+    final terminalAlreadyKnown = _terminalStatus(state.status) &&
+        (remote.turnId == null || remote.turnId == state.turnId);
     final unversionedWhileConnected = remote.turnId == null &&
         state.observationConnected &&
         (state.status == HandrailTurnStatus.running ||
@@ -515,6 +522,9 @@ class HandrailConversationWorkspace {
         conversationId: state.conversationId,
         text: state.text,
         status: localWins ? state.status : remote.status,
+        cancellationReason: localWins || remote.turnId == state.turnId
+            ? state.cancellationReason
+            : null,
         observationConnected: state.observationConnected,
         turnId: localWins ? state.turnId : remote.turnId ?? state.turnId,
         turnRevision: localWins

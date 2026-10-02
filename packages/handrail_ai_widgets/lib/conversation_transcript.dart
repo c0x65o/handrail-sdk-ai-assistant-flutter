@@ -504,7 +504,13 @@ class _TranscriptState extends State<HandrailConversationTranscript>
       );
     } else if (turns.isNotEmpty && turns.last['status'] == 'cancelled') {
       children.add(
-        const HandrailTranscriptNotice(message: 'Response stopped.'),
+        HandrailTranscriptNotice(message: switch (turns.last['cancellation_reason']) {
+          'user' => 'Response stopped by you.',
+          'timeout' => 'Response timed out.',
+          'superseded' => 'Response cancelled because authorization changed or it was superseded.',
+          'runtime_shutdown' => 'Response stopped because the runtime shut down.',
+          _ => 'Response cancelled.',
+        }),
       );
     }
     if (_state['archived'] == true)

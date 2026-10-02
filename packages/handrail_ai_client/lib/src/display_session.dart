@@ -27,6 +27,7 @@ Map<String, Object?> _controlTurn(HandrailDisplayTurnControl turn) =>
       'turn_id': turn.turnId,
       'status': turn.status,
       'remote_may_still_be_running': turn.remoteMayStillBeRunning,
+      'cancellation_reason': turn.cancellationReason,
       'error': turn.error,
     });
 
