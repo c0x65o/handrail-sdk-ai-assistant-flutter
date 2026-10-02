@@ -111,7 +111,6 @@ class _ApprovalDecisionsState extends State<HandrailApprovalDecisionsView> {
     bool settled(Map<String, Object?> item) =>
         item['pendingDecision'] != true &&
         item['busy'] != true &&
-        item['reviewing'] != true &&
         item['error'] == null &&
         item['failure_reason'] == null &&
         _errors[item['proposal_id']] == null &&
@@ -172,8 +171,10 @@ class _ApprovalDecisionsState extends State<HandrailApprovalDecisionsView> {
                         title: 'Action details',
                       ),
                   if (item['complete'] != true)
-                    const Text(
-                      'This review is incomplete. Approval is unavailable.',
+                    Text(
+                      status == 'pending'
+                          ? 'This review is incomplete. Approval is unavailable.'
+                          : 'Some saved details are unavailable.',
                     ),
                 ],
                 if (error != null)
@@ -184,13 +185,18 @@ class _ApprovalDecisionsState extends State<HandrailApprovalDecisionsView> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    if (!pending && status == 'pending') ...[
+                    if (!pending)
                       TextButton(
                         onPressed: item['canReview'] == true
                             ? () => _act(id, () => binding.review(id, version))
                             : null,
-                        child: Text(review ? 'Reload review' : 'Review change'),
+                        child: Text(
+                          status == 'pending'
+                              ? (review ? 'Reload review' : 'Review change')
+                              : (review ? 'Reload details' : 'View details'),
+                        ),
                       ),
+                    if (!pending && status == 'pending') ...[
                       FilledButton(
                         onPressed: item['canConfirm'] == true
                             ? () => _act(

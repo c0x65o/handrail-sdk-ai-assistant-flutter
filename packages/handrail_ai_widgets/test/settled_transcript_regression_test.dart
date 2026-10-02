@@ -91,13 +91,19 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(Card), findsOneWidget);
       }
-      for (final unresolved in ['pendingDecision', 'busy', 'reviewing']) {
+      for (final unresolved in ['pendingDecision', 'busy']) {
         items[0].addAll({'status': 'executed', unresolved: true});
         changes.add(null);
         await tester.pump();
         expect(find.byType(Card), findsOneWidget);
         items[0].remove(unresolved);
       }
+      // Read-only inspection must not reactivate a settled action.
+      items[0]['reviewing'] = true;
+      changes.add(null);
+      await tester.pump();
+      expect(find.byType(Card), findsNothing);
+      items[0].remove('reviewing');
       items[0]['error'] = 'Check the saved outcome';
       changes.add(null);
       await tester.pump();

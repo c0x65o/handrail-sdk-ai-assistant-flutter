@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:handrail_ai_widgets/handrail_ai_widgets.dart';
+import 'display_transcript_test.dart' as paged;
 
 Map<String, Object?> message(
   String id,
@@ -102,6 +103,78 @@ Widget surface(
 );
 
 void main() {
+  for (final partial in [false, true]) {
+    testWidgets(
+      'executed A and declined B stay settled while actual failures remain visible (partial=$partial)',
+      (tester) async {
+        final f = Fixture();
+        addTearDown(f.changes.close);
+        if (partial) {
+          final window = paged.Fixture()
+            ..id = 'one'
+            ..start = 1
+            ..end = 1
+            ..hasOlder = false;
+          addTearDown(window.changes.close);
+          f.display = window.binding;
+          (f.document['turns'] as List).first['output_message_ids'] = [
+            'message-1',
+          ];
+        }
+        f.document['tool_calls'] = [
+          {
+            'turn_id': 'turn',
+            'tool_call_id': 'a',
+            'name': 'update_asset',
+            'started_at': 'saved',
+            'result': {'is_error': false},
+          },
+          {
+            'turn_id': 'turn',
+            'tool_call_id': 'b',
+            'name': 'send_invoice',
+            'result': {'is_error': true},
+          },
+        ];
+        f.document['approval_proposals'] = [
+          {
+            'turn_id': 'turn',
+            'tool_call_id': 'a',
+            'tool_name': 'update_asset',
+            'status': 'executed',
+          },
+          {
+            'turn_id': 'turn',
+            'tool_call_id': 'b',
+            'tool_name': 'send_invoice',
+            'status': 'rejected',
+          },
+        ];
+        await tester.pumpWidget(surface(f));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('failed'), findsNothing);
+        expect(find.text('send_invoice · Rejected'), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpWidget(surface(f));
+        await tester.pumpAndSettle();
+        expect(find.text('send_invoice · Rejected'), findsOneWidget);
+        (f.document['tool_calls'] as List).add({
+          'turn_id': 'turn',
+          'tool_call_id': 'c',
+          'name': 'read_ledger',
+          'result': {'is_error': true},
+        });
+        f.changes.add(null);
+        await tester.pumpAndSettle();
+        expect(find.text('3 tools called · 1 failed'), findsOneWidget);
+        // A rejection for another turn must never hide a real failure.
+        (f.document['approval_proposals'] as List)[1]['turn_id'] = 'other';
+        f.changes.add(null);
+        await tester.pumpAndSettle();
+        expect(find.text('3 tools called · 2 failed'), findsOneWidget);
+      },
+    );
+  }
   testWidgets(
     'answer takes over progress and keeps tool details before its response',
     (tester) async {

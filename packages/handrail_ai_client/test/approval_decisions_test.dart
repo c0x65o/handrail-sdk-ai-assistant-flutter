@@ -95,6 +95,37 @@ void main() {
     await c.dispose();
     f.client.close();
   });
+  for (final status in [
+    'executed',
+    'rejected',
+    'expired',
+    'failed',
+    'confirmed',
+    'executing'
+  ]) {
+    test(
+        'loads bound $status history after reload without renewing decision controls',
+        () async {
+      await c.approvals.review('p', 1);
+      f.proposal = {...f.proposal, 'status': status, 'proposal_version': 2};
+      await c.session!.refresh();
+      expect(item(c)['reviewed'], false);
+      expect(item(c)['canReview'], true);
+      await c.approvals.review('p', 2);
+      expect(item(c)['arguments'], {'amount': 42});
+      expect(item(c)['canConfirm'], false);
+      expect(item(c)['canReject'], false);
+      await expectLater(
+          () async =>
+              c.approvals.decide('p', 2, item(c)['binding'] as String, true),
+          throwsA(isA<HandrailGatewayException>()));
+      await expectLater(
+          c.approvals.review('p', 1), throwsA(isA<HandrailGatewayException>()));
+      await c.openConversation('two');
+      expect(c.approvals.presentation['items'], isEmpty);
+      expect(f.decisions, isEmpty);
+    });
+  }
   test('review gates confirmation and exact receipt is not execution',
       () async {
     expect(item(c)['canConfirm'], false);
@@ -322,7 +353,9 @@ void main() {
     expect(f.decisions, hasLength(1));
     expect(await f.pending.loadApprovalDecisions(), isEmpty);
   });
-  test('pending approvals have no deadline, including older timestamped proposals', () async {
+  test(
+      'pending approvals have no deadline, including older timestamped proposals',
+      () async {
     for (final expiry in [null, '2000-01-01T00:00:00.000Z']) {
       f.proposal = {...f.proposal, 'expires_at': expiry};
       await c.session!.refresh();
@@ -332,13 +365,18 @@ void main() {
       expect(item(c)['expired'], false);
     }
   });
-  test('historical expired or unavailable approval capability never dispatches', () async {
-    f.proposal = {...f.proposal, 'status': 'expired', 'expires_at': '2000-01-01T00:00:00.000Z'};
+  test('historical expired or unavailable approval capability never dispatches',
+      () async {
+    f.proposal = {
+      ...f.proposal,
+      'status': 'expired',
+      'expires_at': '2000-01-01T00:00:00.000Z'
+    };
     await c.session!.refresh();
     expect(item(c)['canConfirm'], false);
     expect(item(c)['canReject'], false);
-    await expectLater(
-        c.approvals.review('p', 1), throwsA(isA<HandrailGatewayException>()));
+    await c.approvals.review('p', 1);
+    expect(item(c)['reviewed'], true);
     expect(f.decisions, isEmpty);
     await c.dispose();
     f.enabled = false;

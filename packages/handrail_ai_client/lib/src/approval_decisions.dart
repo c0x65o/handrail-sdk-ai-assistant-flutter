@@ -351,14 +351,16 @@ class HandrailApprovalDecisions {
     return proposals;
   }
 
-  HandrailApprovalProposal _current(String id, int version) {
+  HandrailApprovalProposal _current(String id, int version,
+      {bool decision = true}) {
     _owner._assertActive();
     final proposals = _proposals.where((p) => p.id == id).toList();
     if (proposals.length != 1 ||
         proposals.single.version != version ||
-        proposals.single.status != 'pending' ||
-        proposals.single.expired ||
-        _owner.archived ||
+        decision &&
+            (proposals.single.status != 'pending' ||
+                proposals.single.expired ||
+                _owner.archived) ||
         _owner.hasPendingDeletion(_owner.selectedId!) ||
         _owner.session?.capabilities?.resources['approvals'] != true)
       throw const HandrailGatewayException('approval_changed',
@@ -405,7 +407,8 @@ class HandrailApprovalDecisions {
   }
 
   Future<void> review(String id, int version) async {
-    final p = _current(id, version), generation = _owner._selectionGeneration;
+    final p = _current(id, version, decision: false),
+        generation = _owner._selectionGeneration;
     if (!_reviewing.add(p.binding)) return;
     _errors.remove(_key(id));
     _owner._publish();
@@ -421,7 +424,7 @@ class HandrailApprovalDecisions {
               : await _readBoundReview(p);
       _owner._assertActive();
       if (generation != _owner._selectionGeneration ||
-          _current(id, version).binding != p.binding ||
+          _current(id, version, decision: false).binding != p.binding ||
           review.binding != p.binding)
         throw const HandrailGatewayException('approval_changed',
             'The approval changed while loading. Review it again.');
@@ -604,7 +607,10 @@ class HandrailApprovalDecisions {
         'reviewed': review != null,
         'complete': review?.complete ?? false,
         'reviewing': _reviewing.contains(p.binding),
-        'canReview': available && !_reviewing.contains(p.binding),
+        'canReview': !_owner.hasPendingDeletion(p.conversationId) &&
+            _owner.session?.capabilities?.resources['approvals'] == true &&
+            !_pending.containsKey(key) &&
+            !_reviewing.contains(p.binding),
         'canConfirm':
             available && review?.complete == true && _allowed(p, true),
         'canReject': available && _allowed(p, false),

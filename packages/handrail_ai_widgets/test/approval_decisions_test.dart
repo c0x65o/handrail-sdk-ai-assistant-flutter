@@ -54,6 +54,39 @@ class Reviews {
 }
 
 void main() {
+  for (final status in ['executed', 'rejected', 'expired']) {
+    testWidgets('inspects $status history without execution controls', (
+      tester,
+    ) async {
+      final f = Reviews();
+      addTearDown(f.changes.close);
+      f.proposal['status'] = status;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: HandrailApprovalDecisionsView(binding: f.binding),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('View details'), findsNothing);
+      await tester.tap(find.text('Action history (1)'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('View details'));
+      await tester.pumpAndSettle();
+      expect(find.text('Amount'), findsOneWidget);
+      expect(find.text('42'), findsOneWidget);
+      expect(find.text('Approve'), findsNothing);
+      expect(find.text('Reject'), findsNothing);
+      expect(f.calls, [
+        ['review', 'p', 4],
+      ]);
+      await tester.tap(find.text('Action history (1)'));
+      await tester.pumpAndSettle();
+      expect(find.text('Amount'), findsNothing);
+    });
+  }
   testWidgets(
       'review is visible before approval and dispatch uses exact binding',
       (tester) async {

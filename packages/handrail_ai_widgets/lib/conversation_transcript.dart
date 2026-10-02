@@ -381,6 +381,7 @@ class _TranscriptState extends State<HandrailConversationTranscript>
             )),
             tools: activity.beforeMessage[id]!,
             turns: turns,
+            proposals: _records(document['approval_proposals']),
           ),
         );
       children.add(
@@ -462,6 +463,7 @@ class _TranscriptState extends State<HandrailConversationTranscript>
           key: ValueKey((widget.binding.scope, _conversationId, 'activity')),
           tools: activity.trailing,
           turns: turns,
+          proposals: _records(document['approval_proposals']),
         ),
       );
     if (_state['submitting'] == true ||
@@ -595,6 +597,7 @@ class _TranscriptState extends State<HandrailConversationTranscript>
                   )),
                   tools: activity.beforeMessage[message['message_id']]!,
                   turns: turns,
+                  proposals: _records(document['approval_proposals']),
                 ),
               body,
             ],
@@ -1064,12 +1067,36 @@ _placeActivity(Map<String, Object?> document) {
 }
 
 class _ToolActivity extends StatelessWidget {
-  const _ToolActivity({super.key, required this.tools, required this.turns});
+  const _ToolActivity({
+    super.key,
+    required this.tools,
+    required this.turns,
+    required this.proposals,
+  });
   final List<Map<String, Object?>> tools;
   final List<Map<String, Object?>> turns;
 
+  final List<Map<String, Object?>> proposals;
+
   String _status(Map<String, Object?> tool) {
     final result = tool['result'];
+    final matching = proposals
+        .where(
+          (proposal) =>
+              proposal['turn_id'] == tool['turn_id'] &&
+              proposal['tool_call_id'] == tool['tool_call_id'] &&
+              proposal['tool_name'] == tool['name'],
+        )
+        .toList();
+    final proposal = matching.length == 1 ? matching.single : null;
+    // A saved decline is not an execution failure. Never hide conflicting
+    // execution evidence or infer the decision from the result's text.
+    if (tool['started_at'] == null &&
+        (result == null || _map(result)['is_error'] == true) &&
+        proposal?['failure_reason'] == null) {
+      if (proposal?['status'] == 'rejected') return 'Rejected';
+      if (proposal?['status'] == 'expired') return 'Expired';
+    }
     if (result != null)
       return _map(result)['is_error'] == true ? 'Failed' : 'Completed';
     final turn = turns
@@ -1086,9 +1113,7 @@ class _ToolActivity extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final failed = tools
-        .where((tool) => _map(tool['result'])['is_error'] == true)
-        .length;
+    final failed = tools.where((tool) => _status(tool) == 'Failed').length;
     return ExpansionTile(
       title: Text(
         '${tools.length} ${tools.length == 1 ? 'tool called' : 'tools called'}${failed == 0 ? '' : ' · $failed failed'}',

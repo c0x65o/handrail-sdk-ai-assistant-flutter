@@ -1,0 +1,52 @@
+{
+  "work_request": "c77aca92-2e18-5d6a-b284-09c5ef457567",
+  "tested_at": "2026-10-02",
+  "delivery": "Intended SDK source remains uncommitted. Handrail owns version bump, commit and push. No app deployment or saved QA data mutation.",
+  "public_baseline": {
+    "url": "https://github.com/c0x65o/handrail-sdk-ai-assistant-flutter.git",
+    "ref": "88463340fa0d704ca5ac883e915b9e8969bd1208",
+    "paths": [
+      "packages/handrail_ai_client",
+      "packages/handrail_ai_widgets"
+    ]
+  },
+  "patched_public_pin": "Pending owning pipeline; baseline SHAs do not contain this repair.",
+  "changes": [
+    "Canonical rejection/expiry is distinct from tool failure in full and paged transcripts.",
+    "Version-bound read-only inspection works for settled approval history; pending-only mutation guards remain.",
+    "Inspecting history does not reactivate settled cards."
+  ],
+  "checks": {
+    "client_analyze": "dart analyze --fatal-infos: passed, no issues",
+    "widgets_analyze": "flutter analyze --no-pub --fatal-infos: passed, no issues",
+    "client_tests": {
+      "command": "dart test --concurrency=1 test/approval_decisions_test.dart test/pending_approval_inbox_test.dart test/approval_display_review_test.dart test/paged_approval_review_test.dart",
+      "passed": 30
+    },
+    "widgets_tests": {
+      "command": "flutter test --no-pub --concurrency=1",
+      "passed": 246
+    },
+    "tooling": "Read-only Flutter launcher stamp write failed. Checks completed using bin/cache/dart-sdk/bin/dart directly; Flutter commands used FLUTTER_ALREADY_LOCKED=true dart bin/cache/flutter_tools.snapshot. Nonfatal shared-cache stamp warnings remained. Playwright browser initially absent; installed only in task-local cache and browser check then passed.",
+    "widgets_final_fixture_check": {
+      "command": "flutter test --no-pub --concurrency=1 test/approval_decisions_test.dart",
+      "passed": 8,
+      "reason": "Rechecked after removing unrelated formatter changes from the existing test fixture."
+    }
+  },
+  "remaining": [
+    "Owning pipeline must publish tested SDK commits and report the resulting exact full SHA pins.",
+    "Mills adoption must pin both new public SDK revisions with matching lockfiles.",
+    "Mills web custom renderer must reuse existing settled detail loader; Mills Agent model-input integration needs fresh canonical statuses.",
+    "Avery owns original staging/native QA after adoption; no live QA proposal was replayed, no app deployment performed, and existing mobile-install question remains untouched."
+  ],
+  "tested_source_sha256": {
+    "flutter/packages/handrail_ai_client/lib/src/approval_decisions.dart": "a7b5175101d4161241efe7da53ab08e089e1699cf034a3350f38379b70f7e6d5",
+    "flutter/packages/handrail_ai_client/test/approval_decisions_test.dart": "54534140de2850ac798db0bd3c5d3081c914a57d6ca27fa622c4f6fc6dc02879",
+    "flutter/packages/handrail_ai_widgets/lib/approval_decisions.dart": "ff29805ced0ffa41ab18827e5dc66dcf500af4ddc19f5a32730a7c0562aa288e",
+    "flutter/packages/handrail_ai_widgets/lib/conversation_transcript.dart": "8619e51c60bad12d9d9fa881519580a396035c6aa34a7037e495d35d7dc070b7",
+    "flutter/packages/handrail_ai_widgets/test/approval_decisions_test.dart": "167704b97e0d4f81ca8db680862aa1f56f0f17e0de2f45f94582a2748ecb2b16",
+    "flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart": "37ae6b5be662346246e6866575f6e343b27ce39c5837e8ddc5306f21c61d28a8",
+    "flutter/packages/handrail_ai_widgets/test/settled_transcript_regression_test.dart": "14fe777c94875c3b284cbfd2d1158167753385b0556e54384a74aee6c177844b"
+  }
+}
