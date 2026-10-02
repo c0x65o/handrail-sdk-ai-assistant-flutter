@@ -117,6 +117,23 @@ class HandrailConversationDisplayView extends HandrailConversationView {
 }
 
 extension _HandrailBoundedSession on HandrailConversationSession {
+  void _scheduleDisplayRefresh() {
+    final window = _displayWindow?.state;
+    if (_disposed ||
+        !_displayActive ||
+        window == null ||
+        window.conversationId != conversationId ||
+        window.status != 'ready' ||
+        window.generation != _control?.generation ||
+        window.version == _relatedWindowVersion) return;
+    if (_refreshing != null) {
+      // A navigation arriving during related reads must not lose its wakeup.
+      _displayRefreshRequested = true;
+    } else {
+      _scheduleStreamRefresh();
+    }
+  }
+
   Future<T> _displayRead<T>(Future<T> Function(Future<void>) read) async {
     if (_disposed) throw StateError('Conversation session is disposed');
     final request = Completer<void>();
@@ -183,9 +200,7 @@ extension _HandrailBoundedSession on HandrailConversationSession {
         if (_disposed) return;
         _publishDisplay();
         _publish();
-        if (_refreshing == null &&
-            _relatedWindowVersion != _displayWindow!.state.version)
-          _scheduleStreamRefresh();
+        _scheduleDisplayRefresh();
       });
     }
     if (window.state.conversationId == null ||
@@ -194,6 +209,7 @@ extension _HandrailBoundedSession on HandrailConversationSession {
     } else {
       await window.refresh();
     }
+    await window._settleSelection(conversationId);
     if (_disposed || activation.isCompleted) return;
     // Follow the tail even for an account session without an attached widget.
     // Reading older messages disables this; incoming work then sets hasNewer.
@@ -201,10 +217,12 @@ extension _HandrailBoundedSession on HandrailConversationSession {
         window.followingLatest &&
         window.state.error == null) {
       await window.jumpToLatest();
+      await window._settleSelection(conversationId);
     }
     if (_disposed || activation.isCompleted) return;
     if (window.state.error != null) throw window.state.error!;
-    if (window.state.status != 'ready' ||
+    if (window.state.conversationId != conversationId ||
+        window.state.status != 'ready' ||
         window.state.generation != control.generation) {
       _document = null;
       throw const HandrailGatewayException(
@@ -350,6 +368,7 @@ extension _HandrailBoundedSession on HandrailConversationSession {
       rethrow;
     }
     if (_disposed ||
+        activation.isCompleted ||
         epoch != _relatedEpoch ||
         _displayWindow?.state.revision != windowRevision ||
         _control?.generation != generation) return;

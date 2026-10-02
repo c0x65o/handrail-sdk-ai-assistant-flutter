@@ -67,3 +67,14 @@ set `HANDRAIL_TEST_JS_SDK_DIST` is only a source qualification override; unset i
 for installed-dependency acceptance.
 
 Each Dart package retains its own lockfile for reproducible SDK development.
+
+After setup, qualify the real client/window/workspace lifecycle and scroll
+behavior together with a prepared Flutter SDK:
+
+```sh
+node tool/check-shared-widgets.mjs "$FLUTTER_ROOT"
+```
+
+This uses a temporary compiler package map for the two local packages, retains
+Flutter's resolved test dependencies, and runs one test worker. It changes no
+installed Git dependencies or lockfiles and does not establish consumer adoption.

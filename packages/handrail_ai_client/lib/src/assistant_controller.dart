@@ -236,6 +236,7 @@ class HandrailAssistantController {
       !_deletions.containsKey(_selectedId) &&
       document != null &&
       !archived &&
+      session?._refreshError == null &&
       _selectionError == null;
   bool get hasPendingMessage => _pending.contains(_selectedId);
   bool get stopping => _stopping.contains(_selectedId);
@@ -267,7 +268,7 @@ class HandrailAssistantController {
   HandrailGatewayException? get historyError => _historyError ?? _activityError;
   HandrailGatewayException? get activityError => _activityError;
   HandrailGatewayException? get error =>
-      _selectionError ?? _operationErrors[_selectedId];
+      _selectionError ?? _operationErrors[_selectedId] ?? session?.error;
   bool _isTextUnread(String id) =>
       workspace.snapshot.conversations
           .any((entry) => entry.state.conversationId == id && entry.unread) ||
@@ -506,7 +507,7 @@ class HandrailAssistantController {
         await newConversation();
       }
     } catch (cause) {
-      if (!_disposed) {
+      if (!_disposed && !identical(cause, session?.error)) {
         _selectionError = _assistantFailure(cause, 'initialization_failed',
             'The assistant could not be loaded. Retry to reconnect.');
         _publish();
@@ -728,14 +729,21 @@ class HandrailAssistantController {
     _selectionError = null;
     workspace.select(id);
     _publish();
+    var readingSession = false;
     try {
       await getDescriptor(id);
+      // Know whether admission recovery is owed even when history is preparing.
+      // A successful later read may enable a clean draft, but must never enable
+      // another send over an unchecked or saved pending submission.
+      _pending.add(id);
+      final saved = await pendingStore.load(id);
+      _assertConversationUsable(id);
+      if (saved == null) _pending.remove(id);
+      readingSession = true;
       final alreadyOpen = _sessions.containsKey(id);
       final session = await ensureSession(id);
       if (alreadyOpen && !resumingDisplay) await session.refresh();
-      _assertConversationUsable(id);
-      _pending.add(id);
-      final saved = await pendingStore.load(id);
+      readingSession = false;
       _assertConversationUsable(id);
       if (saved != null) {
         _pending.add(id);
@@ -754,7 +762,11 @@ class HandrailAssistantController {
           if (await pendingStore.load(id) == null) _pending.remove(id);
         } catch (_) {/* Preserve an uncertain local journal. */}
         if (!_disposed) _operationErrors[id] = cause;
-      } else if (!_disposed && generation == _selectionGeneration) {
+      } else if (!_disposed &&
+          generation == _selectionGeneration &&
+          !(readingSession && identical(cause, _sessions[id]?.error))) {
+        // Session read errors remain owned by the session and resolve only on a
+        // successful refresh. Descriptor/storage/admission failures stay sticky.
         _selectionError = _assistantFailure(cause, 'selection_unavailable',
             'This conversation could not be loaded. Retry to reconnect.');
       }

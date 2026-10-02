@@ -322,6 +322,17 @@ class HandrailDisplayWindow {
   Future<void> refresh() => _read(_status == 'ready'
       ? HandrailDisplayWindowOperation.changes
       : HandrailDisplayWindowOperation.initial);
+
+  // A saved-position selection can replace the read awaited by its session.
+  // Join the replacement before interpreting readiness; cancellation completing
+  // the old future does not mean the current window has finished loading.
+  Future<void> _settleSelection(String conversationId) async {
+    while (
+        !_disposed && _conversationId == conversationId && _pending != null) {
+      await _pending;
+    }
+  }
+
   Future<void> retry() => _read(_failedOperation ??
       (_status == 'ready'
           ? HandrailDisplayWindowOperation.changes

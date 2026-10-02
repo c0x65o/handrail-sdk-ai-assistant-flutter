@@ -161,8 +161,10 @@ class HandrailConversationSession {
   List<String> _relatedMessageIds = const [];
   Future<void>? _loadingRelated;
   HandrailGatewayException? _error;
+  HandrailGatewayException? _refreshError;
   HandrailGatewayCapabilities? _capabilities;
   Future<void>? _refreshing;
+  bool _displayRefreshRequested = false;
   bool _preparingSend = false;
   Future<void>? _submitting;
   String? _submittingJson;
@@ -468,19 +470,25 @@ class HandrailConversationSession {
     }
     return _refreshing ??= _refresh().whenComplete(() {
       _refreshing = null;
+      if (_displayRefreshRequested) {
+        _displayRefreshRequested = false;
+        _scheduleDisplayRefresh();
+      }
     });
   }
 
   Future<void> _refresh() async {
+    final activation = _displayActivation;
     _lastRefreshStarted = DateTime.now();
     try {
       _capabilities ??= await client.capabilities();
-      if (_disposed) return;
+      if (_disposed || activation.isCompleted) return;
       if (!_capabilities!.synchronization)
         throw const HandrailGatewayException('synchronization_unavailable',
             'Saved conversation synchronization is unavailable.');
       if (_capabilities!.displayHistory?.control == true) {
         await _refreshDisplay();
+        if (_disposed || activation.isCompleted) return;
       } else {
         var pull = _document == null;
         if (!pull) {
@@ -523,19 +531,20 @@ class HandrailConversationSession {
         }
       }
       await _ensureObservation();
-      if (_disposed) return;
+      if (_disposed || activation.isCompleted) return;
       if (synchronizeActivity && _capabilities!.activity) {
         final records = await client.listActivity();
-        if (_disposed) return;
+        if (_disposed || activation.isCompleted) return;
         workspace.replaceRemoteActivity(records);
       }
-      if (_disposed) return;
+      if (_disposed || activation.isCompleted) return;
       _error = null;
+      _refreshError = null;
       _refreshFailures = 0;
       _retryRefreshAt = null;
       _publish();
     } catch (cause) {
-      if (_disposed) return;
+      if (_disposed || activation.isCompleted) return;
       if (_displayWindow != null &&
           cause is HandrailGatewayException &&
           const {
@@ -563,6 +572,7 @@ class HandrailConversationSession {
           : const HandrailGatewayException('synchronization_failed',
               'Conversation synchronization is temporarily unavailable.',
               retryable: true);
+      _refreshError = _error;
       _refreshFailures++;
       final backoff = _error!.retryAfter ??
           Duration(

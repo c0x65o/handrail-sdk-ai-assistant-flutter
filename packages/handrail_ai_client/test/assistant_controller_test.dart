@@ -208,6 +208,120 @@ class Fixture {
 }
 
 void main() {
+  test('history recovery cannot release a saved pending submission', () async {
+    final f = Fixture()..displayHistory = true;
+    final controller = f.controller(autoCreate: false);
+    addTearDown(controller.dispose);
+    addTearDown(f.client.close);
+    await controller.openConversation('one');
+    final saved = await controller.session!
+        .prepareTurn(operationId: 'unconfirmed', clientId: 'test', request: {
+      'protocol_version': 'handrail.ai-runtime.v1',
+      'messages': [
+        {
+          'role': 'user',
+          'content': [
+            {'type': 'text', 'text': 'Do once'}
+          ]
+        }
+      ],
+    });
+    await f.pending.retain(saved);
+    controller.clearSelection();
+    var preparing = true;
+    f.before = (request, body) async {
+      if (preparing && body['operation'] == 'control')
+        return ok({
+          'schemaVersion': 1,
+          'conversationId': 'one',
+          'status': 'preparing',
+          'generation': 0,
+          'revision': 0,
+          'canonicalRevision': 0,
+          'activeTurnId': null,
+          'activeTurn': null,
+          'latestTurn': null,
+          'requestedTurn': null,
+        });
+      return null;
+    };
+    await expectLater(controller.openConversation('one'),
+        throwsA(isA<HandrailGatewayException>()));
+    expect(controller.hasPendingMessage, isTrue);
+    preparing = false;
+    await controller.refreshObservations();
+    expect(controller.session!.error, isNull);
+    expect(controller.canSend, isFalse);
+    expect(controller.hasPendingMessage, isTrue);
+    expect((await f.pending.load('one'))!.turnId, saved.turnId);
+    expect(
+        f.requests.where((r) =>
+            r.url.path.endsWith('/turns/start') ||
+            r.url.path.endsWith('/synchronization')),
+        isEmpty);
+  });
+
+  test('a descriptor failure is not cleared by healthy session observations',
+      () async {
+    final f = Fixture()..displayHistory = true;
+    final controller = f.controller(autoCreate: false);
+    addTearDown(controller.dispose);
+    addTearDown(f.client.close);
+    await controller.openConversation('one');
+    f.before = (request, _) async =>
+        request.url.path.endsWith('/conversations/get')
+            ? http.Response('unavailable', 503)
+            : null;
+    await expectLater(controller.openConversation('one'),
+        throwsA(isA<HandrailGatewayException>()));
+    final failure = controller.error;
+    await controller.refreshObservations();
+    expect(controller.document, isNotNull);
+    expect(controller.error, same(failure));
+    expect(controller.canSend, isFalse);
+  });
+
+  test('ready history releases preparation without reopening or resending',
+      () async {
+    final f = Fixture()..displayHistory = true;
+    final controller = f.controller(autoCreate: false);
+    addTearDown(() async {
+      await controller.dispose();
+      f.client.close();
+    });
+    var preparing = true;
+    f.before = (request, body) async {
+      if (preparing && body['operation'] == 'control') {
+        return ok({
+          'schemaVersion': 1,
+          'conversationId': (body['input'] as Map)['conversationId'],
+          'status': 'preparing',
+          'generation': 0,
+          'revision': 0,
+          'canonicalRevision': 0,
+          'activeTurnId': null,
+          'activeTurn': null,
+          'latestTurn': null,
+          'requestedTurn': null,
+        });
+      }
+      return null;
+    };
+    await expectLater(
+        controller.initialize(), throwsA(isA<HandrailGatewayException>()));
+    expect(controller.canSend, isFalse);
+    expect(controller.transcriptBinding.read()['error'],
+        'Preparing saved conversation…');
+    preparing = false;
+    await controller.refreshObservations(automatic: false);
+    expect(controller.document!.messages, isNotEmpty);
+    expect(controller.session!.error, isNull);
+    expect(controller.error, isNull);
+    expect(controller.canSend, isTrue);
+    expect(
+        f.requests.where((r) => r.url.path.endsWith('/turns/start')), isEmpty);
+  });
+
   test(
       'account activity honors host throttling across polling and manual retries',
       () async {

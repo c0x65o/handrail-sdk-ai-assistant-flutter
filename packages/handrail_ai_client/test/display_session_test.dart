@@ -16,10 +16,13 @@ class Fixture {
   bool preparing = false, denied = false, throttled = false;
   String? active, latest;
   Future<void>? holdControl;
+  Future<void>? holdMessagePage;
   Future<void>? holdAdmission;
   Future<void>? holdAfterAdmission;
   bool rejectAdmission = false, omitAcknowledgements = false;
   Future<void>? holdRelatedPage;
+  Future<void>? holdLatestRelatedPage;
+  void Function(Map)? onRelatedRead;
   List<Map<String, Object?>> related = [], additionalMessages = [];
   List<Map<String, Object?>>? changed;
   String? relatedCursor;
@@ -112,14 +115,20 @@ class Fixture {
           });
         case 'page':
           if (input['view'] != null) {
+            onRelatedRead?.call(input);
             final response = {
               ...header(),
               'records': List.of(related),
               'nextCursor': relatedCursor
             };
-            if (input['cursor'] != null) await holdRelatedPage;
+            if (input['cursor'] != null) {
+              await holdRelatedPage;
+            } else {
+              await holdLatestRelatedPage;
+            }
             return ok(response);
           }
+          await holdMessagePage;
           final anchor = input['anchor'] as Map?;
           final end = anchor == null
               ? 100
@@ -201,6 +210,99 @@ class Fixture {
 }
 
 void main() {
+  test('navigation during related refresh retains one automatic reconciliation',
+      () async {
+    final f = Fixture();
+    addTearDown(f.dispose);
+    await f.session.initialize();
+    final hold = Completer<void>(),
+        started = Completer<void>(),
+        reconciled = Completer<void>();
+    f.holdLatestRelatedPage = hold.future;
+    f.onRelatedRead = (input) {
+      if (!started.isCompleted) started.complete();
+      if (((input['view'] as Map)['messageIds'] as List)
+              .contains('message-40') &&
+          !reconciled.isCompleted) reconciled.complete();
+    };
+    f.revision++;
+    final refreshing = f.session.refresh();
+    await started.future;
+    await f.session.displayWindow!.loadOlder();
+    final windowVersion = f.session.displayWindow!.state.version;
+    hold.complete();
+    await refreshing;
+    await reconciled.future.timeout(const Duration(seconds: 7));
+    // Join the automatically scheduled read; no manual refresh or Retry.
+    while (f.session.isRefreshing) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(f.session.error, isNull);
+    expect(f.session.displayWindow!.state.version, windowVersion);
+    expect(f.session.displayWindow!.followingLatest, isFalse);
+    expect(f.requests.where((r) => r['operation'] == 'control'), hasLength(3));
+  });
+
+  test(
+      'disposing a replacement page cancels both reads and fences late responses',
+      () async {
+    final f = Fixture(), hold = Completer<void>();
+    addTearDown(f.dispose);
+    f.holdMessagePage = hold.future;
+    final opening = f.session.initialize();
+    while (!f.requests.any((r) => r['operation'] == 'page')) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    final restoring = f.session.displayWindow!.select('chat',
+        anchor: const HandrailDisplayAnchor(
+            messageId: 'message-40', generation: 0, newer: true));
+    await Future<void>.delayed(Duration.zero);
+    await f.session.dispose();
+    await Future.wait([opening, restoring]).timeout(const Duration(seconds: 1));
+    hold.complete();
+    await Future<void>.delayed(Duration.zero);
+    expect(f.session.document, isNull);
+    expect(f.session.displayWindow!.state.records, isEmpty);
+  });
+
+  test('a replacement selection completes the overlapping session refresh',
+      () async {
+    final f = Fixture();
+    addTearDown(f.dispose);
+    final original = Completer<void>(), replacement = Completer<void>();
+    f.holdMessagePage = original.future;
+    final opening = f.session.initialize();
+    Object? failure;
+    final completed = opening.catchError((Object error) {
+      failure = error;
+    });
+    while (!f.requests.any((r) => r['operation'] == 'page')) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    f.holdMessagePage = replacement.future;
+    final restoring = f.session.displayWindow!.select('chat',
+        anchor: const HandrailDisplayAnchor(
+            messageId: 'message-40',
+            generation: 0,
+            newer: true,
+            inclusive: true));
+    await Future<void>.delayed(Duration.zero);
+    replacement.complete();
+    await restoring;
+    await completed;
+    expect(failure, isNull);
+    expect(f.session.error, isNull);
+    expect(f.session.document!.messages.first['message_id'], 'message-41');
+    expect(f.session.displayWindow!.followingLatest, isFalse);
+    final restored = f.session.document;
+    original.complete();
+    await Future<void>.delayed(Duration.zero);
+    expect(f.session.document, same(restored),
+        reason: 'Cancelled late response is fenced');
+    expect(f.requests.every((r) => r['path'] == '/ai/conversations/history'),
+        isTrue);
+  });
+
   test('history throttle backs off reads but preserves owned cancellation',
       () async {
     final f = Fixture()..turn('active', 'running');

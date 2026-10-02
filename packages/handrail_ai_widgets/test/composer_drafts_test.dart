@@ -4,6 +4,28 @@ import 'package:handrail_ai_widgets/handrail_ai_widgets.dart';
 
 void main() {
   test(
+    'a blank unassigned composer preserves the saved chat draft on reload',
+    () async {
+      final read = Completer<Map<String, Object?>?>();
+      final writes = <String>[];
+      final drafts = HandrailComposerDrafts<String>(
+        readDraft: (_) => read.future,
+        writeDraft: (_, text, version) async {
+          writes.add(text);
+          return {'version': 'new', 'text': text};
+        },
+      );
+      expect(drafts.controller.text, isEmpty);
+      drafts.select('saved', adoptUnassignedDraft: true);
+      read.complete({'version': 'original', 'text': 'Unsent decline request'});
+      await drafts.flushDrafts();
+      expect(drafts.controller.text, 'Unsent decline request');
+      expect(writes, isEmpty);
+      drafts.dispose();
+    },
+  );
+
+  test(
     'a slow save retains its old text budget after editor disposal',
     () async {
       final entered = Completer<void>(), release = Completer<void>();

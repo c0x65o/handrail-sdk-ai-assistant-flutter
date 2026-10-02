@@ -280,7 +280,10 @@ class HandrailComposerDrafts<TAttachment> extends ChangeNotifier
         if (readDraft != null && writeDraft != null ||
             attachmentStorage != null) {
           final assigned = _createDraft(conversationId);
-          assigned.controller.reset(text: initial.controller.text);
+          // An empty pre-selection editor is not an edit of the saved chat.
+          // Reset would suppress its pending storage read and save empty text.
+          if (initial.controller.text.isNotEmpty)
+            assigned.controller.reset(text: initial.controller.text);
           assigned.files.addAll(initial.files);
           if (attachmentStorage != null && initial.files.isNotEmpty)
             assigned.fileEdit++;

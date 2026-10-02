@@ -1,0 +1,102 @@
+{
+  "workRequest": "ad9250bc-80b6-571d-adec-7baba2bbb08b",
+  "qualification": "SDK source qualification for automatic saved-history restoration; not Mills runtime acceptance",
+  "date": "2026-10-02",
+  "source": {
+    "flutterBaseRevision": "3289a6147917e2cb0181e8f4352f2625d34e3e29",
+    "clientVersionBeforePipeline": "0.1.33",
+    "widgetsVersionBeforePipeline": "0.1.1",
+    "jsRevisionUnchanged": "097b392b540c4ea4e2f4099c38ae310404c2d7e1",
+    "jsVersionUnchanged": "0.2.72",
+    "publishedRepairRevision": null,
+    "publication": "Intended source is uncommitted. Handrail post-agent version bump/commit/push owns the final versions and full public Git SHA."
+  },
+  "causes": [
+    "The account-owned session awaits the initial window read. During loading the real transcript (manageSelection=false) restores a stored anchor by selecting the same conversation again. This cancels the old read; its future completes before the replacement page. The session used to interpret the replacement loading state as history_preparing.",
+    "openConversation and initialize copied that session read failure into _selectionError. Ready pages could republish the document and subsequent polls clear session.error, but the copied account error persisted and canSend stayed false. A genuine server preparing response followed by ready data reproduced the same persistent latch.",
+    "Window navigation during an in-flight related refresh discarded its scheduling signal. The session now coalesces that signal and rechecks the current window after refresh completion using the existing read budget.",
+    "A blank unassigned composer called reset on the newly selected saved draft before hydration. This counted as an edit, suppressed the stored text and could save an empty replacement. Only nonempty unassigned text is now adopted as an edit."
+  ],
+  "reproduction": {
+    "unmodifiedClientResults": [
+      "replacement selection test failed with history_preparing despite ready replacement data",
+      "preparing-to-ready account test failed with persistent history_preparing after session.error became null"
+    ],
+    "unmodifiedComposerResult": "Blank-unassigned draft regression expected Unsent decline request but got empty text.",
+    "runtimeAttribution": "These are deterministic source reproductions of the reported symptoms. No claim is made that retained staging request IDs identify the exact same ordering; no live diagnostics or native fixture operations were performed."
+  },
+  "repair": [
+    "Join replacement window reads before assessing readiness; retain conversation/generation/error fences and cancellation.",
+    "Keep session read failures session-owned. Check the local pending journal before history so automatic readiness cannot enable a send over saved or unchecked admission. Descriptor/storage/admission failures remain independently owned.",
+    "Track refresh failures separately from correctable admission rejection, so preparation/stale reads block sends but rejected drafts remain editable.",
+    "Fence obsolete activation completions and related responses; retain one coalesced navigation wakeup.",
+    "Preserve saved draft hydration when the initial editor is blank. No app adapter, appearance, timer interval, gateway protocol, approval or canonical-history mutation changes."
+  ],
+  "integrationTrace": {
+    "millsFlutter": [
+      "lib/repositories/sdk_assistant_repository.dart constructs HandrailAssistantController and HandrailComposerController.forAssistant",
+      "lib/screens/assistant_screen.dart mounts HandrailAssistantWorkspace; account controller owns lifetime; screen resume refreshes observations",
+      "SDK conversation_transcript.dart supplies manageSelection=false and pollInterval=null; saved-position restoration still selects a missing anchor"
+    ],
+    "react": "ApplicationConversationSession restores position before selecting its window; standard PagedConversationTranscript uses manageSelection=false. Its runtime derives state from the session rather than copying this Flutter account selection error. JS source is unchanged."
+  },
+  "verification": {
+    "clientAnalyzer": "dart analyze --fatal-infos: passed",
+    "clientSuite": {
+      "command": "dart test --concurrency=1",
+      "passed": 266,
+      "skipped": 3,
+      "skipReason": "Existing explicit local PostgreSQL source-qualification cases; no persistence implementation changed."
+    },
+    "widgetSuite": {
+      "command": "node tool/check-shared-widgets.mjs FLUTTER_ROOT tool/history_restoration_test.dart tool/display_polling_test.dart packages/handrail_ai_widgets/test",
+      "passed": 262,
+      "breakdown": {
+        "packageWidgetTests": 254,
+        "sharedClientWidgetTests": 8
+      },
+      "result": "All passed against final source; one worker."
+    },
+    "sharedSuite": {
+      "command": "node tool/check-shared-widgets.mjs FLUTTER_ROOT",
+      "passed": 8,
+      "coverage": [
+        "real saved-position overlap",
+        "genuine preparing to ready via account polling",
+        "typed and persisted drafts",
+        "late response fences",
+        "pending/failed action visibility",
+        "read-only executed/declined exact detail inspection",
+        "Jump enabled/color stability and scroll anchors"
+      ]
+    },
+    "reactParity": {
+      "command": "vitest run test/application-session.test.ts test/react-application-session.test.tsx test/react-display-transcript.test.tsx test/display-window.test.ts --maxWorkers=1 --minWorkers=1 --no-file-parallelism",
+      "passed": 57
+    },
+    "harness": "HTTP and account-local storage boundaries are simulated. Real SDK controllers/windows/widgets and normal cached public-Git gateway test dependencies are used. No database fixture or provider behavior is simulated to claim persistence acceptance.",
+    "workerExecution": "Flutter launcher/cache were read-only. Prepared cached flutter_tools.snapshot was invoked directly with FLUTTER_ALREADY_LOCKED=true and --no-version-check; cache stamp warnings did not prevent tests. Compiler package maps are temporary source qualification, not dependency installations.",
+    "consumerCompile": {
+      "result": "passed",
+      "entries": [
+        "lib/screens/assistant_screen.dart",
+        "lib/repositories/sdk_assistant_repository.dart"
+      ],
+      "compiler": "Flutter frontend_server_aot.dart.snapshot --target=flutter; Dart 3.11.5",
+      "qualification": "Temporary compiler package map overlays local SDK source; all consumer source, manifests, locks and installed package config remain untouched. This is not a device build or installed-dependency acceptance.",
+      "initialFailuresResolved": [
+        "Consumer package config pointed at a deleted prior-worker pub cache. Remapped 216 paths to identical already-cached package versions; no installs/upgrades.",
+        "Used package imports for consumer entrypoints to preserve Dart library identity."
+      ],
+      "compilerResultErrors": 0
+    },
+    "diffCheck": "git diff --check and changed Dart format check: passed",
+    "widgetsAnalyzer": "flutter analyze --no-pub --fatal-infos: passed on final source"
+  },
+  "handoff": [
+    "After Handrail commits/pushes, capture the resulting full public Flutter Git SHA and actual bumped package versions. The base SHA above does not contain this repair.",
+    "Avery updates both Mills Flutter SDK Git dependencies at https://github.com/c0x65o/handrail-sdk-ai-assistant-flutter.git to that same full SHA and regenerates the matching pubspec.lock. Existing consumer pins/locks were only inspected and remain unchanged.",
+    "Run Mills native staging reload/reopen and saved-anchor/jump QA with typed draft and pending proposal; confirm automatic readiness, exact read-only executed/declined history, pending/failed visibility, no repeated effects, stable Jump button and scroll anchor. Use the retained fixture without replay, reseed, reset or cleanup. Verify web parity separately.",
+    "Production/iPhone release and original outcome acceptance remain with the existing Avery/release workflow. No PR, commit, push, deployment, app runtime, secret, SQL, live approval or provider action was performed by this worker."
+  ]
+}
