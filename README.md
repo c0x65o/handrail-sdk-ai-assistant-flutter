@@ -78,3 +78,13 @@ node tool/check-shared-widgets.mjs "$FLUTTER_ROOT"
 This uses a temporary compiler package map for the two local packages, retains
 Flutter's resolved test dependencies, and runs one test worker. It changes no
 installed Git dependencies or lockfiles and does not establish consumer adoption.
+
+Cold restoration now retains one bounded predecessor message page beside the
+saved anchor-forward page. Settled action history uses the negotiated
+`displayHistory.approvalHistory` gateway capability and an independent bounded
+page, with explicit older/newest navigation. Both the gateway JS SDK and Flutter
+SDK must be adopted to make history independent of transcript eviction. The
+standard JS assistant advertises the capability; a custom gateway must implement
+the `approval_history` view before advertising it. See the JS SDK's
+`docs/display-history-api.md` for the wire contract. The history count describes
+the current action page, and history remains read-only.

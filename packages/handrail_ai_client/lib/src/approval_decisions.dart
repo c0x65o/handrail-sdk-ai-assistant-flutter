@@ -417,8 +417,7 @@ class HandrailApprovalDecisions {
     if (_owner._disposed ||
         generation != _owner._selectionGeneration ||
         _pending.containsKey(_key(p.id)) ||
-        _operations.containsKey(_key(p.id)))
-      return false;
+        _operations.containsKey(_key(p.id))) return false;
     try {
       return _current(p.id, p.version, decision: false).binding == p.binding;
     } catch (_) {
@@ -674,6 +673,26 @@ class HandrailApprovalDecisions {
     return {
       'conversationId': _owner.selectedId,
       'items': items,
+      'historyAvailable': _owner.session?.supportsApprovalHistory == true &&
+          (_owner.session?._approvalHistory?.records.isNotEmpty == true ||
+              _owner.session?.hasOlderApprovalHistory == true ||
+              _owner.session?.hasNewerApprovalHistory == true),
+      'historyGeneration': _owner.session?._approvalHistory?.generation,
+      'historyDeferred': [
+        for (final r in _owner.session?._approvalHistory?.records ??
+            <HandrailDisplayRecord>[])
+          if (r.deferred) {'kind': r.kind, 'id': r.id, 'revision': r.revision}
+      ],
+      'historyReader':
+          _owner.session?.displayWindow?.uiBinding.read()['readRecordText'],
+      'historyHasOlder': _owner.session?.hasOlderApprovalHistory == true,
+      'historyHasNewer': _owner.session?.hasNewerApprovalHistory == true,
+      'olderHistory': () async {
+        await _owner.session?.loadApprovalHistory(older: true);
+      },
+      'latestHistory': () async {
+        await _owner.session?.loadApprovalHistory();
+      },
       'pendingApprovalsAvailable':
           _owner.session?.supportsPendingApprovals == true &&
               _owner.session?.hasPendingApprovals == true,

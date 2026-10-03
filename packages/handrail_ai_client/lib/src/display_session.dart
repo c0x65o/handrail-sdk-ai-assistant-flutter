@@ -49,7 +49,9 @@ class HandrailConversationDisplayView extends HandrailConversationView {
   final Map<String, Object?> state;
   HandrailConversationDisplayView._(
       this.control, this.window, List<HandrailDisplayRecord> related,
-      {required bool hasMoreRelated, required int presentationVersion})
+      {required bool hasMoreRelated,
+      required int presentationVersion,
+      Set<String> historicalApprovalIds = const {}})
       : state = Map.unmodifiable({
           'conversation_id': control.conversationId,
           'revision': control.revision,
@@ -92,7 +94,10 @@ class HandrailConversationDisplayView extends HandrailConversationView {
                     (r.kind != 'citation' || _resolvedCitation(r, related)))
                 .map((r) => r.value!)),
           'deferred_records': List.unmodifiable([...window.records, ...related]
-              .where((r) => r.deferred)
+              .where((r) =>
+                  r.deferred &&
+                  !(r.kind == 'approval' &&
+                      historicalApprovalIds.contains(r.id)))
               .map((r) => Map.unmodifiable({
                     'kind': r.kind,
                     'id': r.id,
@@ -175,6 +180,7 @@ extension _HandrailBoundedSession on HandrailConversationSession {
     final previous = _control;
     if (previous?.generation != control.generation) {
       if (previous != null) _outgoingMessage = null;
+      _clearApprovalHistory();
       _relatedEpoch++;
       if (_related.isNotEmpty) _relatedVersion++;
       _related = const [];
@@ -228,6 +234,11 @@ extension _HandrailBoundedSession on HandrailConversationSession {
       throw const HandrailGatewayException(
           'history_preparing', 'Preparing saved conversation…',
           retryable: true);
+    }
+    if (supportsApprovalHistory &&
+        _approvalHistory?.revision != control.revision) {
+      await _readApprovalHistory(_approvalHistoryCursor);
+      if (_disposed || activation.isCompleted) return;
     }
     final turn = control.activeTurn ?? control.latestTurn;
     if (turn?.turnId != _relatedTurnId ||
@@ -287,8 +298,28 @@ extension _HandrailBoundedSession on HandrailConversationSession {
       _publishedDisplayStamp = stamp;
       _presentationVersion++;
     }
-    _document = HandrailConversationDisplayView._(control, window, _related,
+    // Settled history has its own bounded page. Context changes must neither
+    // remove it nor inflate it with duplicate observations of the same proposal.
+    final activity = supportsApprovalHistory
+        ? [
+            ..._related.where((r) =>
+                r.kind != 'approval' ||
+                !const ['executed', 'rejected', 'expired']
+                    .contains(r.value?['status'])),
+            ...?_approvalHistory?.records,
+          ]
+        : _related;
+    final byIdentity = <String, HandrailDisplayRecord>{};
+    for (final record in activity) {
+      final key = '${record.kind}/${record.id}', previous = byIdentity[key];
+      if (previous == null || previous.revision < record.revision)
+        byIdentity[key] = record;
+    }
+    _document = HandrailConversationDisplayView._(
+        control, window, byIdentity.values.toList(),
         hasMoreRelated: hasMoreRelated,
+        historicalApprovalIds:
+            _approvalHistory?.records.map((r) => r.id).toSet() ?? const {},
         presentationVersion: _presentationVersion);
     workspace.open(_document!.runtimeState,
         select: _displayActive &&

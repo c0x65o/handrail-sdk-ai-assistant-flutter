@@ -272,7 +272,7 @@ void main() {
     await binding.select('chat', {'messageId': 'message-5', 'generation': 0});
     final state = binding.read();
     expect((state['records'] as List).map((record) => (record as Map)['id']),
-        ['message-5', 'message-6', 'message-7']);
+        [for (var i = 2; i <= 7; i++) 'message-$i']);
     expect(state['hasNewer'], isTrue);
     expect(() => (state['records'] as List).clear(), throwsUnsupportedError);
     fixture.fail = 'forbidden';
@@ -309,13 +309,16 @@ void main() {
             generation: 0,
             newer: true,
             inclusive: true));
-    expect(fixture.ids, ['message-5', 'message-6', 'message-7']);
-    expect((fixture.requests.last['input'] as Map)['anchor'], {
-      'messageId': 'message-5',
-      'generation': 0,
-      'direction': 'newer',
-      'inclusive': true
-    });
+    expect(fixture.ids, [for (var i = 2; i <= 7; i++) 'message-$i']);
+    expect(
+        (fixture.requests[fixture.requests.length - 2]['input']
+            as Map)['anchor'],
+        {
+          'messageId': 'message-5',
+          'generation': 0,
+          'direction': 'newer',
+          'inclusive': true
+        });
   });
 
   test('bounds bytes independently of the message-count limit', () async {

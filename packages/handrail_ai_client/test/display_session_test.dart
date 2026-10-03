@@ -292,7 +292,9 @@ void main() {
     await completed;
     expect(failure, isNull);
     expect(f.session.error, isNull);
-    expect(f.session.document!.messages.first['message_id'], 'message-41');
+    expect(f.session.document!.messages.first['message_id'], 'message-11');
+    expect(f.session.document!.messages.map((m) => m['message_id']),
+        contains('message-41'));
     expect(f.session.displayWindow!.followingLatest, isFalse);
     final restored = f.session.document;
     original.complete();

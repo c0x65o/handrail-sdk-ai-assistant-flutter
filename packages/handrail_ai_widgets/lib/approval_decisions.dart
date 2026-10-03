@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'structured_details.dart';
+import 'deferred_records.dart';
 
 /// Structural binding supplied by the account-owned SDK approval controller.
 typedef HandrailApprovalBinding = ({
@@ -40,7 +41,8 @@ class _ApprovalDecisionsState extends State<HandrailApprovalDecisionsView> {
   StreamSubscription<Object?>? _subscription;
   int _generation = 0;
   String? _conversation;
-  final _errors = <String, String>{};
+  final _errors = <Object, String>{};
+  final _historyKey = Object();
   @override
   void initState() {
     super.initState();
@@ -80,15 +82,16 @@ class _ApprovalDecisionsState extends State<HandrailApprovalDecisionsView> {
     super.dispose();
   }
 
-  Future<void> _act(String id, Future<void> Function() action) async {
+  Future<void> _act(Object id, Future<void> Function() action) async {
     final generation = _generation;
     try {
       _errors.remove(id);
       await action();
     } catch (_) {
       if (mounted && generation == _generation)
-        _errors[id] =
-            'The approval could not be updated. Check its current review or saved decision.';
+        _errors[id] = identical(id, _historyKey)
+            ? 'Action history could not be loaded. Try again.'
+            : 'The approval could not be updated. Check its current review or saved decision.';
     } finally {
       if (mounted && generation == _generation) setState(() {});
     }
@@ -106,7 +109,12 @@ class _ApprovalDecisionsState extends State<HandrailApprovalDecisionsView> {
               : v['proposal_id'] == widget.proposalId,
         )
         .toList();
-    if (items.isEmpty && state['error'] == null) return const SizedBox.shrink();
+    if (items.isEmpty &&
+        state['error'] == null &&
+        state['historyAvailable'] != true)
+      return const SizedBox.shrink();
+    final deferred = (state['historyDeferred'] as List? ?? const [])
+        .cast<Map<String, Object?>>();
     final binding = widget.binding;
     bool settled(Map<String, Object?> item) =>
         item['pendingDecision'] != true &&
@@ -247,11 +255,49 @@ class _ApprovalDecisionsState extends State<HandrailApprovalDecisionsView> {
         if (state['error'] is String) Text(state['error'] as String),
         for (final item in items)
           if (widget.proposalId != null || !settled(item)) card(item),
-        if (history.isNotEmpty)
+        if (history.isNotEmpty ||
+            widget.proposalId == null && state['historyAvailable'] == true)
           ExpansionTile(
             key: ValueKey((widget.binding.scope, state['conversationId'])),
-            title: Text('Action history (${history.length})'),
-            children: [for (final item in history) card(item)],
+            title: Text('Action history (${history.length + deferred.length})'),
+            children: [
+              for (final item in history) card(item),
+              if (deferred.isNotEmpty &&
+                  state['historyReader'] is HandrailRecordTextReader)
+                HandrailDeferredRecords(
+                  conversationId: state['conversationId'] as String,
+                  generation: state['historyGeneration'] as int,
+                  records: deferred,
+                  reader: state['historyReader'] as HandrailRecordTextReader,
+                  onRefresh: () => unawaited(
+                    _act(
+                      _historyKey,
+                      state['latestHistory'] as Future<void> Function(),
+                    ),
+                  ),
+                )
+              else if (deferred.isNotEmpty)
+                const Text('Some saved action details are unavailable.'),
+              if (history.isEmpty && deferred.isEmpty)
+                const Text('No settled actions on this page.'),
+              if (_errors[_historyKey] case final String error) Text(error),
+              if (state['historyHasOlder'] == true)
+                TextButton(
+                  onPressed: () => _act(
+                    _historyKey,
+                    state['olderHistory'] as Future<void> Function(),
+                  ),
+                  child: const Text('Older actions'),
+                ),
+              if (state['historyHasNewer'] == true)
+                TextButton(
+                  onPressed: () => _act(
+                    _historyKey,
+                    state['latestHistory'] as Future<void> Function(),
+                  ),
+                  child: const Text('Newest actions'),
+                ),
+            ],
           ),
       ],
     );

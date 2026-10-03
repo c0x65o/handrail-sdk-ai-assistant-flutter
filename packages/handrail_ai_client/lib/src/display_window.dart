@@ -436,8 +436,34 @@ class HandrailDisplayWindow {
           if (page.records
               .any((record) => record.kind != 'message' || record.deleted))
             throw const FormatException('Invalid message page.');
+          // An anchor-forward page has no leading message context. Retain one
+          // bounded predecessor page so positive saved offsets remain reachable
+          // through asynchronous sizing without clamping at the leading edge.
+          HandrailDisplayPage? before;
+          if (replacement && anchor?.newer == true && page.records.isNotEmpty) {
+            before = await client.displayHistoryPage(
+                conversationId: id,
+                capability: capability,
+                anchor: HandrailDisplayAnchor(
+                    messageId: page.records.first.id,
+                    generation: page.generation,
+                    newer: false),
+                limit: pageSize,
+                maximumBytes: pageBytes,
+                cancellation: request.future);
+            if (!_current(selection)) return;
+            if (before.preparing) {
+              _preparing();
+              return;
+            }
+            if (before.generation != page.generation ||
+                before.revision != page.revision ||
+                before.records.any((r) => r.kind != 'message' || r.deleted)) {
+              throw const FormatException('Changed anchor context');
+            }
+          }
           final combined = replacement
-              ? page.records
+              ? [...?before?.records, ...page.records]
               : older
                   ? [...page.records, ..._records]
                   : [..._records, ...page.records];
@@ -450,7 +476,9 @@ class HandrailDisplayWindow {
           final trimmed =
               _trim(byId.values.toList(growable: false), older: older);
           if (replacement) {
-            _hasOlder = anchor?.newer == true || page.nextCursor != null;
+            _hasOlder = before != null
+                ? before.nextCursor != null
+                : anchor?.newer == true || page.nextCursor != null;
             _hasNewer = anchor?.newer == true
                 ? page.nextCursor != null
                 : anchor != null;

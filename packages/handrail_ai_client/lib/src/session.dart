@@ -147,6 +147,78 @@ class HandrailConversationSession {
   HandrailDisplayWindow? _displayWindow;
   StreamSubscription<HandrailDisplayWindowState>? _displaySubscription;
   List<HandrailDisplayRecord> _related = const [];
+  HandrailDisplayPage? _approvalHistory;
+  String? _approvalHistoryCursor;
+  int _approvalHistoryEpoch = 0;
+  Future<void>? _loadingApprovalHistory;
+  bool get supportsApprovalHistory =>
+      _capabilities?.displayHistory?.approvalHistory == true;
+  bool get hasOlderApprovalHistory => _approvalHistory?.nextCursor != null;
+  bool get hasNewerApprovalHistory => _approvalHistoryCursor != null;
+
+  /// Replace one bounded history page. Never walk the transcript or accumulate
+  /// an unbounded account cache. Selection/disposal cancels these reads.
+  Future<void> loadApprovalHistory({bool older = false}) {
+    if (_disposed) return Future.error(StateError('Session is disposed'));
+    if (!supportsApprovalHistory ||
+        !_displayActive ||
+        _control == null ||
+        older && !hasOlderApprovalHistory) return Future.value();
+    if (_loadingApprovalHistory != null) return _loadingApprovalHistory!;
+    late final Future<void> work;
+    work = _readApprovalHistory(older ? _approvalHistory?.nextCursor : null)
+        .then((_) {
+      if (!_disposed) {
+        _publishDisplay();
+        _publish();
+      }
+    }).catchError((Object error) async {
+      if (!_disposed &&
+          error is HandrailGatewayException &&
+          const {
+            'forbidden',
+            'permission_denied',
+            'unauthenticated',
+            'not_found'
+          }.contains(error.code)) {
+        _clearApprovalHistory();
+        _control = null;
+        _document = null;
+        await _displayWindow?.select(null);
+        _publish();
+      }
+      throw error;
+    }).whenComplete(() {
+      if (identical(_loadingApprovalHistory, work))
+        _loadingApprovalHistory = null;
+    });
+    return _loadingApprovalHistory = work;
+  }
+
+  Future<void> _readApprovalHistory(String? cursor) async {
+    final epoch = ++_approvalHistoryEpoch;
+    final page = await readApprovals(history: true, cursor: cursor);
+    if (_disposed || epoch != _approvalHistoryEpoch) return;
+    if (page.records.any((r) =>
+        r.kind != 'approval' ||
+        r.deleted ||
+        r.value != null &&
+            !const ['executed', 'rejected', 'expired']
+                .contains(r.value!['status']))) {
+      throw const FormatException('Invalid action history page');
+    }
+    _approvalHistory = page;
+    _approvalHistoryCursor = cursor;
+    _relatedVersion++;
+  }
+
+  void _clearApprovalHistory() {
+    _approvalHistoryEpoch++;
+    _approvalHistory = null;
+    _approvalHistoryCursor = null;
+    _loadingApprovalHistory = null;
+  }
+
   bool _relatedTruncated = false;
   bool _relatedInitialized = false;
   int _relatedVersion = 0, _presentationVersion = 0;
@@ -244,6 +316,7 @@ class HandrailConversationSession {
     }
     _displayActivation = Completer<void>();
     _relatedEpoch++;
+    _clearApprovalHistory();
     if (_related.isNotEmpty) _relatedVersion++;
     _related = const [];
     _relatedTruncated = false;
@@ -303,10 +376,15 @@ class HandrailConversationSession {
 
   /// Explicit bounded inbox or proposal/tool review, independent of messages.
   Future<HandrailDisplayPage> readApprovals(
-      {String? proposalId, String? cursor, Future<void>? cancellation}) async {
+      {String? proposalId,
+      String? cursor,
+      bool history = false,
+      Future<void>? cancellation}) async {
+    if (history && proposalId != null)
+      throw ArgumentError('History cannot select a decision');
     if (_disposed ||
         !_displayActive ||
-        !supportsPendingApprovals ||
+        !(history ? supportsApprovalHistory : supportsPendingApprovals) ||
         _control == null ||
         _control!.preparing) {
       throw const HandrailGatewayException(
@@ -318,7 +396,7 @@ class HandrailConversationSession {
         conversationId: conversationId,
         capability: _capabilities!.displayHistory!,
         view: proposalId == null
-            ? {'type': 'pending_approvals'}
+            ? {'type': history ? 'approval_history' : 'pending_approvals'}
             : {'type': 'approval', 'proposalId': proposalId},
         cursor: cursor,
         limit: proposalId == null ? 30 : 2,
@@ -374,6 +452,7 @@ class HandrailConversationSession {
           }.contains(cause.code)) {
         _control = null;
         _document = null;
+        _clearApprovalHistory();
         if (_related.isNotEmpty) _relatedVersion++;
         _related = const [];
         _relatedGroups = const [];
@@ -555,6 +634,7 @@ class HandrailConversationSession {
           }.contains(cause.code)) {
         _control = null;
         _document = null;
+        _clearApprovalHistory();
         if (_related.isNotEmpty) _relatedVersion++;
         _related = const [];
         _relatedTruncated = false;
@@ -1115,6 +1195,7 @@ class HandrailConversationSession {
     _relatedEpoch++;
     _control = null;
     _document = null;
+    _clearApprovalHistory();
     if (_related.isNotEmpty) _relatedVersion++;
     _related = const [];
     _relatedTruncated = false;

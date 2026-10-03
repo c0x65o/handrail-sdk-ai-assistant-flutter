@@ -9,6 +9,7 @@ class HandrailDisplayHistoryCapability {
   final bool recordText;
   final bool approvalReview;
   final bool pendingApprovals;
+  final bool approvalHistory;
   const HandrailDisplayHistoryCapability._(
       this.maximumPageSize,
       this.maximumPageBytes,
@@ -16,7 +17,8 @@ class HandrailDisplayHistoryCapability {
       this.messageText,
       this.pendingApprovals,
       this.recordText,
-      this.approvalReview);
+      this.approvalReview,
+      this.approvalHistory);
   factory HandrailDisplayHistoryCapability.fromJson(
       Map<String, Object?> value) {
     final size = value['maximumPageSize'], bytes = value['maximumPageBytes'];
@@ -24,6 +26,7 @@ class HandrailDisplayHistoryCapability {
         value['control'] != null && value['control'] is! bool ||
         value['messageText'] != null && value['messageText'] is! bool ||
         value['recordText'] != null && value['recordText'] is! bool ||
+        value['approvalHistory'] != null && value['approvalHistory'] is! bool ||
         value['approvalReview'] != null && value['approvalReview'] is! bool ||
         value['pendingApprovals'] != null &&
             value['pendingApprovals'] is! bool ||
@@ -42,7 +45,8 @@ class HandrailDisplayHistoryCapability {
         value['messageText'] == true,
         value['pendingApprovals'] == true,
         value['recordText'] == true,
-        value['approvalReview'] == true);
+        value['approvalReview'] == true,
+        value['approvalHistory'] == true);
   }
 }
 
