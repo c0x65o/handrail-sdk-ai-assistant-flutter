@@ -207,6 +207,74 @@ Future<void> frames(WidgetTester tester) async {
 }
 
 void main() {
+  for (final pause in [50.0, 700.0]) {
+    testWidgets(
+      'workspace preserves saved message and approval geometry at $pause pause',
+      (tester) async {
+        var f = Fixture();
+        addTearDown(() => f.dispose());
+        await tester.pumpWidget(f.surface());
+        await frames(tester);
+        final transcript = find.byType(HandrailDisplayTranscript);
+        final scroll = tester
+            .widget<SingleChildScrollView>(
+              find
+                  .descendant(
+                    of: transcript,
+                    matching: find.byType(SingleChildScrollView),
+                  )
+                  .first,
+            )
+            .controller!;
+        f.drafts.controller.text = 'Retain my draft';
+        scroll.jumpTo(scroll.position.maxScrollExtent - pause);
+        await frames(tester);
+        await tester.pump(const Duration(milliseconds: 600));
+        final saved = (await f.store.readPosition('chat'))!;
+        final before = tester.getTopLeft(find.text('Change pending')).dy;
+        expect(saved['following'], isFalse);
+        await tester.pumpWidget(const SizedBox());
+        if (pause == 50) {
+          // A reload recreates the account controller as well as the view.
+          final storage = Map<String, String>.of(f.storage);
+          await tester.runAsync(f.dispose);
+          f = Fixture()..storage.addAll(storage);
+        }
+        await tester.pumpWidget(f.surface());
+        await frames(tester);
+        expect(
+          tester.getTopLeft(find.text('Change pending')).dy,
+          closeTo(before, .1),
+        );
+        expect(f.assistant.canSend, isTrue);
+        expect(f.drafts.controller.text, 'Retain my draft');
+        final items = f.assistant.approvals.presentation['items'] as List;
+        expect(
+          items.map((p) => p['status']),
+          containsAll(['pending', 'failed', 'executed', 'rejected']),
+        );
+        expect(
+          items.singleWhere((p) => p['status'] == 'pending')['canReject'],
+          isTrue,
+        );
+        expect(find.text('Action history (2)'), findsOneWidget);
+        // Quiet time cannot silently replace the paused position.
+        await tester.pump(const Duration(seconds: 61));
+        await frames(tester);
+        expect(
+          tester.getTopLeft(find.text('Change pending')).dy,
+          closeTo(before, .1),
+        );
+        await tester.pumpWidget(const SizedBox());
+        final after = (await f.store.readPosition('chat'))!;
+        expect(after['messageId'], saved['messageId']);
+        expect(after['offset'], closeTo(saved['offset'] as num, .1));
+        expect(after['following'], isFalse);
+        await tester.runAsync(f.dispose);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
   testWidgets(
     'saved-position reload joins its replacement read and retains an unsent draft',
     (tester) async {

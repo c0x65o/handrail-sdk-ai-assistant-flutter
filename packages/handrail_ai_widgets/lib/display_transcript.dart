@@ -200,6 +200,7 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
   }
 
   void _connect() {
+    _saveTimer?.cancel();
     _expandedMessage = null;
     final epoch = ++_epoch;
     _state = const {};
@@ -306,8 +307,11 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
   void _receive() {
     final next = widget.binding.read();
     if (next['conversationId'] != widget.conversationId) return;
-    if (_state['generation'] != null &&
-        _state['generation'] != next['generation']) {
+    if ((_state['generation'] != null &&
+            _state['generation'] != next['generation']) ||
+        (next['status'] == 'ready' &&
+            _anchor != null &&
+            _anchor!.generation != next['generation'])) {
       _anchor = null;
       _follow = true;
     }
@@ -363,7 +367,7 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
   }
 
   void _scrolled() {
-    if (_adjusting || !_scroll.hasClients) return;
+    if (_adjusting || _restoring || !_scroll.hasClients) return;
     _follow = _scrollFollow.update(
       _scroll.position,
       _follow,
@@ -398,9 +402,9 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
     _scheduled = true;
     final epoch = _epoch;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || epoch != _epoch) return;
       _scheduled = false;
-      if (!mounted || epoch != _epoch || !_scroll.hasClients || _restoring)
-        return;
+      if (!_scroll.hasClients || _restoring) return;
       _adjusting = true;
       var measured = false;
       try {
@@ -447,7 +451,15 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
       if (measured || (_renderedOffset - _scroll.offset).abs() > 0.1) {
         setState(() {});
       }
-      _anchor = _capture();
+      // Layout is not reader intent. A placeholder, a temporarily short body,
+      // or a clamped extent can make this frame unable to reach the saved
+      // offset. Keep the requested message/offset through subsequent layouts;
+      // only reader movement should replace it while that record is retained.
+      if (_follow ||
+          _anchor == null ||
+          !_records.any((record) => record['id'] == _anchor!.messageId)) {
+        _anchor = _capture();
+      }
       if (_follow &&
           !_busy &&
           _state['hasNewer'] == true &&
@@ -558,8 +570,11 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
           final id = record['id'] as String, rowHeight = _heights[id] ?? 240.0;
           // One viewport of overscan on each side. A tall message is mounted
           // whole, so Markdown and accessibility never see text fragments.
-          if (top + rowHeight >= _renderedOffset - height &&
-              top <= _renderedOffset + height * 2)
+          // A saved intra-message offset may lie beyond the estimated height.
+          // Mount its body even before the estimated viewport reaches it.
+          if ((!_follow && id == _anchor?.messageId) ||
+              (top + rowHeight >= _renderedOffset - height &&
+                  top <= _renderedOffset + height * 2))
             _rendered.add(id);
           top += rowHeight;
         }
