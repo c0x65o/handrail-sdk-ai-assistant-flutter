@@ -144,6 +144,7 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
   final _rendered = <String>{};
   double _renderedOffset = 0;
   double? _layoutWidth;
+  double? _viewportDimension;
   final _positions = LinkedHashMap<String, HandrailDisplayPosition>();
   StreamSubscription<Object?>? _subscription;
   Timer? _poll;
@@ -208,6 +209,7 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
     _heights.clear();
     _rendered.clear();
     _layoutWidth = null;
+    _viewportDimension = null;
     _anchor = null;
     _follow = true;
     _requesting = false;
@@ -446,9 +448,29 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
         _scrollFollow.capture(_scroll.position);
         _adjusting = false;
       }
+      final position = _scroll.position;
+      final expanded =
+          _viewportDimension != null &&
+          position.viewportDimension > _viewportDimension!;
+      _viewportDimension = position.viewportDimension;
+      // Keyboard dismissal can expose the actual tail without reader movement.
+      // Reconcile after anchor correction, and only for viewport expansion:
+      // temporary content/placeholder shrinkage must retain the saved intent.
+      final reachedLatest =
+          !_follow &&
+          expanded &&
+          position.extentAfter <= 2 &&
+          _state['hasNewer'] != true;
+      if (reachedLatest) {
+        _follow = true;
+        final follow = _state['setFollowingLatest'];
+        if (follow is void Function(bool)) follow(true);
+      }
       // Programmatic anchor/follow movement also changes the visible body set.
       // Rebuild only when measurements or the scroll offset actually changed.
-      if (measured || (_renderedOffset - _scroll.offset).abs() > 0.1) {
+      if (reachedLatest ||
+          measured ||
+          (_renderedOffset - _scroll.offset).abs() > 0.1) {
         setState(() {});
       }
       // Layout is not reader intent. A placeholder, a temporarily short body,

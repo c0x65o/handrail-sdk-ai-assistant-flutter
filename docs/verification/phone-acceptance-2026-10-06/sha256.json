@@ -1,0 +1,15 @@
+{
+  "packages/handrail_ai_widgets/lib/display_transcript.dart": "81aca850087b7dda170f6440463fafe825001b6296f940f52abe1fefdf1b22b0",
+  "tool/phone_latest_position_test.dart": "88b2c439433ae38295db0e08d0927cab6e7edfeca8b2a3037ef1d3fd4c693c95",
+  "packages/handrail_ai_widgets/test/near_bottom_refresh_test.dart": "44bfb3619b9b7846755745e3a207951f689999467a01a3dd36634ca9ab9409f2",
+  "docs/verification/phone-acceptance-2026-10-06/150.0-keyboard-closed-bottom.png": "4b72446b24d3c93a15e03cfcf7c3446bb17c9130bd95ecdce14ccd4ce312f7a0",
+  "docs/verification/phone-acceptance-2026-10-06/150.0-keyboard-open.png": "d8ee8463b316d90d4449e676c6ba47ae5ca1a3b38df666279b8d663ee1e74588",
+  "docs/verification/phone-acceptance-2026-10-06/150.0-scrolled-up.png": "3b97ebe2c60dd0042100043eb9b131911bceefdc46668e4259a42c8f536165a0",
+  "docs/verification/phone-acceptance-2026-10-06/150.0-streaming.png": "0012fdc6b5dcde85942047b7a4e5f27d571672c718e4459f6c3799b3c48a1778",
+  "docs/verification/phone-acceptance-2026-10-06/700.0-keyboard-closed-history.png": "d7da144ed446dcf82c833c1da1400c92e0391188888d1c985b316c58abe45808",
+  "docs/verification/phone-acceptance-2026-10-06/700.0-keyboard-open.png": "d8ee8463b316d90d4449e676c6ba47ae5ca1a3b38df666279b8d663ee1e74588",
+  "docs/verification/phone-acceptance-2026-10-06/700.0-scrolled-up.png": "c51404400a2ec6ad9aea3b83fa0e34e5e96b90d63326fb10b2b8a62ee1f371c3",
+  "docs/verification/phone-acceptance-2026-10-06/700.0-streaming.png": "7c92d41a4442b1e7ced8195700cb2b907a7e6740b80c4aee94aa7f0eb5f5f2a0",
+  "docs/verification/phone-acceptance-2026-10-06/150.0-frames.json": "763495cdcdf690bc6c45f8613bea78f763bbf458253f887bfca71accbd2c5916",
+  "docs/verification/phone-acceptance-2026-10-06/700.0-frames.json": "400caa77c4ba5d95a710caeb0237718015a6b4a38e03bb03d5c39cd2456be8b5"
+}

@@ -6,6 +6,51 @@ import 'display_transcript_test.dart' as paged;
 import 'conversation_transcript_test.dart' as full;
 
 void main() {
+  testWidgets('viewport expansion keeps Jump for unloaded newer history', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetViewInsets);
+    final f = paged.Fixture();
+    addTearDown(f.changes.close);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(platform: TargetPlatform.iOS),
+        home: Scaffold(
+          body: HandrailDisplayTranscript(
+            binding: f.binding,
+            conversationId: 'chat',
+            pollInterval: null,
+            messageBuilder: (_, row) =>
+                SizedBox(height: 100, child: Text(row['id'] as String)),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final scroll = tester
+        .state<ScrollableState>(find.byType(Scrollable).first)
+        .position;
+    scroll.jumpTo(scroll.maxScrollExtent - 150);
+    await tester.pumpAndSettle();
+    f.hasNewer = true;
+    f.publish();
+    await tester.pumpAndSettle();
+    tester.view.resetViewInsets();
+    await tester.pumpAndSettle();
+    expect(scroll.extentAfter, lessThanOrEqualTo(2));
+    for (var frame = 0; frame < 12; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(find.text('Jump to latest'), findsOneWidget);
+    }
+    expect(f.latestReads, 0);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('full transcript restores a paused conversation on return', (
     tester,
   ) async {

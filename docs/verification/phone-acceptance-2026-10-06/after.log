@@ -1,0 +1,8 @@
+The new artifact "libimobiledevice" was downloaded, but Flutter failed to update its stamp file, receiving the error "FileSystemException: Cannot open file, path = '/opt/handrail/.handrail/flutter-sdk/bin/cache/libimobiledevice.stamp' (OS Error: Read-only file system, errno = 30)". Flutter can continue, but the artifact may be re-downloaded on subsequent invocations until the problem is resolved.
+The new artifact "libusbmuxd" was downloaded, but Flutter failed to update its stamp file, receiving the error "FileSystemException: Cannot open file, path = '/opt/handrail/.handrail/flutter-sdk/bin/cache/libusbmuxd.stamp' (OS Error: Read-only file system, errno = 30)". Flutter can continue, but the artifact may be re-downloaded on subsequent invocations until the problem is resolved.
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/phone_latest_position_test.dart
+00:00 +0: (setUpAll)
+00:00 +0: keyboard dismissal reconciles latest at a 150.0 pixel pause (variant: TargetPlatform.iOS)
+00:03 +1: keyboard dismissal reconciles latest at a 700.0 pixel pause (variant: TargetPlatform.iOS)
+00:05 +2: (tearDownAll)
+00:05 +2: All tests passed!

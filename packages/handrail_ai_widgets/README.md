@@ -202,6 +202,9 @@ when the user is at the end. Read acknowledgement requires the actual transcript
 end to be visible on the current foreground route with a terminal reply. Returning
 from another screen rechecks visibility without waiting for another server event.
 Retries and stateful content remain bound to their conversation/account.
+For paged history, a viewport expansion (including keyboard dismissal) resumes
+following when it exposes the actual latest position. A reader still above the
+bottom, or with unloaded newer history, keeps their position and Jump to latest.
 
 An existing domain projection can supply `contentBuilder` to format the complete
 contents and use `HandrailTranscriptMessage` for the shared bubbles. This explicit

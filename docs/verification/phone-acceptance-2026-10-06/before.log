@@ -1,0 +1,33 @@
+The new artifact "libimobiledevice" was downloaded, but Flutter failed to update its stamp file, receiving the error "FileSystemException: Cannot open file, path = '/opt/handrail/.handrail/flutter-sdk/bin/cache/libimobiledevice.stamp' (OS Error: Read-only file system, errno = 30)". Flutter can continue, but the artifact may be re-downloaded on subsequent invocations until the problem is resolved.
+The new artifact "libusbmuxd" was downloaded, but Flutter failed to update its stamp file, receiving the error "FileSystemException: Cannot open file, path = '/opt/handrail/.handrail/flutter-sdk/bin/cache/libusbmuxd.stamp' (OS Error: Read-only file system, errno = 30)". Flutter can continue, but the artifact may be re-downloaded on subsequent invocations until the problem is resolved.
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/phone_latest_position_test.dart
+00:00 +0: keyboard dismissal hides Jump when reading position reaches bottom (variant: TargetPlatform.iOS)
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: no matching candidates
+  Actual: _TextWidgetFinder:<Found 1 widget with text "Jump to latest": [
+            Text("Jump to latest", dependencies: [DefaultSelectionStyle, DefaultTextStyle,
+MediaQuery]),
+          ]>
+   Which: means one was found but none were expected
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/phone_latest_position_test.dart:39:7)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1682:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/phone_latest_position_test.dart line 39
+The test description was:
+  keyboard dismissal hides Jump when reading position reaches bottom (variant: TargetPlatform.iOS)
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:02 +0 -1: keyboard dismissal hides Jump when reading position reaches bottom (variant: TargetPlatform.iOS) [E]
+  Test failed. See exception logs above.
+  The test description was: keyboard dismissal hides Jump when reading position reaches bottom (variant: TargetPlatform.iOS)
+  
+00:02 +0 -1: Some tests failed.

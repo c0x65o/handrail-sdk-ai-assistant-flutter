@@ -13,8 +13,10 @@ The history expansion resets on account/conversation change and starts closed
 after remount/reload. No persisted local hidden-ID list is introduced.
 
 Both transcript implementations preserve scroll intent across streaming, layout
-and keyboard changes. Scroll geometry changes and SDK anchor/tail corrections
-cannot reclassify the reader as following or away. A deliberate upward movement
+and keyboard changes. Content geometry changes and SDK anchor/tail corrections
+cannot reclassify the reader as following or away. In paged history, viewport
+expansion that exposes the actual latest position resumes following; unloaded
+newer history still keeps Jump visible. A deliberate upward movement
 pauses following; scrolling down to the actual tail (two-pixel tolerance) or
 choosing Jump to latest resumes it. Crossing the old near-bottom thresholds does
 not blink the control. Paged transcript viewport-only metric changes now also
