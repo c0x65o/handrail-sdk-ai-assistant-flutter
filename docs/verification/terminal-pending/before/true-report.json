@@ -1,0 +1,47 @@
+[
+  {
+    "stage": "before-observation",
+    "canSend": false,
+    "sendEnabled": true,
+    "pending": true,
+    "running": true,
+    "canStop": true,
+    "error": "stream_request_failed",
+    "draft": "Later follow-up",
+    "turn": {
+      "turn_id": "turn_assistant-0e9ef0864d15a1630d21c7be07af182bdd84",
+      "status": "queued",
+      "remote_may_still_be_running": true,
+      "cancellation_reason": null,
+      "error": null
+    },
+    "admissions": 1,
+    "starts": 1,
+    "cancellations": 0
+  },
+  {
+    "stage": "after-observation",
+    "canSend": false,
+    "sendEnabled": false,
+    "pending": true,
+    "running": false,
+    "canStop": false,
+    "error": "stream_request_failed",
+    "draft": "Later follow-up",
+    "turn": {
+      "turn_id": "turn_assistant-0e9ef0864d15a1630d21c7be07af182bdd84",
+      "status": "failed",
+      "remote_may_still_be_running": false,
+      "cancellation_reason": null,
+      "error": {
+        "code": "forbidden",
+        "message": "Execution is not allowed.",
+        "retryable": false,
+        "messageTruncated": false
+      }
+    },
+    "admissions": 1,
+    "starts": 1,
+    "cancellations": 0
+  }
+]

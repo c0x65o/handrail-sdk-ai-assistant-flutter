@@ -403,9 +403,12 @@ void main() {
           throwsA(isA<HandrailGatewayException>()));
       if (recover) {
         expect(controller.hasPendingMessage, isTrue);
-        // Reopening performs durable retry just as a recreated client does.
+        // Reopening only observes. Mutation replay requires explicit Retry.
+        await controller.openConversation('one');
+        expect(admissions, 1);
+        expect(controller.hasPendingMessage, isTrue);
         await expectLater(
-            controller.openConversation('one'),
+            controller.retryPendingMessage(),
             throwsA(isA<HandrailGatewayException>()
                 .having((error) => error.retryable, 'retryable', isFalse)));
         expect(bodies[1], bodies[0]);

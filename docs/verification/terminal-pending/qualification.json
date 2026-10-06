@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-06",
+  "qualification": "local Flutter source; synthetic HTTP and storage boundaries",
+  "flutterBaseline": {
+    "sha": "24b4547195532cd6a3b1dbb64116eda67376b933",
+    "handrail_ai_client": "0.1.38",
+    "handrail_ai_widgets": "0.1.1"
+  },
+  "jsUnchanged": {
+    "sha": "7ff3b9f23467ce01e578d7039c3ffa35e2f557b6",
+    "version": "0.2.79"
+  },
+  "publishedRepairSha": null,
+  "releaseOwner": "Handrail post-agent auto-commit",
+  "reproduction": {
+    "beforeFailures": 2,
+    "paths": [
+      "bounded requested-turn controls",
+      "full canonical snapshots"
+    ],
+    "assertion": "Expected canSend true, got false after exact canonical failed turn"
+  },
+  "checks": {
+    "clientAnalysis": "passed",
+    "widgetAnalysis": "passed",
+    "focusedClientTests": 108,
+    "finalControllerRetest": 32,
+    "widgetTests": 263,
+    "finalSharedTests": 74,
+    "terminalRecoveryTestsWithinShared": 57,
+    "format": "passed",
+    "runnerSyntax": "passed",
+    "gitDiffCheck": "passed"
+  },
+  "sourceSha256": {
+    "packages/handrail_ai_client/lib/src/assistant_controller.dart": "e241b795f2b185d58171854d4a8dffb40100c34afee09aed6e25dcfb2fc00db7",
+    "packages/handrail_ai_client/test/assistant_controller_test.dart": "92336c049c56693f867f91711e1938c53f3d3fdd2e52c2b44511510d2b33ebe9",
+    "tool/check-shared-widgets.mjs": "4aae8391daf5c33ae27f1a37099fd0858aa8f11e6b87c7068702cdaaf6ddd866",
+    "tool/terminal_pending_test.dart": "d724cf77e223c46b01d440411fb4108ad0cd738b98c84aca0271a10292f31d0d"
+  },
+  "unverified": [
+    "Published/installed consumer revision",
+    "Preview owner 19 installed regressions",
+    "Real JS gateway/Postgres interoperability",
+    "Physical devices"
+  ],
+  "constraints": {
+    "committed": false,
+    "pushed": false,
+    "versionBumped": false,
+    "previewOrMillsEdited": false,
+    "deploymentPerformed": false,
+    "millsProductionShip": "blocked"
+  }
+}

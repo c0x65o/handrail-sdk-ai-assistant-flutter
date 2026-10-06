@@ -1,0 +1,177 @@
+[
+  {
+    "stage": "before-observation",
+    "canSend": false,
+    "sendEnabled": false,
+    "pending": true,
+    "running": true,
+    "canStop": true,
+    "error": "stream_request_failed",
+    "draft": "Later follow-up",
+    "turn": {
+      "turn_id": "turn_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad",
+      "status": "queued",
+      "remote_may_still_be_running": true,
+      "input_message_ids": [],
+      "error": null
+    },
+    "admissions": 1,
+    "starts": 1,
+    "cancellations": 0,
+    "providerEffects": 0,
+    "savedStart": {
+      "conversationId": "chat",
+      "conversationTurnId": "turn_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad",
+      "mutationId": "mutation_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad_0",
+      "idempotencyKey": "start_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad",
+      "request": {
+        "protocol_version": "handrail.ai-runtime.v1",
+        "continuation_of": null,
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "Saved request"
+              }
+            ]
+          }
+        ],
+        "tools": [],
+        "tool_results": [],
+        "generation": {
+          "max_output_tokens": 2048,
+          "temperature": 0.2
+        },
+        "correlation_hints": {},
+        "metadata": {
+          "handrail_approval_mode": "required"
+        }
+      }
+    },
+    "savedMessageIds": [
+      "message_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad"
+    ]
+  },
+  {
+    "stage": "after-observation",
+    "canSend": true,
+    "sendEnabled": true,
+    "pending": false,
+    "running": false,
+    "canStop": false,
+    "error": null,
+    "draft": "Later follow-up",
+    "turn": {
+      "turn_id": "turn_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad",
+      "status": "failed",
+      "remote_may_still_be_running": false,
+      "input_message_ids": [
+        "message_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad"
+      ],
+      "error": {
+        "code": "forbidden",
+        "message": "Execution is not allowed.",
+        "retryable": false,
+        "messageTruncated": false
+      }
+    },
+    "admissions": 1,
+    "starts": 1,
+    "cancellations": 0,
+    "providerEffects": 0,
+    "savedStart": {
+      "conversationId": "chat",
+      "conversationTurnId": "turn_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad",
+      "mutationId": "mutation_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad_0",
+      "idempotencyKey": "start_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad",
+      "request": {
+        "protocol_version": "handrail.ai-runtime.v1",
+        "continuation_of": null,
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "Saved request"
+              }
+            ]
+          }
+        ],
+        "tools": [],
+        "tool_results": [],
+        "generation": {
+          "max_output_tokens": 2048,
+          "temperature": 0.2
+        },
+        "correlation_hints": {},
+        "metadata": {
+          "handrail_approval_mode": "required"
+        }
+      }
+    },
+    "savedMessageIds": [
+      "message_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad"
+    ]
+  },
+  {
+    "stage": "follow-up-sent",
+    "canSend": false,
+    "sendEnabled": false,
+    "pending": false,
+    "running": true,
+    "canStop": true,
+    "error": null,
+    "draft": "",
+    "turn": {
+      "turn_id": "turn_assistant-2c9ccde223c7f7e19f0745d7fe884d7a7027",
+      "status": "running",
+      "remote_may_still_be_running": true,
+      "input_message_ids": [
+        "message_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad"
+      ],
+      "error": null
+    },
+    "admissions": 2,
+    "starts": 2,
+    "cancellations": 0,
+    "providerEffects": 1,
+    "savedStart": {
+      "conversationId": "chat",
+      "conversationTurnId": "turn_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad",
+      "mutationId": "mutation_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad_0",
+      "idempotencyKey": "start_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad",
+      "request": {
+        "protocol_version": "handrail.ai-runtime.v1",
+        "continuation_of": null,
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "Saved request"
+              }
+            ]
+          }
+        ],
+        "tools": [],
+        "tool_results": [],
+        "generation": {
+          "max_output_tokens": 2048,
+          "temperature": 0.2
+        },
+        "correlation_hints": {},
+        "metadata": {
+          "handrail_approval_mode": "required"
+        }
+      }
+    },
+    "savedMessageIds": [
+      "message_assistant-2ac5f71df5996d87d44b9bc9ca8c1657edad",
+      "message_assistant-2c9ccde223c7f7e19f0745d7fe884d7a7027"
+    ]
+  }
+]

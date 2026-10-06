@@ -1,0 +1,34 @@
+00:00 +0: loading test/assistant_controller_test.dart
+00:00 +0: history recovery cannot release a saved pending submission
+00:00 +1: a descriptor failure is not cleared by healthy session observations
+00:00 +2: ready history releases preparation without reopening or resending
+00:00 +3: account activity honors host throttling across polling and manual retries
+00:00 +4: definite attachment rejection keeps drafts and unlocks correction; recovery=false
+00:00 +5: definite attachment rejection keeps drafts and unlocks correction; recovery=true
+00:00 +6: standard UI exposes account-owned draft persistence from the pending adapter
+00:00 +7: bounded account switching cancels obsolete reads, releases hidden pages and evicts idle sessions
+00:00 +8: single conversation disables titles and clear retries retain identity and refresh context
+00:00 +9: external activity title refresh uses server state without text turns (true)
+00:00 +10: external activity title refresh uses server state without text turns (false)
+00:00 +11: external activity title refresh preserves server failure without rename
+00:00 +12: external activity title refresh does not call unsupported servers
+00:00 +13: external activity title refresh rechecks live permission after capability read
+00:00 +14: failed server title generation does not race recovery with a fallback rename
+00:00 +15: initial titles support return-only and legacy servers (true)
+00:00 +16: initial titles support return-only and legacy servers (false)
+00:00 +17: server title generation preserves saved title (manual: false)
+00:00 +18: server title generation preserves saved title (manual: true)
+00:00 +19: configured creation context is sampled once and frozen across lost replies
+00:00 +20: an empty loaded catalog is an empty transcript, not permanent loading
+00:00 +21: domain presentation retry retains creation and observers can update filters
+00:00 +22: initialization coalesces and a failed history read cannot create a chat
+00:00 +23: lost New response retains exact request metadata and identity across retry
+00:00 +24: New retry after hydration/history failure never creates another chat
+00:00 +25: a late active catalog cannot overwrite the archived view
+00:00 +26: selection generation excludes late selection while both sessions remain independent
+00:00 +27: archive/restore use SDK state and keep an archived transcript read-only
+00:00 +28: lost archive response reuses its original mutation identity
+00:00 +29: an opposite lifecycle action waits for canonical resolution of the uncertain change
+00:00 +30: pagination handles overlap and rejects a repeated cursor while preserving visible history
+00:00 +31: unread filtering uses remote activity for unopened conversations
+00:00 +32: All tests passed!

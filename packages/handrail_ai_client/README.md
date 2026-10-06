@@ -81,10 +81,17 @@ formatting adapters are documented in the widgets package.
 request until shared hydration and optional business presentation succeed.
 Retry reuses it even when the response or presentation fails. `ensureSession`
 reuses an initialized session; `openConversation` explicitly refreshes canonical
-metadata/state and recovers only the account's retained submission. Bind
+metadata/state. Opening and account observation reconcile a retained submission
+only after an authorized read proves its exact turn is completed, failed, or
+cancelled and no longer running. This releases the matching journal and captured
+draft origins; newer drafts/files and saved messages remain intact. Missing,
+running, inaccessible, or uncertain turns remain pending. Opening does not replay
+mutations: use the explicit `retryPendingMessage` action to retry the same saved
+identity. A 401/403 response alone never releases it. Bind
 `beforePendingRecovery` to the composer workspace's
 `capturePendingAcceptance(id)` to clear its original draft when a lost send is
-acknowledged on reopening. Newer edits and other conversations remain intact.
+acknowledged by explicit Retry. The standard composer registers exact durable
+draft cleanup automatically, including terminal reconciliation after reopening.
 
 Configure `newConversationMetadata: () => {'route': currentRoute}` on the account
 controller when New should capture host context. It runs only when creating a

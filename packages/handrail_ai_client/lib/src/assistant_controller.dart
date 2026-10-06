@@ -184,6 +184,10 @@ class HandrailAssistantController {
   final _changes = StreamController<HandrailAssistantController>.broadcast();
   final _descriptors = <String, HandrailConversationDescriptor>{};
   final _pending = <String>{}, _sending = <String>{}, _stopping = <String>{};
+  final _reconcilingPending = <String, Future<void>>{};
+  // Retain proof if local acknowledge/read loses its reply. This never replaces
+  // a journal entry and is revalidated by an authorized read before reuse.
+  final _terminalPending = <String, HandrailTurnSubmission>{};
   final _operationErrors = <String, HandrailGatewayException>{};
   final _cancelKeys = <String, String>{};
   final _cancelBeforeStart = <String>{};
@@ -747,12 +751,11 @@ class HandrailAssistantController {
       _assertConversationUsable(id);
       if (saved != null) {
         _pending.add(id);
-        final accepted = beforePendingRecovery?.call(id);
-        await session.retryPendingMessage(pendingStore,
-            onAccepted: (_) => accepted?.call());
-        _assertActive();
-        _pending.remove(id);
+        // Opening is observation, not permission to replay an uncertain write.
+        // Only the explicit Retry action may submit the retained identity again.
+        await _reconcileTerminalPending(id, session);
       } else {
+        _terminalPending.remove(id);
         _pending.remove(id);
       }
       _operationErrors.remove(id);
@@ -764,6 +767,7 @@ class HandrailAssistantController {
         if (!_disposed) _operationErrors[id] = cause;
       } else if (!_disposed &&
           generation == _selectionGeneration &&
+          !identical(cause, _operationErrors[id]) &&
           !(readingSession && identical(cause, _sessions[id]?.error))) {
         // Session read errors remain owned by the session and resolve only on a
         // successful refresh. Descriptor/storage/admission failures stay sticky.
@@ -890,6 +894,7 @@ class HandrailAssistantController {
           localDraft: localDraft,
           onAccepted: onAccepted);
       _assertActive();
+      _terminalPending.remove(id);
       _pending.remove(id);
       return result;
     } catch (cause) {
@@ -922,17 +927,24 @@ class HandrailAssistantController {
     _assertActive();
     final id = conversationId ?? _selectedId;
     if (id == null || _sending.contains(id)) return null;
+    await _reconcilingPending[id];
     _assertConversationUsable(id);
+    if (_sending.contains(id)) return null;
     _sending.add(id);
     _operationErrors.remove(id);
     _selectionError = null;
     _publish();
     try {
       final current = await ensureSession(id);
+      final accepted = beforePendingRecovery?.call(id);
       final value = await current.retryPendingMessage(pendingStore,
-          onAccepted: onAccepted);
+          onAccepted: (submission) {
+        accepted?.call();
+        onAccepted?.call(submission);
+      });
       await current.refresh();
       _assertActive();
+      _terminalPending.remove(id);
       _pending.remove(id);
       return value;
     } catch (cause) {
@@ -1047,7 +1059,10 @@ class HandrailAssistantController {
               HandrailTurnStatus.waitingForTool
             ].contains(remote?.status)) continue;
         try {
+          final activation = session._displayActivation;
           await session.refresh(automatic: automatic);
+          if (!activation.isCompleted)
+            await _reconcileTerminalPending(id, session);
         } catch (_) {/* Session retains its error/state. */}
         if (_disposed) return;
       }
@@ -1055,6 +1070,98 @@ class HandrailAssistantController {
         .whenComplete(() {
       _observing = null;
       _trimSessions();
+    });
+  }
+
+  /// An authorized exact-turn read can settle a lost/denied start without
+  /// replaying admission or starting work. Never infer this from latestTurn,
+  /// an activity summary, or a transport/authentication error.
+  Future<void> _reconcileTerminalPending(
+      String id, HandrailConversationSession session) {
+    final activation = session._displayActivation;
+    bool current() =>
+        !_disposed &&
+        !session._disposed &&
+        !activation.isCompleted &&
+        identical(_sessions[id], session) &&
+        !_deletedIds.contains(id) &&
+        !_deletions.containsKey(id) &&
+        _descriptors[id]?.lifecycle == 'active' &&
+        !_sending.contains(id) &&
+        session._refreshError == null &&
+        session.document != null &&
+        (id != _selectedId || _selectionError == null);
+    if (!_pending.contains(id) || !current()) return Future.value();
+    return _reconcilingPending[id] ??= (() async {
+      final previousError = _operationErrors[id];
+      try {
+        final journal = await pendingStore.load(id);
+        final saved = journal ?? _terminalPending[id];
+        if (!current() || saved == null || saved.conversationId != id) return;
+        if (journal != null) _terminalPending.remove(id);
+        // Automatic polling can be throttled. A full snapshot path still needs
+        // a fresh authorized read, not a previously cached terminal document.
+        if (session.capabilities?.displayHistory?.control != true)
+          await session.refresh();
+        if (!current()) return;
+        if (session.document is HandrailConversationDocument &&
+            session.document!.turns
+                    .where((turn) => turn['turn_id'] == saved.turnId)
+                    .length !=
+                1) return;
+        final turn =
+            await session._findTurn(saved.turnId, publishControl: true);
+        if (!current() ||
+            turn == null ||
+            turn['turn_id'] != saved.turnId ||
+            !const ['completed', 'failed', 'cancelled']
+                .contains(turn['status']) ||
+            turn['remote_may_still_be_running'] != false) return;
+        final retained = await pendingStore.load(id);
+        if (!current() ||
+            (retained == null
+                ? !identical(_terminalPending[id], saved)
+                : jsonEncode(retained.toJson()) != jsonEncode(saved.toJson())))
+          return;
+        // The saved terminal turn proves admission. Reconcile only its captured
+        // draft versions/file IDs, preserving edits made since that submission.
+        if (saved.localDraft case final origin?) {
+          try {
+            await _reconcileAcceptedDraft(id, origin);
+          } catch (_) {
+            throw const HandrailGatewayException('draft_cleanup_failed',
+                'Your message was saved, but its local draft could not be cleared. Retry the saved message.',
+                retryable: true);
+          }
+        }
+        if (!current()) return;
+        _terminalPending[id] = saved;
+        await pendingStore.acknowledge(saved); // Atomic compare-and-delete.
+        if (!current()) return;
+        final remaining = await pendingStore.load(id);
+        if (!current()) return;
+        _terminalPending.remove(id);
+        if (remaining != null) return;
+        _pending.remove(id);
+        if (identical(_operationErrors[id], previousError))
+          _operationErrors.remove(id);
+        if (_cancelBeforeStart.remove(id)) _stopping.remove(id);
+      } catch (cause) {
+        if (current()) {
+          final failure = _assistantFailure(
+              cause,
+              'pending_reconciliation_failed',
+              'The saved message could not be reconciled. Refresh to check its saved status.');
+          _operationErrors[id] = failure;
+          throw failure;
+        }
+        rethrow;
+      } finally {
+        _publish();
+      }
+    })()
+        .whenComplete(() {
+      _reconcilingPending.remove(id);
     });
   }
 
@@ -1290,6 +1397,7 @@ class HandrailAssistantController {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    _terminalPending.clear();
     _draftReconciler = null;
     approvals._disposeInbox();
     _pollTimer?.cancel();
