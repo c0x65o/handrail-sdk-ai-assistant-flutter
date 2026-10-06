@@ -31,7 +31,7 @@ try {
   const result = spawnSync(join(resolve(flutter), 'bin/cache/dart-sdk/bin/dart'), [
     join(resolve(flutter), 'bin/cache/flutter_tools.snapshot'), '--no-version-check',
     '--packages', packages, 'test', '--no-pub', '--concurrency=1',
-    ...(tests.length ? tests : ['tool/history_restoration_test.dart', 'tool/display_polling_test.dart'])
+    ...(tests.length ? tests : ['tool/history_restoration_test.dart', 'tool/display_polling_test.dart', 'tool/reentrant_assistant_test.dart'])
       .map(path => resolve(root, path)),
   ], { cwd: widgets, stdio: 'inherit' });
   if (result.error) throw result.error;

@@ -27,6 +27,43 @@ Map row(HandrailAssistantController controller, String id) =>
         .firstWhere((value) => value['id'] == id);
 
 void main() {
+  test('refresh reconciles newly read descriptors without reentrant emission',
+      () async {
+    final fixture = Fixture();
+    final scopes = <List<String>>[];
+    final controller = HandrailAssistantController(
+        client: fixture.client,
+        pendingStore: fixture.pending,
+        pollingInterval: null,
+        voicePollingInterval: null,
+        readVoiceWorkspace: (ids, _) async {
+          scopes.add(List.of(ids));
+          return HandrailRealtimeWorkspacePage(calls: [
+            for (final id in ids) call(id, uncertain: true),
+          ]);
+        });
+    addTearDown(controller.dispose);
+    addTearDown(fixture.client.close);
+    await controller.initialize();
+    await controller.voiceWorkspace!.refresh();
+    fixture.rows['three'] = descriptor('three');
+    // Reading a descriptor records it before the next session/catalog publish.
+    // A simultaneous monitor notification must safely reconcile that scope.
+    await controller.getDescriptor('three');
+    await controller.voiceWorkspace!.refresh();
+    await Future<void>.delayed(Duration.zero);
+    await controller.openConversation('three');
+    await controller.refreshObservations();
+    await controller.voiceWorkspace!.refresh();
+    expect(scopes.last, ['one', 'three', 'two']);
+    expect(controller.voiceWorkspace!.state.calls, hasLength(3));
+    expect(controller.voiceWorkspace!.state.error, isNull);
+    expect(controller.error, isNull);
+    expect(controller.canSend, isTrue);
+    expect(
+        fixture.requests.any((r) => r.url.path.contains('/turns/')), isFalse);
+  });
+
   test(
       'catalog growth beyond the voice limit reports stale activity without async failure',
       () async {

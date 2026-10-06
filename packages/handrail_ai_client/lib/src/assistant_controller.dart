@@ -460,8 +460,8 @@ class HandrailAssistantController {
         ..sort();
       final identity = jsonEncode(ids);
       if (identity != _voiceIdentity) {
-        // Set before the monitor emits synchronously; text deltas must not
-        // restart voice reads. Keep known archived/unselected rows observable.
+        // Record before scheduling observation; text deltas must not restart
+        // voice reads. Keep known archived/unselected rows observable.
         _voiceIdentity = identity;
         unawaited(_setVoiceConversations(monitor, ids));
         if (voicePollingInterval != null) monitor.startPolling();

@@ -127,8 +127,11 @@ class HandrailRealtimeWorkspaceMonitor {
       readPage;
   final Duration pollingInterval;
   final int maxPages;
-  final _changes =
-      StreamController<HandrailRealtimeWorkspaceState>.broadcast(sync: true);
+  // Listeners may reconcile the catalog (setConversations) or dispose while
+  // observing a refresh. Queue every immutable snapshot in order rather than
+  // re-entering a synchronous broadcast's add/close. State and generation fences
+  // still change immediately, before any in-flight response can be applied.
+  final _changes = StreamController<HandrailRealtimeWorkspaceState>.broadcast();
   HandrailRealtimeWorkspaceState _state = HandrailRealtimeWorkspaceState();
   List<String> _ids = const [];
   Future<void>? _reading;

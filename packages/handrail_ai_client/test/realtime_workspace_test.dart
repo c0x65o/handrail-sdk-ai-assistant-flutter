@@ -18,6 +18,59 @@ HandrailRealtimeWorkspaceCall call(
     );
 
 void main() {
+  test('listener scope changes deliver every state in order to all listeners',
+      () async {
+    final monitor = HandrailRealtimeWorkspaceMonitor(
+        readPage: (ids, _) async => HandrailRealtimeWorkspacePage(
+            calls: [for (final id in ids) call(id, 'voice')]));
+    addTearDown(monitor.dispose);
+    final first = <HandrailRealtimeWorkspaceState>[];
+    final second = <HandrailRealtimeWorkspaceState>[];
+    Future<void>? changed;
+    monitor.changes.listen((state) {
+      first.add(state);
+      if (state.loading && changed == null) {
+        changed = monitor.setConversations(['two']);
+      }
+    });
+    monitor.changes.listen(second.add);
+    await monitor.setConversations(['one']);
+    await changed;
+    await Future<void>.delayed(Duration.zero);
+    expect(second, orderedEquals(first));
+    expect(
+        first.map((state) => state.loading), [false, true, false, true, false]);
+    expect(first.where((state) => state.calls.isNotEmpty), hasLength(1));
+    expect(monitor.state.calls.single.call.conversationId, 'two');
+    expect(monitor.state.synchronized, isTrue);
+    expect(monitor.state.error, isNull);
+  });
+
+  test('a listener can dispose during loading without more reads or events',
+      () async {
+    var reads = 0;
+    final monitor = HandrailRealtimeWorkspaceMonitor(readPage: (_, __) async {
+      reads++;
+      return HandrailRealtimeWorkspacePage(calls: []);
+    });
+    Future<void>? closing;
+    final states = <HandrailRealtimeWorkspaceState>[];
+    monitor.changes.listen((state) {
+      states.add(state);
+      if (state.loading) closing = monitor.dispose();
+    });
+    await monitor.setConversations(['one']);
+    await closing;
+    final count = states.length;
+    await monitor.refresh();
+    await monitor.setConversations(['two']);
+    expect(states, hasLength(count));
+    expect(states.last.loading, isTrue);
+    // A read already dispatched before asynchronous delivery may finish, but
+    // disposal must fence its result and prevent any subsequent work.
+    expect(reads, lessThanOrEqualTo(1));
+  });
+
   test(
       'oversized scopes fence late reads, retain evidence and recover on a valid scope',
       () async {
