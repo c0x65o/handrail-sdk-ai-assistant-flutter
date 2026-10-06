@@ -827,19 +827,29 @@ class HandrailConversationSession {
 
   Future<HandrailTurnSubmission?> retryPendingMessage(
       HandrailPendingTurnStore pendingStore,
-      {void Function(HandrailTurnSubmission)? onAccepted}) async {
+      {void Function(HandrailTurnSubmission)? onAccepted}) =>
+      _retryPendingMessage(pendingStore, onAccepted: onAccepted);
+
+  Future<HandrailTurnSubmission?> _retryPendingMessage(
+      HandrailPendingTurnStore pendingStore,
+      {void Function(HandrailTurnSubmission)? onAccepted,
+      Future<void> Function(HandrailTurnSubmission)? beforeSubmit}) async {
     final submission = await pendingStore.load(conversationId);
     if (submission == null) return null;
-    await _submitRetained(submission, pendingStore, onAccepted);
+    await _submitRetained(submission, pendingStore, onAccepted,
+        beforeSubmit:
+            beforeSubmit == null ? null : () => beforeSubmit(submission));
     return submission;
   }
 
   Future<void> _submitRetained(
       HandrailTurnSubmission submission,
       HandrailPendingTurnStore pendingStore,
-      void Function(HandrailTurnSubmission)? onAccepted) async {
+      void Function(HandrailTurnSubmission)? onAccepted,
+      {Future<void> Function()? beforeSubmit}) async {
     try {
-      await submitTurn(submission, onAccepted: onAccepted);
+      await _submit(submission,
+          onAccepted: onAccepted, beforeSubmit: beforeSubmit);
     } on _RejectedAdmission {
       // A definite rejection admits nothing. Keep editable drafts/files while
       // releasing the exact journal so the user can correct the request.
@@ -857,7 +867,12 @@ class HandrailConversationSession {
   /// up. This is a presentation notification, not execution success.
   /// Callback failures cannot strand admitted work. Coalesced callers are notified too.
   Future<void> submitTurn(HandrailTurnSubmission submission,
-      {void Function(HandrailTurnSubmission)? onAccepted}) {
+      {void Function(HandrailTurnSubmission)? onAccepted}) =>
+      _submit(submission, onAccepted: onAccepted);
+
+  Future<void> _submit(HandrailTurnSubmission submission,
+      {void Function(HandrailTurnSubmission)? onAccepted,
+      Future<void> Function()? beforeSubmit}) {
     if (_disposed)
       return Future.error(StateError('Conversation session is disposed'));
     if (submission.conversationId != conversationId)
@@ -879,8 +894,9 @@ class HandrailConversationSession {
     _admittedSubmission = null;
     _admissionCallbacks.clear();
     _registerAdmissionCallback(onAccepted);
-    final submitting =
-        _submitting = _submitTurn(submission).catchError((Object cause) {
+    final submitting = _submitting = _submitTurn(submission,
+            beforeSubmit: beforeSubmit)
+        .catchError((Object cause) {
       if (_disposed) throw cause;
       if (cause is _RejectedAdmission) {
         _outgoingMessage = null;
@@ -934,8 +950,10 @@ class HandrailConversationSession {
     _publish();
   }
 
-  Future<void> _submitTurn(HandrailTurnSubmission submission) async {
+  Future<void> _submitTurn(HandrailTurnSubmission submission,
+      {Future<void> Function()? beforeSubmit}) async {
     await refresh();
+    if (beforeSubmit != null) await beforeSubmit();
     if (_disposed) throw StateError('Conversation session is disposed');
     final active = _document!.activeTurnId;
     if (active != null && active != submission.turnId)

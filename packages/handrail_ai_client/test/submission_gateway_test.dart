@@ -231,6 +231,9 @@ void main() {
         autoCreate: false);
     addTearDown(controller.dispose);
     await controller.openConversation(id);
+    expect(await pending.load(id), isNotNull);
+    expect((await stats())['starts'], before['starts']);
+    await controller.transcriptBinding.retry();
     expect(await pending.load(id), isNull);
     expect(binaryReads, 0);
     expect((await stats())['starts'], (before['starts'] as int) + 1);
@@ -293,6 +296,9 @@ void main() {
         autoCreate: false);
     addTearDown(() => controller.dispose());
     await controller.openConversation(id);
+    expect((await pending().load(id))!.toJson(), original);
+    expect((await stats())['starts'], before['starts']);
+    await controller.transcriptBinding.retry();
     expect(await pending().load(id), isNull);
     expect(await pending().readDraft(id), newer);
     expect((await stats())['starts'], (before['starts'] as int) + 1);
@@ -1034,6 +1040,10 @@ void main() {
       controller = HandrailAssistantController(
           client: client(), pendingStore: journal, autoCreate: false);
       await controller.openConversation(id);
+      expect((await journal.load(id))!.toJson(), saved.toJson());
+      expect((await stats())['admissions'], before['admissions']);
+      expect((await stats())['starts'], before['starts']);
+      await controller.transcriptBinding.retry();
       expect(await journal.load(id), isNull);
       expect((await stats())['invocations'], before['invocations'] + 1);
       expect(controller.document!.activeTurnId, saved.turnId);

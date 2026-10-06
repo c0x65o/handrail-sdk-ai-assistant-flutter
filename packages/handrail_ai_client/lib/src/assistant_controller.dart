@@ -185,6 +185,7 @@ class HandrailAssistantController {
   final _descriptors = <String, HandrailConversationDescriptor>{};
   final _pending = <String>{}, _sending = <String>{}, _stopping = <String>{};
   final _reconcilingPending = <String, Future<void>>{};
+  final _transcriptRetries = <String?, Future<void>>{};
   // Retain proof if local acknowledge/read loses its reply. This never replaces
   // a journal entry and is revalidated by an authorized read before reuse.
   final _terminalPending = <String, HandrailTurnSubmission>{};
@@ -423,10 +424,78 @@ class HandrailAssistantController {
                   session?.error?.message ??
                   (document == null ? historyError?.message : null),
             },
-        retry: () =>
-            selectedId == null ? initialize() : openConversation(selectedId!),
+        retry: _retryTranscript,
         markRead: markRead,
       );
+
+  Future<void> _retryTranscript() {
+    _assertActive();
+    final id = _selectedId;
+    final existing = _transcriptRetries[id];
+    if (existing != null) return existing;
+    if (busy) return Future.value();
+    final observationOnly = _selectionError != null ||
+        _historyError != null ||
+        session?._refreshError != null;
+    var generation = _selectionGeneration;
+    bool current() =>
+        !_disposed &&
+        _selectedId == id &&
+        _selectionGeneration == generation;
+    late final Future<void> operation;
+    operation = Future<void>.microtask(() async {
+      // Capture the user's saved intent before observation can settle or replace
+      // it. A Retry on a read error must never discover a new write to perform.
+      final saved = id == null ? null : await pendingStore.load(id);
+      if (!current()) return;
+      if (id == null || _historyError != null) {
+        await refreshHistory();
+        if (!current()) return;
+      }
+      if (id == null) {
+        _selectionError = null;
+        _publish();
+        final first = _history
+            .where((row) => !hasPendingDeletion(row.id))
+            .firstOrNull;
+        if (first != null) await openConversation(first.id);
+        return;
+      }
+      final observing = openConversation(id);
+      generation = _selectionGeneration;
+      await observing;
+      if (!current() ||
+          busy ||
+          observationOnly ||
+          saved == null ||
+          !_pending.contains(id) ||
+          _descriptors[id]?.lifecycle != 'active') return;
+      await _retryPendingMessage(conversationId: id, beforeSubmit: (value) async {
+        // Recheck after the retry's own authorized refresh, immediately before
+        // admission. Navigation/reentry, account disposal and newer journals
+        // cannot inherit permission from this click. Once admission is sent,
+        // the existing contract finishes that exact operation across navigation.
+        final retained = await pendingStore.load(id);
+        if (!current() ||
+            _selectionError != null ||
+            _descriptors[id]?.lifecycle != 'active' ||
+            _deletions.containsKey(id) ||
+            _deletedIds.contains(id) ||
+            _clearOperations.containsKey(id) ||
+            _lifecycleOperations.containsKey(id) ||
+            retained == null ||
+            jsonEncode(value.toJson()) != jsonEncode(saved.toJson()) ||
+            jsonEncode(retained.toJson()) != jsonEncode(saved.toJson())) {
+          throw StateError('The selected saved message changed during Retry');
+        }
+      });
+    }).whenComplete(() {
+      if (identical(_transcriptRetries[id], operation))
+        _transcriptRetries.remove(id);
+    });
+    _transcriptRetries[id] = operation;
+    return operation;
+  }
 
   void _assertActive() {
     if (_disposed) throw StateError('Assistant account is closed');
@@ -923,7 +992,14 @@ class HandrailAssistantController {
 
   Future<HandrailTurnSubmission?> retryPendingMessage(
       {String? conversationId,
-      void Function(HandrailTurnSubmission)? onAccepted}) async {
+      void Function(HandrailTurnSubmission)? onAccepted}) =>
+      _retryPendingMessage(
+          conversationId: conversationId, onAccepted: onAccepted);
+
+  Future<HandrailTurnSubmission?> _retryPendingMessage(
+      {String? conversationId,
+      void Function(HandrailTurnSubmission)? onAccepted,
+      Future<void> Function(HandrailTurnSubmission)? beforeSubmit}) async {
     _assertActive();
     final id = conversationId ?? _selectedId;
     if (id == null || _sending.contains(id)) return null;
@@ -937,7 +1013,8 @@ class HandrailAssistantController {
     try {
       final current = await ensureSession(id);
       final accepted = beforePendingRecovery?.call(id);
-      final value = await current.retryPendingMessage(pendingStore,
+      final value = await current._retryPendingMessage(pendingStore,
+          beforeSubmit: beforeSubmit,
           onAccepted: (submission) {
         accepted?.call();
         onAccepted?.call(submission);

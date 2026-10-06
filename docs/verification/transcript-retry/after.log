@@ -1,0 +1,47 @@
+The new artifact "libimobiledevice" was downloaded, but Flutter failed to update its stamp file, receiving the error "FileSystemException: Cannot open file, path = '/opt/handrail/.handrail/flutter-sdk/bin/cache/libimobiledevice.stamp' (OS Error: Read-only file system, errno = 30)". Flutter can continue, but the artifact may be re-downloaded on subsequent invocations until the problem is resolved.
+The new artifact "libusbmuxd" was downloaded, but Flutter failed to update its stamp file, receiving the error "FileSystemException: Cannot open file, path = '/opt/handrail/.handrail/flutter-sdk/bin/cache/libusbmuxd.stamp' (OS Error: Read-only file system, errno = 30)". Flutter can continue, but the artifact may be re-downloaded on subsequent invocations until the problem is resolved.
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart
+00:00 +0: lost start uses explicit UI Retry once; bounded=true accepted=false
+00:02 +1: lost start uses explicit UI Retry once; bounded=true accepted=true
+00:03 +2: terminal denial Retry enables follow-up without replay; bounded=true
+00:04 +3: selection during Retry read 1 prevents replay; bounded=true
+00:04 +4: reentry during Retry read 1 prevents replay; bounded=true
+00:05 +5: dispose during Retry read 1 prevents replay; bounded=true
+00:06 +6: replacement during Retry read 1 prevents replay; bounded=true
+00:06 +7: selection during Retry read 3 prevents replay; bounded=true
+00:07 +8: reentry during Retry read 3 prevents replay; bounded=true
+00:07 +9: dispose during Retry read 3 prevents replay; bounded=true
+00:08 +10: replacement during Retry read 3 prevents replay; bounded=true
+00:08 +11: Retry retains pending on 401; bounded=true
+00:09 +12: Retry retains pending on 403; bounded=true
+00:09 +13: Retry retains pending on 503; bounded=true
+00:10 +14: Retry retains pending on busy; bounded=true
+00:10 +15: Retry retains pending on archived; bounded=true
+00:11 +16: Retry retains pending on storage; bounded=true
+00:11 +17: read-only Retry without pending recovers history; bounded=true
+00:11 +18: lost start uses explicit UI Retry once; bounded=false accepted=false
+00:11 +19: lost start uses explicit UI Retry once; bounded=false accepted=true
+00:12 +20: terminal denial Retry enables follow-up without replay; bounded=false
+00:12 +21: selection during Retry read 1 prevents replay; bounded=false
+00:12 +22: reentry during Retry read 1 prevents replay; bounded=false
+00:13 +23: dispose during Retry read 1 prevents replay; bounded=false
+00:13 +24: replacement during Retry read 1 prevents replay; bounded=false
+00:13 +25: selection during Retry read 3 prevents replay; bounded=false
+00:13 +26: reentry during Retry read 3 prevents replay; bounded=false
+00:14 +27: dispose during Retry read 3 prevents replay; bounded=false
+00:14 +28: replacement during Retry read 3 prevents replay; bounded=false
+00:14 +29: Retry retains pending on 401; bounded=false
+00:14 +30: Retry retains pending on 403; bounded=false
+00:14 +31: Retry retains pending on 503; bounded=false
+00:15 +32: Retry retains pending on busy; bounded=false
+00:15 +33: Retry retains pending on archived; bounded=false
+00:15 +34: Retry retains pending on storage; bounded=false
+00:15 +35: read-only Retry without pending recovers history; bounded=false
+00:15 +36: catalog Retry observes recovered empty history without creating
+00:15 +37: catalog Retry observes recovered existing history without creating
+00:15 +38: explicit Retry rejects foreign-turn exact-turn proof
+00:16 +39: explicit Retry rejects foreign-conversation exact-turn proof
+00:16 +40: explicit Retry rejects stale exact-turn proof
+00:16 +41: explicit Retry rejects generation exact-turn proof
+00:17 +42: explicit Retry rejects preparing exact-turn proof
+00:17 +43: All tests passed!

@@ -86,8 +86,15 @@ only after an authorized read proves its exact turn is completed, failed, or
 cancelled and no longer running. This releases the matching journal and captured
 draft origins; newer drafts/files and saved messages remain intact. Missing,
 running, inaccessible, or uncertain turns remain pending. Opening does not replay
-mutations: use the explicit `retryPendingMessage` action to retry the same saved
-identity. A 401/403 response alone never releases it. Bind
+mutations. The standard transcript's explicit Retry first observes/reconciles,
+then retries the same retained admission/start identity if still needed. It
+coalesces repeated clicks and checks the selected account/conversation and exact
+journal again before replay; navigation or journal replacement during these reads
+cancels replay. Retry on a blocked read/auth/history error performs observation
+only; any remaining pending submission requires another explicit Retry after
+reads recover. Without pending intent, Retry only recovers observation (it does
+not create a conversation). Headless hosts can use `retryPendingMessage` directly.
+A 401/403 response alone never releases the journal. Bind
 `beforePendingRecovery` to the composer workspace's
 `capturePendingAcceptance(id)` to clear its original draft when a lost send is
 acknowledged by explicit Retry. The standard composer registers exact durable
