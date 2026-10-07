@@ -1,0 +1,19 @@
+{
+  "entryFiles": 487,
+  "unchangedEntryFiles": 485,
+  "changed": {
+    "packages/handrail_ai_widgets/lib/conversation_transcript.dart": {
+      "before": "20bb7a8c9a6891e7d943b8b29fb98c96c4d726fd0e4da447f3a9ef571c2b5e98",
+      "after": "60ac6a178303a0a36e475c7856db3bd16763b36fe35f1d4db4ccf204e5e0dbc3"
+    },
+    "packages/handrail_ai_widgets/lib/display_transcript.dart": {
+      "before": "81aca850087b7dda170f6440463fafe825001b6296f940f52abe1fefdf1b22b0",
+      "after": "4ff8c0979ee44551f0b571018f31967e42c010991bfe00be052bd830d40e4ec9"
+    }
+  },
+  "clientDiffSha256": "89f8833e781b1e8b7459560d99bbc4dfc65db7fdcff2c8c8f70a45a3c554f53e",
+  "jsStatus": "",
+  "jsDistFilesMatchingPriorReview": 478,
+  "minimumTickerMatchesOfficialGitObject": true,
+  "allOriginalReportsAndFixturesPreserved": true
+}

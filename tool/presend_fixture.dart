@@ -79,6 +79,7 @@ class PresendTrace extends http.BaseClient {
   HandrailConversationSession? Function()? session;
   Future<void> Function(Map<String, Object?>)? beforeRequest;
   Completer<void>? holdControl;
+  bool snapshotFallback = false;
   final controlEntered = Completer<void>();
   int nextId = 0;
   void mark(String event, [Map<String, Object?> data = const {}]) => rows.add({
@@ -135,7 +136,12 @@ class PresendTrace extends http.BaseClient {
         row['headersUs'] = clock.elapsedMicroseconds;
         return response;
       }
-      final bytes = await response.stream.toBytes();
+      var bytes = await response.stream.toBytes();
+      if (snapshotFallback && request.url.path.endsWith('/capabilities')) {
+        final envelope = jsonDecode(utf8.decode(bytes)) as Map;
+        (envelope['value'] as Map).remove('displayHistory');
+        bytes = utf8.encode(jsonEncode(envelope));
+      }
       if (bytes.isNotEmpty) {
         final envelope = jsonDecode(utf8.decode(bytes)) as Map;
         final value = envelope['value'];
@@ -147,12 +153,15 @@ class PresendTrace extends http.BaseClient {
               'canonicalRevision',
               'generation',
               'throughRevision',
+              'nextCursor',
               'activeTurnId',
               'acknowledgements',
               'latestTurn',
               'requestedTurn',
             ])
               if (value.containsKey(key)) key: value[key],
+            if (value['records'] is List)
+              'recordCount': (value['records'] as List).length,
           };
         }
         if (envelope['error'] is Map)
@@ -189,6 +198,7 @@ class PresendTrace extends http.BaseClient {
       )
       .toList();
   void save(String directory) {
+    Directory(directory).createSync(recursive: true);
     File(
       '$directory/$label.json',
     ).writeAsStringSync(const JsonEncoder.withIndent('  ').convert(rows));

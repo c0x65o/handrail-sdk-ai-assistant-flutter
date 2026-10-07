@@ -1,0 +1,190 @@
+Flutter widget minimum compatibility repair — 2026-10-07 UTC
+Work request e64fb050-27a3-4e2d-99cf-a6faf65dcce9
+Prior independent review a7591dc7-562c-43e3-acc1-83ad128d62e8
+
+Verdict
+-------
+The precise supported-minimum compile blocker is corrected. Minimum widget
+analysis and runtime qualification pass. Combined minimum/current publication
+qualification remains HOLD: current fatal-infos analysis fails on two public-API
+deprecations, which this request explicitly forbids suppressing. Compilation and
+focused runtime tests pass on both runtimes. This is not publication approval.
+
+Runtime change
+--------------
+The exact runtime diff is runtime.diff: only two expression replacements.
+ conversation_transcript.dart:239
+ - !TickerMode.valuesOf(context).enabled ||
+ + !TickerMode.of(context) ||
+ display_transcript.dart:299
+ - TickerMode.valuesOf(context).enabled &&
+ + TickerMode.of(context) &&
+No polling interval, foreground/route/tail guard, minimum, dependency, analyzer
+configuration or reviewed client optimization was changed. No suppression or
+compatibility framework was introduced.
+
+API inspection
+--------------
+The retained official 3.38.1 source implements of(context) by depending on its
+private effective inherited ticker widget and returning enabled, default true.
+Nested TickerMode computes ancestorEnabled && localEnabled. It has no valuesOf.
+The current 3.41.7 source implements of(context) with the same inherited
+subscription and boolean. valuesOf(context).enabled reads the same effective
+boolean and subscribes to the same inherited widget. forceFrames is irrelevant
+to these visibility guards. Both paths notify on effective inherited changes.
+Using getNotifier().value would lose the inherited subscription and is also
+deprecated on current; manual ancestor walking would duplicate framework logic.
+See minimum-ticker-api.txt, current-ticker-api.txt and toolchain-identity.json.
+
+The compatible public of API is deprecated in current Flutter. The work request
+explicitly prohibits suppressing analysis. Therefore both deprecation infos are
+left visible and the unchanged --fatal-infos policy fails on current. This is
+not a compile failure and does not invalidate passing runtime tests, but it does
+prevent a clean combined publication qualification. The prior review suggested
+a suppression; this request's stricter prohibition takes precedence.
+
+Version and minimum contracts
+-----------------------------
+Flutter repository HEAD remains 5cf833d0bb9d9dd001e697947f9f3e4945b17d20.
+Client 0.1.41: Dart >=3.4.0 <4.0.0.
+Widgets 0.1.1: Dart >=3.10.0 <4.0.0, Flutter >=3.38.0.
+JS 0.2.79 remains 7ff3b9f23467ce01e578d7039c3ffa35e2f557b6, clean.
+No version, manifest, lockfile or Git dependency was changed.
+
+The first actual satisfying stable toolchain in the reviewed minimum line is
+Flutter 3.38.1 / Dart 3.10.0; 3.38.0 contains a prerelease Dart rejected by the
+widget constraint, as preserved in the prior review. Reused its qualified SDK:
+ .dart_tool/presend-review-flutter-supported/flutter
+ framework b45fa18946ecc2d9b4009952c636ba7e2ffbb787
+ official archive SHA256
+ 8f19a3d9e70b183c8b746910fb6d905c27c5865b5245aa72c645205fa8aaeab2
+Version metadata matches the prior review byte-for-byte in meaning; its original
+archive/resolution/provenance records remain untouched. No download was needed.
+Current prepared runtime is Flutter 3.41.7 / Dart 3.11.5, framework
+cc0734ac716fbb8b90f3f9db8020958b1553afa7. Its metadata reports [user-branch] and
+unknown source, preserved in current-version.json; no new official provenance
+claim is made for the environment's current SDK.
+
+Test scope
+----------
+transcript_visibility_test.dart adds 12 cases: snapshot conversation, direct
+display transcript, and conversation using display pages, each exercised through
+local TickerMode, disabled ancestor with enabled descendant, application
+background/foreground, and non-opaque covering route/return. The non-opaque route
+keeps tickers enabled, independently testing isCurrent. The identical child and
+retained State require inherited notifications on return, rather than remounts
+or fixture events. Hidden updates do not acknowledge read or poll. Return
+acknowledges latest on the next frames without a new event. Direct display
+refresh resumes within the unchanged configured timer interval (250 ms in test).
+Conversation widgets own no polling timer and leave account observation to the
+controller; no global/consumer hidden-polling claim is inferred from this.
+Disposal stops the direct widget timer, and read acknowledgement is deduplicated.
+Existing tests additionally cover opaque routes, visible tails, scroll position,
+transient/permission errors and foreground polling.
+
+Focused checks use one worker and correct SDK-specific flutter/flutter_test/
+sky_engine package roots. Temporary source maps are qualification tooling, not
+SDK installation/adoption. Minimum resolver dependencies and lock come from the
+already qualified isolated review resolver; repository package locks are intact.
+Recovery/Retry/draft/journal cases reuse existing tests and HTTP/storage boundary
+fixtures. No new fake database was created. The composer diagnostic reuses the
+unchanged producer instrumentation and existing embedded PGlite/JS.79 gateway.
+Native PostgreSQL 11-case baseline/candidate/Dart3.4 evidence remains the prior
+review's proof; it is not rerun for this two-widget change.
+
+Checks and failures
+-------------------
+PASS minimum-after-analysis.log: no issues, exit 0.
+FAIL current-after-analysis.log: exactly two deprecated_member_use infos, exit 1;
+zero analyzer errors. No diagnostics were suppressed.
+PASS minimum-after-tests-attempt3.log: 220/220 in nine focused files.
+PASS current-after-tests.log: 220/220 in the same nine files.
+PASS minimum-polling-supported.log: six additional scroll/polling assertions.
+PASS minimum-composer-attempt4.log: public packaged composer diagnostic, 1/1.
+PASS current-composer.log: public packaged composer diagnostic, 1/1.
+PASS current-original-polling.log: six original unmodified scroll/polling tests.
+Thus 220 focused cases + six polling cases + one composer diagnostic per runtime;
+minimum polling uses the narrowly adapted finder described below.
+PASS new test format check, all three runner node syntax checks, git diff --check.
+PASS final custody: 485/487 pre-existing files unchanged; the only changes are
+the two widget runtime files. All 478 JS dist artifacts still match the prior
+independent fresh-build hashes, and JS status remains clean. Compiler copies of
+both package libraries match the final workspace byte-for-byte. The minimum
+ticker source also matches its official framework Git object.
+
+Before proof: minimum-before-analysis.log has both original undefined_method
+errors, exit 3. minimum-before-tests.log has the original valuesOf compile errors
+and no executed tests, exit 1. These are still recorded as FAILED, as are the
+prior review's minimum-widgets-analysis.log and minimum-widgets-tests.log.
+
+Preserved new harness failures (not runtime defects):
+- minimum-after-tests-attempt1.log: 219 passed, seven failed. One protocol-parser
+  subprocess used the wrong isolated working directory. The other six were exact
+  FilledButton type finders: minimum Flutter's tonalIcon factory returns private
+  _FilledButtonWithIcon, a FilledButton subclass; current returns FilledButton.
+  The actual controls and production behavior were present. run-polling.mjs makes
+  only five finder replacements in a disposable original test copy, preserving
+  all six behavior assertions and the original fixture bytes. minimum/current
+  button API extracts and polling adapter hashes record this distinction.
+- minimum-after-tests.log: an intermediate cwd change failed before tests with
+  native-assets firstWhere: no package root matching the cwd. The final isolated
+  project keeps its own matching package map, graph, pubspec and relative gateway
+  fixture path. It passes the complete required 220-case run. Original runner
+  attempts are preserved alongside their failed logs.
+- minimum-composer.log and minimum-composer-attempt2.log: the initial composer
+  adapter mixed the current cwd's package graph with minimum dependencies. Both
+  failed asset dependency traversal before compiling a test.
+- minimum-composer-attempt3.log: the isolated project's plugin discovery lacked
+  its on-disk package_config.json, despite the compiler --packages map. Flutter
+  reported this setup error and then the producer's 230-second timeout fired.
+  The final adapter writes both maps using the minimum resolver; attempt4 passes.
+  Original producer source/fixture and runtime source were never patched for it.
+Current native cache stamp warnings on the read-only prepared SDK are retained;
+they do not prevent the recorded successful widget tests.
+
+Evidence preservation and remaining gates
+-----------------------------------------
+Entry custody includes 487 existing tracked/untracked files. Only the two widget
+runtime files are intentionally changed; all incoming client witness source,
+implementation/review reports and fixtures are preserved. New tests, runners and
+logs are additive in this work request. Production client diff SHA256 remains
+89f8833e781b1e8b7459560d99bbc4dfc65db7fdcff2c8c8f70a45a3c554f53e.
+Final custody/hashes record the comparison, including original failed logs.
+
+The owner workflow still owns publication approval and an immutable published
+Flutter Git SHA. Consumers need the exact authorized full HTTPS Git pin and
+matching lock, while JS .79 stays frozen. No consumer was edited or inspected.
+The unchanged full driver hash from review is
+59ce35e604506920f9e385c4f4968dad57c710979eb8151883aad7efd57bcca7.
+Preview's 126/120 first-window failure remains OPEN. Neither a widget compile fix
+nor the earlier single saved request proves the whole budget or all 26 consumer
+continuity duties. Actual consumer adoption, account disposal/auth/RLS, Preview
+PostgreSQL configuration, device/rate-window timing, iOS/Android native behavior
+and real provider conditions remain separate gates. No native scaffold was
+created, so attached mobile platform settings require no source changes here.
+Authentication snapshot 08346f8bc724 is unchanged and unrelated to this patch.
+
+Read Handrail current_context, attached KBs, SDK implementation KB, JS AGENTS,
+Flutter/client/widget documentation, Makefile/manifests, platform contracts,
+prior independent report, actual framework APIs and lifecycle tests. The old
+KB's Flutter-in-JS path is superseded by AGENTS and this request.
+Full CI was not invoked; the five-minute full-CI auto-skip contract/config was
+preserved. Focused expensive checks run sequentially with <=240-second bounds.
+No commit, push, PR, deploy, consumer edit, Handrail database/queue mutation,
+credential/access change or real provider effect occurred.
+
+
+Reproduction (from Flutter repository root)
+------------------------------------------
+Use new labels to preserve existing evidence; runners reject existing log labels.
+Run expensive commands sequentially, each with timeout -k 5s 240s:
+ node docs/qa/widget-compatibility-2026-10-07/run-check.mjs minimum analyze NEW-LABEL
+ node docs/qa/widget-compatibility-2026-10-07/run-check.mjs current analyze NEW-LABEL
+ node docs/qa/widget-compatibility-2026-10-07/run-check.mjs minimum test NEW-LABEL
+ node docs/qa/widget-compatibility-2026-10-07/run-check.mjs current test NEW-LABEL
+ node docs/qa/widget-compatibility-2026-10-07/run-composer.mjs minimum NEW-LABEL
+ node docs/qa/widget-compatibility-2026-10-07/run-composer.mjs current NEW-LABEL
+The default test list is the nine-file 220-case scope. Additional paths may follow
+the test label. run-polling.mjs records the exact minimum finder adaptation; the
+original file remains unchanged. Source/config copies stay in ignored .dart_tool.
+This tooling does not change installed SDK Git dependencies or repository locks.

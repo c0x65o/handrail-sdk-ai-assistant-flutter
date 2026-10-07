@@ -141,6 +141,7 @@ extension _HandrailBoundedSession on HandrailConversationSession {
 
   Future<T> _displayRead<T>(Future<T> Function(Future<void>) read) async {
     if (_disposed) throw StateError('Conversation session is disposed');
+    _displayReadGeneration++;
     final request = Completer<void>();
     _displayRequests.add(request);
     try {
@@ -151,7 +152,7 @@ extension _HandrailBoundedSession on HandrailConversationSession {
     }
   }
 
-  Future<void> _refreshDisplay() async {
+  Future<void> _refreshDisplay({_PreparedChanges? preparation}) async {
     final capability = _capabilities!.displayHistory!;
     final activation = _displayActivation;
     late HandrailDisplayControl control;
@@ -177,6 +178,9 @@ extension _HandrailBoundedSession on HandrailConversationSession {
           'Saved conversation controls are temporarily behind.',
           retryable: true);
     }
+    // Always authorize/read control first. The witness is spent even when its
+    // predicate fails; all uncertain cases retain the ordinary window read.
+    final reuseChanges = preparation?.consume(this, control) ?? false;
     final previous = _control;
     if (previous?.generation != control.generation) {
       if (previous != null) _outgoingMessage = null;
@@ -212,7 +216,7 @@ extension _HandrailBoundedSession on HandrailConversationSession {
     if (window.state.conversationId == null ||
         previous?.generation != control.generation) {
       await window.select(conversationId);
-    } else {
+    } else if (!reuseChanges) {
       await window.refresh();
     }
     await window._settleSelection(conversationId);
@@ -421,5 +425,121 @@ extension _HandrailBoundedSession on HandrailConversationSession {
       _relatedCursor = page.nextCursor;
       _relatedGroup = group;
     }
+  }
+}
+
+// One immediate send's local proof, never serialized or exposed to hosts. The
+// account-owned session/client must be disposed on identity changes, as required
+// by the existing controller contract. This grants no authorization or CAS.
+class _PreparedChanges {
+  final HandrailConversationSession session;
+  final HandrailDisplayControl control;
+  final HandrailDisplayWindow window;
+  final Completer<void> activation, selection;
+  final int workspaceSelection, windowVersion;
+  final int preparationGeneration, displayReadGeneration, observationGeneration;
+  final int windowObservation, relatedEpoch, relatedVersion, approvalEpoch;
+  final int? documentRevision;
+  bool _used = false;
+
+  _PreparedChanges._(this.session, this.control, this.window)
+      : activation = session._displayActivation,
+        selection = window._selection,
+        workspaceSelection = session.workspace._selectionGeneration,
+        windowVersion = window._version,
+        preparationGeneration = session._preparationGeneration,
+        displayReadGeneration = session._displayReadGeneration,
+        observationGeneration = session._observationGeneration,
+        windowObservation = window._observationGeneration,
+        relatedEpoch = session._relatedEpoch,
+        relatedVersion = session._relatedVersion,
+        approvalEpoch = session._approvalHistoryEpoch,
+        documentRevision = session._document!.revision;
+
+  static bool _settled(HandrailConversationSession s, HandrailDisplayControl c,
+          HandrailDisplayWindow w) =>
+      !s._disposed &&
+      s._displayActive &&
+      !s._displayActivation.isCompleted &&
+      !s.workspace._changes.isClosed &&
+      s.workspace._selectedConversationId == s.conversationId &&
+      s._document is HandrailConversationDisplayView &&
+      s._document!.conversationId == s.conversationId &&
+      s._document!.activeTurnId == null &&
+      s._error == null &&
+      s._refreshError == null &&
+      !s._displayRefreshRequested &&
+      s._streamRefreshTimer == null &&
+      s._displayRequests.isEmpty &&
+      s._loadingRelated == null &&
+      s._loadingApprovalHistory == null &&
+      !s.hasMoreRelated &&
+      !s._relatedTruncated &&
+      !s._related.any((record) => record.deferred) &&
+      !(s._approvalHistory?.records.any((record) => record.deferred) ??
+          false) &&
+      !c.preparing &&
+      c.activeTurnId == null &&
+      c.conversationId == s.conversationId &&
+      c.canonicalRevision == c.revision &&
+      !w._disposed &&
+      identical(w.client, s.client) &&
+      !w._selection.isCompleted &&
+      w._conversationId == s.conversationId &&
+      w._status == 'ready' &&
+      w._generation == c.generation &&
+      w._revision == c.revision &&
+      w._changesAfter == c.revision &&
+      w._changesCursor == null &&
+      w._consumedChanges &&
+      w._change == HandrailDisplayWindowOperation.changes &&
+      w._pending == null &&
+      w._queuedLatest == null &&
+      w._readRequest == null &&
+      w._contentRequest == null &&
+      w._loading == null &&
+      w._failedOperation == null &&
+      w._error == null &&
+      !w._hasNewer &&
+      w.followingLatest &&
+      !w._records.any((record) => record.deferred);
+
+  static _PreparedChanges? capture(HandrailConversationSession session,
+      {required int? preparedRevision}) {
+    final control = session._control, window = session._displayWindow;
+    if (control == null ||
+        window == null ||
+        session._refreshing != null ||
+        session._document?.revision != preparedRevision ||
+        !_settled(session, control, window)) return null;
+    return _PreparedChanges._(session, control, window);
+  }
+
+  bool consume(
+      HandrailConversationSession current, HandrailDisplayControl fresh) {
+    if (_used) return false;
+    _used = true;
+    return identical(current, session) &&
+        identical(current._displayWindow, window) &&
+        identical(current._displayActivation, activation) &&
+        identical(current._control, control) &&
+        identical(window._selection, selection) &&
+        current.workspace._selectionGeneration == workspaceSelection &&
+        window._version == windowVersion &&
+        current._document?.revision == documentRevision &&
+        current._preparationGeneration == preparationGeneration + 1 &&
+        current._displayReadGeneration == displayReadGeneration + 1 &&
+        current._observationGeneration == observationGeneration &&
+        window._observationGeneration == windowObservation &&
+        current._relatedEpoch == relatedEpoch &&
+        current._relatedVersion == relatedVersion &&
+        current._approvalHistoryEpoch == approvalEpoch &&
+        _settled(current, control, window) &&
+        !fresh.preparing &&
+        fresh.activeTurnId == null &&
+        fresh.conversationId == control.conversationId &&
+        fresh.generation == control.generation &&
+        fresh.canonicalRevision == control.canonicalRevision &&
+        fresh.revision == control.revision;
   }
 }

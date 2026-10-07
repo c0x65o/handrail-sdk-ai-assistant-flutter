@@ -1,0 +1,61 @@
+[
+  {
+    "name": "minimum-analysis",
+    "exitCode": 0,
+    "elapsedMs": 9017,
+    "testsPassed": null,
+    "log": "minimum-analysis.log"
+  },
+  {
+    "name": "current-analysis",
+    "exitCode": 0,
+    "elapsedMs": 11348,
+    "testsPassed": null,
+    "log": "current-analysis.log"
+  },
+  {
+    "name": "minimum-visibility-final",
+    "exitCode": 0,
+    "elapsedMs": 10383,
+    "testsPassed": 12,
+    "log": "minimum-visibility-final.log"
+  },
+  {
+    "name": "current-visibility-final",
+    "exitCode": 0,
+    "elapsedMs": 11490,
+    "testsPassed": 12,
+    "log": "current-visibility-final.log"
+  },
+  {
+    "name": "minimum-regressions-final",
+    "exitCode": 0,
+    "elapsedMs": 24489,
+    "testsPassed": 62,
+    "log": "minimum-regressions-final.log"
+  },
+  {
+    "name": "current-regressions-final",
+    "exitCode": 0,
+    "elapsedMs": 26797,
+    "testsPassed": 62,
+    "log": "current-regressions-final.log"
+  },
+  {
+    "name": "minimum-tests-timeout",
+    "status": "failed",
+    "exitCode": 124,
+    "testsPassed": null
+  },
+  {
+    "name": "minimum-tests-retry",
+    "status": "failed: compiler ENOSPC before assertions; recovered runner terminal JSON is empty",
+    "exitCode": null,
+    "testsPassed": 0
+  },
+  {
+    "name": "prior-integrity-attempt1",
+    "status": "failed: review script used incorrect manifest-relative path for seven root-relative paths; corrected integrity scan passes all 311 entries",
+    "exitCode": 1
+  }
+]

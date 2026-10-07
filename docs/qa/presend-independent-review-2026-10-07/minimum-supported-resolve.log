@@ -1,0 +1,46 @@
+Resolving dependencies...
+Downloading packages...
+  android_file_picker 1.1.1 (2.0.1 available)
+< characters 1.4.0 (was 1.4.1) (1.4.1 available)
+  clock 1.1.2 (1.1.3 available)
+  cross_file 0.3.5+5 (0.4.0 available)
+  dart_webrtc 1.8.1 (1.8.2 available)
+  dbus 0.7.15 (0.8.0 available)
+  file_picker 12.1.1 (13.1.0 available)
+  file_picker_darwin 1.2.0 (2.1.2 available)
+  file_picker_linux 1.1.0 (2.0.2 available)
+  file_picker_platform_interface 3.4.0 (4.0.0 available)
+  file_picker_web 3.1.0 (4.0.1 available)
+  flutter_webrtc 1.5.2 (1.6.2+hotfix.3 available)
+< matcher 0.12.17 (was 0.12.19) (0.12.20 available)
+< material_color_utilities 0.11.1 (was 0.13.0) (0.13.1 available)
+  meta 1.17.0 (1.19.0 available)
+< package_config 2.2.0 (was 3.0.0) (3.0.0 available)
+< path_provider_foundation 2.5.1 (was 2.6.0) (2.6.0 available)
+  petitparser 7.0.2 (7.1.0 available)
+  platform 3.1.6 (3.2.0 available)
+  record 6.2.1 (7.1.1 available)
+  record_android 1.5.2 (2.2.0 available)
+  record_ios 1.2.1 (2.1.1 available)
+  record_linux 1.3.1 (2.1.2 available)
+  record_macos 1.2.2 (2.1.1 available)
+  record_platform_interface 1.6.0 (2.1.0 available)
+  record_web 1.3.0 (2.1.3 available)
+  record_windows 1.0.7 (2.3.0 available)
+  speech_to_text 7.4.0 (7.5.0 available)
+  stack_trace 1.12.1 (1.12.2 available)
+< synchronized 3.4.0 (was 3.4.0+1) (3.4.2 available)
+< test_api 0.7.7 (was 0.7.10) (0.7.14 available)
+  vector_math 2.2.0 (2.4.3 available)
+  windows_file_picker 1.3.0 (2.0.1 available)
+< xml 6.6.1 (was 7.0.1) (7.1.0 available)
+These packages are no longer being depended on:
+- code_assets 1.2.1
+- hooks 2.0.2
+- objective_c 9.5.0
+- pub_semver 2.2.1
+- record_use 0.6.0
+- yaml 3.1.4
+Changed 14 dependencies!
+34 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.

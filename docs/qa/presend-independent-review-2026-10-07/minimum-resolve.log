@@ -1,0 +1,95 @@
+The new artifact "libimobiledevice" was downloaded, but Flutter failed to update its stamp file, receiving the error "FileSystemException: Cannot open file, path = '/opt/handrail/.handrail/flutter-sdk/bin/cache/libimobiledevice.stamp' (OS Error: Read-only file system, errno = 30)". Flutter can continue, but the artifact may be re-downloaded on subsequent invocations until the problem is resolved.
+The new artifact "libusbmuxd" was downloaded, but Flutter failed to update its stamp file, receiving the error "FileSystemException: Cannot open file, path = '/opt/handrail/.handrail/flutter-sdk/bin/cache/libusbmuxd.stamp' (OS Error: Read-only file system, errno = 30)". Flutter can continue, but the artifact may be re-downloaded on subsequent invocations until the problem is resolved.
+Resolving dependencies...
+Downloading packages...
++ android_file_picker 1.1.1 (2.0.1 available)
++ args 2.7.0
++ async 2.13.1
++ boolean_selector 2.1.2
++ characters 1.4.1
++ clock 1.1.2 (1.1.3 available)
++ code_assets 1.2.1 (2.1.0 available)
++ collection 1.19.1
++ cross_file 0.3.5+5 (0.4.0 available)
++ crypto 3.0.7
++ dart_webrtc 1.8.1 (1.8.2 available)
++ dbus 0.7.15 (0.8.0 available)
++ fake_async 1.3.3
++ ffi 2.2.0
++ ffi_leak_tracker 0.1.2
++ file_picker 12.1.1 (13.1.0 available)
++ file_picker_darwin 1.2.0 (2.1.2 available)
++ file_picker_linux 1.1.0 (2.0.2 available)
++ file_picker_platform_interface 3.4.0 (4.0.0 available)
++ file_picker_web 3.1.0 (4.0.1 available)
++ fixnum 1.1.1
++ flutter 0.0.0 from sdk flutter
++ flutter_markdown_plus 1.0.12
++ flutter_test 0.0.0 from sdk flutter
++ flutter_web_plugins 0.0.0 from sdk flutter
++ flutter_webrtc 1.5.2 (1.6.2+hotfix.3 available)
++ hooks 2.0.2 (2.2.0 available)
++ http 1.6.0
++ http_parser 4.1.2
++ jni 1.1.0
++ jni_flutter 1.0.4+1
++ jni_util 1.0.0
++ js 0.7.2
++ json_annotation 4.12.0
++ leak_tracker 11.0.2
++ leak_tracker_flutter_testing 3.0.10
++ leak_tracker_testing 3.0.2
++ logger 2.8.0
++ logging 1.3.0
++ markdown 7.3.1
++ matcher 0.12.19 (0.12.20 available)
++ material_color_utilities 0.13.0 (0.13.1 available)
++ meta 1.17.0 (1.19.0 available)
++ objective_c 9.5.0 (9.6.2 available)
++ package_config 3.0.0
++ pasteboard 0.5.0
++ path 1.9.1
++ path_provider 2.1.6
++ path_provider_android 2.3.1
++ path_provider_foundation 2.6.0
++ path_provider_linux 2.2.2
++ path_provider_platform_interface 2.1.3
++ path_provider_windows 2.3.0
++ petitparser 7.0.2 (7.1.0 available)
++ platform 3.1.6 (3.2.0 available)
++ plugin_platform_interface 2.1.8
++ pub_semver 2.2.1
++ record 6.2.1 (7.1.1 available)
++ record_android 1.5.2 (2.2.0 available)
++ record_ios 1.2.1 (2.1.1 available)
++ record_linux 1.3.1 (2.1.2 available)
++ record_macos 1.2.2 (2.1.1 available)
++ record_platform_interface 1.6.0 (2.1.0 available)
++ record_use 0.6.0 (1.1.1 available)
++ record_web 1.3.0 (2.1.3 available)
++ record_windows 1.0.7 (2.3.0 available)
++ sky_engine 0.0.0 from sdk flutter
++ source_span 1.10.2
++ speech_to_text 7.4.0 (7.5.0 available)
++ speech_to_text_platform_interface 2.5.0
++ speech_to_text_windows 1.0.1
++ stack_trace 1.12.1 (1.12.2 available)
++ stream_channel 2.1.4
++ string_scanner 1.4.1
++ synchronized 3.4.0+1 (3.4.2 available)
++ term_glyph 1.2.2
++ test_api 0.7.10 (0.7.14 available)
++ typed_data 1.4.0
++ uuid 4.6.0
++ vector_math 2.2.0 (2.4.3 available)
++ vm_service 15.3.0
++ web 1.1.1
++ webrtc_interface 1.5.1
++ win32 6.4.0
++ windows_file_picker 1.3.0 (2.0.1 available)
++ xdg_directories 1.1.0
++ xml 7.0.1 (7.1.0 available)
++ yaml 3.1.4
+Changed 88 dependencies!
+35 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.

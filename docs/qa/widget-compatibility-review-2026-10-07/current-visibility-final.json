@@ -1,0 +1,22 @@
+{
+  "runtime": "current",
+  "mode": "test",
+  "sdk": "/opt/handrail/.handrail/flutter-sdk",
+  "temp": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/widget-compatibility-6zrtaI",
+  "args": [
+    "/opt/handrail/.handrail/flutter-sdk/bin/cache/flutter_tools.snapshot",
+    "--no-version-check",
+    "--suppress-analytics",
+    "--packages",
+    "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/widget-compatibility-6zrtaI/packages/handrail_ai_widgets/.dart_tool/package_config.json",
+    "test",
+    "--no-pub",
+    "--concurrency=1",
+    "--reporter=expanded",
+    "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart"
+  ],
+  "elapsedMs": 11490,
+  "status": 0,
+  "signal": null,
+  "error": null
+}

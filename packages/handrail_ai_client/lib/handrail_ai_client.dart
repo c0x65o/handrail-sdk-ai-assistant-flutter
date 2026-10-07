@@ -359,6 +359,7 @@ class HandrailConversationWorkspace {
     sync: true,
   );
   String? _selectedConversationId;
+  int _selectionGeneration = 0;
 
   Stream<HandrailConversationWorkspaceSnapshot> get changes => _changes.stream;
   HandrailConversationWorkspaceSnapshot get snapshot => _snapshot();
@@ -370,7 +371,10 @@ class HandrailConversationWorkspace {
       state,
       unread: current?.unread ?? false,
     );
-    if (select) _selectedConversationId = state.conversationId;
+    if (select) {
+      _selectionGeneration++;
+      _selectedConversationId = state.conversationId;
+    }
     _publish();
   }
 
@@ -401,6 +405,7 @@ class HandrailConversationWorkspace {
   }
 
   void select(String? conversationId) {
+    _selectionGeneration++;
     if (_forgotten.contains(conversationId)) return;
     _selectedConversationId = conversationId;
     final selected = conversationId == null ? null : _entries[conversationId];
@@ -413,6 +418,7 @@ class HandrailConversationWorkspace {
   }
 
   void close(String conversationId) {
+    _selectionGeneration++;
     _entries.remove(conversationId);
     if (_selectedConversationId == conversationId)
       _selectedConversationId = null;

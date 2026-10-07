@@ -1,0 +1,107 @@
+[
+  {
+    "name": "minimum-before-analysis",
+    "status": "failed",
+    "exitCode": 3,
+    "elapsedMs": 9450,
+    "log": "minimum-before-analysis.log"
+  },
+  {
+    "name": "minimum-before-tests",
+    "status": "failed",
+    "exitCode": 1,
+    "elapsedMs": 79145,
+    "log": "minimum-before-tests.log"
+  },
+  {
+    "name": "minimum-after-tests-attempt1",
+    "status": "failed",
+    "exitCode": 1,
+    "elapsedMs": 58264,
+    "log": "minimum-after-tests-attempt1.log"
+  },
+  {
+    "name": "minimum-after-tests",
+    "status": "failed",
+    "exitCode": 1,
+    "elapsedMs": 153,
+    "log": "minimum-after-tests.log"
+  },
+  {
+    "name": "minimum-after-tests-attempt3",
+    "status": "passed",
+    "exitCode": 0,
+    "elapsedMs": 49672,
+    "log": "minimum-after-tests-attempt3.log"
+  },
+  {
+    "name": "minimum-after-analysis",
+    "status": "passed",
+    "exitCode": 0,
+    "elapsedMs": 8429,
+    "log": "minimum-after-analysis.log"
+  },
+  {
+    "name": "current-after-analysis",
+    "status": "failed",
+    "exitCode": 1,
+    "elapsedMs": 11544,
+    "log": "current-after-analysis.log"
+  },
+  {
+    "name": "current-after-tests",
+    "status": "passed",
+    "exitCode": 0,
+    "elapsedMs": 54528,
+    "log": "current-after-tests.log"
+  },
+  {
+    "name": "minimum-composer",
+    "status": "failed",
+    "exitCode": 1,
+    "elapsedMs": 280,
+    "log": "minimum-composer.log"
+  },
+  {
+    "name": "minimum-composer-attempt2",
+    "status": "failed",
+    "exitCode": 1,
+    "elapsedMs": 272,
+    "log": "minimum-composer-attempt2.log"
+  },
+  {
+    "name": "minimum-composer-attempt3",
+    "status": "failed",
+    "exitCode": 1,
+    "elapsedMs": 230056,
+    "log": "minimum-composer-attempt3.log"
+  },
+  {
+    "name": "minimum-composer-attempt4",
+    "status": "passed",
+    "exitCode": 0,
+    "elapsedMs": 14863,
+    "log": "minimum-composer-attempt4.log"
+  },
+  {
+    "name": "current-composer",
+    "status": "passed",
+    "exitCode": 0,
+    "elapsedMs": 15638,
+    "log": "current-composer.log"
+  },
+  {
+    "name": "minimum-polling-supported",
+    "status": "passed",
+    "exitCode": 0,
+    "elapsedMs": 11594,
+    "log": "minimum-polling-supported.log"
+  },
+  {
+    "name": "current-original-polling",
+    "status": "passed",
+    "exitCode": 0,
+    "elapsedMs": 12069,
+    "log": "current-original-polling.log"
+  }
+]

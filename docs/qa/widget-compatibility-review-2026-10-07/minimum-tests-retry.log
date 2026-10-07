@@ -1,0 +1,49 @@
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart
+Unhandled exception:
+FileSystemException: writeFrom failed, path = '/opt/handrail/.handrail/codex-runs/bec8b96a-6e8f-41c9-9630-899b768ac7f9/tmp/flutter_tools.QTHFTC/flutter_test_compiler.KRKPDE/output.dill' (OS Error: No space left on device, errno = 28)
+#0      _checkForErrorResponse (dart:io/common.dart:58)
+#1      _RandomAccessFile.writeFrom.<anonymous closure> (dart:io/file_impl.dart:1001)
+<asynchronous suspension>
+#2      _FileStreamConsumer.addStream.<anonymous closure>.<anonymous closure>.<anonymous closure> (dart:io/file_impl.dart:237)
+<asynchronous suspension>
+00:00 +0 -1: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart [E]
+  Error: The Dart compiler exited unexpectedly.
+  package:flutter_tools/src/base/common.dart 34:3  throwToolExit
+  package:flutter_tools/src/compile.dart 899:15    DefaultResidentCompiler._compile.<fn>
+  dart:async/zone.dart 1517:47                     _rootRun
+  dart:async/zone.dart 1422:19                     _CustomZone.run
+  dart:async/zone.dart 1321:7                      _CustomZone.runGuarded
+  dart:async/stream_impl.dart 434:13               _BufferingStreamSubscription._sendDone.sendDone
+  dart:async/stream_impl.dart 444:7                _BufferingStreamSubscription._sendDone
+  dart:async/stream_impl.dart 333:7                _BufferingStreamSubscription._close
+  dart:async/stream_transformers.dart 91:11        _SinkTransformerStreamSubscription._close
+  dart:async/stream_transformers.dart 21:11        _EventSinkWrapper.close
+  dart:convert/string_conversion.dart 241:11       _StringAdapterSink.close
+  dart:convert/line_splitter.dart 144:11           _LineSplitterSink.close
+  dart:async/stream_transformers.dart 136:24       _SinkTransformerStreamSubscription._handleDone
+  dart:async/zone.dart 1517:47                     _rootRun
+  dart:async/zone.dart 1422:19                     _CustomZone.run
+  dart:async/zone.dart 1321:7                      _CustomZone.runGuarded
+  dart:async/stream_impl.dart 434:13               _BufferingStreamSubscription._sendDone.sendDone
+  dart:async/stream_impl.dart 444:7                _BufferingStreamSubscription._sendDone
+  dart:async/stream_impl.dart 333:7                _BufferingStreamSubscription._close
+  dart:async/stream_transformers.dart 91:11        _SinkTransformerStreamSubscription._close
+  dart:async/stream_transformers.dart 21:11        _EventSinkWrapper.close
+  dart:async/stream_transformers.dart 258:12       _HandlerEventSink.close
+  dart:async/stream_transformers.dart 136:24       _SinkTransformerStreamSubscription._handleDone
+  dart:async/zone.dart 1517:47                     _rootRun
+  dart:async/zone.dart 1422:19                     _CustomZone.run
+  dart:async/zone.dart 1321:7                      _CustomZone.runGuarded
+  dart:async/stream_impl.dart 434:13               _BufferingStreamSubscription._sendDone.sendDone
+  dart:async/stream_impl.dart 444:7                _BufferingStreamSubscription._sendDone
+  dart:async/stream_impl.dart 333:7                _BufferingStreamSubscription._close
+  dart:async/stream_transformers.dart 91:11        _SinkTransformerStreamSubscription._close
+  dart:async/stream_transformers.dart 21:11        _EventSinkWrapper.close
+  dart:convert/string_conversion.dart 241:11       _StringAdapterSink.close
+  dart:convert/string_conversion.dart 301:20       _Utf8ConversionSink.close
+  dart:convert/chunked_conversion.dart 79:18       _ConverterStreamEventSink.close
+  dart:async/stream_transformers.dart 136:24       _SinkTransformerStreamSubscription._handleDone
+  dart:async/zone.dart 1517:47                     _rootRun
+  dart:async/zone.dart 1422:19                     _CustomZone.run
+  dart:async/zone.dart 1321:7                      _CustomZone.runGuarded
+  dart:async/stream_impl.dart 434:13               _BufferingStreamSubscr

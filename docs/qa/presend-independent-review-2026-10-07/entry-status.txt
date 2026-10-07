@@ -1,0 +1,13 @@
+ M packages/handrail_ai_client/lib/handrail_ai_client.dart
+ M packages/handrail_ai_client/lib/src/display_session.dart
+ M packages/handrail_ai_client/lib/src/display_window.dart
+ M packages/handrail_ai_client/lib/src/session.dart
+ M packages/handrail_ai_client/test/display_session_test.dart
+ M tool/presend_client_test.dart
+ M tool/presend_composer_test.dart
+ M tool/presend_fixture.dart
+ M tool/run-presend-trace.mjs
+?? docs/qa/presend-independent-review-2026-10-07/
+?? docs/qa/presend-witness-2026-10-07/
+?? tool/presend_predicate_test.dart
+?? tool/presend_private.dart

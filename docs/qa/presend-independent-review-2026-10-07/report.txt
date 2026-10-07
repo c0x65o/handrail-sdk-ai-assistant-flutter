@@ -1,0 +1,292 @@
+Independent pre-send witness review — 2026-10-07 UTC
+Work request a7591dc7-562c-43e3-acc1-83ad128d62e8
+Candidate implementation 5167ebe9-435f-4c86-aa45-21b5ee04db8a
+
+Verdict
+-------
+HOLD publication qualification for the requested Flutter finish-line: the declared
+minimum Flutter toolchain has a reproducible widget compile failure. This is a
+pre-existing compatibility defect in unchanged widgets, not a defect introduced
+by the four-file pre-send optimization. No correction was applied to runtime
+source or package constraints.
+
+The narrow witness logic passes this independent source review and the bounded
+behavioral checks below. On supported account/controller lifetimes it saves one
+request, retaining fresh control, read authorization, remote active checks,
+immutable CAS, admission, exact-turn verification and start. This is a favorable
+review of that logic, not approval of the combined Flutter publication while the
+minimum compatibility gate is failed. No whole-budget or Preview readiness claim.
+
+Actionable finding
+------------------
+P1 / publication gate: supported-minimum widget compilation fails.
+
+ packages/handrail_ai_widgets/lib/conversation_transcript.dart:239
+   _TranscriptState._markVisibleRead
+ packages/handrail_ai_widgets/lib/display_transcript.dart:299
+   _DisplayTranscriptState._visible
+
+Both call TickerMode.valuesOf(context).enabled. The official Flutter 3.38.1
+framework does not define valuesOf. Scoped analysis reports two undefined_method
+errors; compilation of the packaged composer and five shared regression files
+fails at those same source lines, before any widget test executes. The two files
+are byte-identical to Flutter HEAD 5cf833d0bb9d9dd001e697947f9f3e4945b17d20;
+see minimum-failure-source-identity.json. This must not be called a new witness
+regression, a missing runner, or an unverified minimum: it is a verified failure.
+
+Correction for the owning writer: preserve the declared minimum and implement
+these visibility guards with an API available on that minimum. TickerMode.of
+exists on both inspected SDKs and returns the same enabled boolean; on current
+Flutter it is deprecated, so a narrowly documented compatibility suppression or
+equivalent compatible implementation must also satisfy fatal-infos analysis.
+Keep foreground, route-current and visible-tail checks. Re-run minimum/current
+widget analysis and composer/transcript/hidden-route regressions after review.
+Do not silently raise the minimum to make this failure disappear.
+
+No other blocking defect was found in the scoped four-file runtime diff.
+
+Source and evidence custody
+---------------------------
+Flutter client 0.1.41, HEAD 5cf833d0bb9d9dd001e697947f9f3e4945b17d20, with the
+pre-existing four-file witness diff and producer tests/evidence present at entry.
+JS 0.2.79, HEAD 7ff3b9f23467ce01e578d7039c3ffa35e2f557b6, clean throughout.
+
+Production diff SHA256:
+ 89f8833e781b1e8b7459560d99bbc4dfc65db7fdcff2c8c8f70a45a3c554f53e
+This equals both the supplied production.diff and the actual current lib diff.
+All four candidate source hashes equal the producer's source-hashes.json.
+entry-hashes.json records 359 existing tracked/untracked source/evidence files;
+none were changed or removed. review-source-identity.json adds review provenance.
+The minimum compiler copies were checked byte-for-byte against both package libs.
+A fresh TypeScript build to a review-owned temporary output directory reproduced
+all 478 existing JS dist files exactly (js79-build-identity.json). No stale build
+or alternate JS dependency was used in the native or PGlite checks.
+
+Only this new review evidence directory and review-owned ignored tooling were
+added. No runtime/test file predating this review was edited. No commit, push,
+PR, deploy, consumer access/write, Handrail queue/database mutation, global SDK
+configuration change, credential/access change or real provider effect occurred.
+The temporary database had only generated fixture credentials, never host ones.
+
+Read current_context (correct SDK project/work request, auth snapshot 08346f8bc724),
+attached KBs, handrail-ai-sdk-implementation-contract, JS AGENTS.md, Flutter and
+client README/Makefile/manifests, display-history-api, platform-contracts,
+canonical-admission-pagination, previous pre-send report, producer report/diff,
+and the actual library/session/window/controller/submission implementations.
+The older KB's JS-repo Flutter extraction path is superseded by AGENTS and the
+request. No repo CI version matrix exists; Makefile prescribes serial analysis
+and tests. No Handrail project checks were configured in the supplied contract.
+
+Source review details
+---------------------
+1. session.dart:819 sendMessage captures only after its own prepareTurn refresh
+   has completed without joining another refresh. It keeps _PreparedChanges as
+   a local variable, across pendingStore.retain, then passes it on a private call
+   chain. Failed retention dispatches nothing. Public submissions/journals do
+   not contain the witness. Direct submitTurn, reconstructed journals, explicit
+   retry and the canonical snapshot path cannot manufacture it.
+
+2. display_session.dart:154 _refreshDisplay performs the second authorized
+   control request before consume. The only conditional skip is window.refresh
+   at line 219. Preparing/regressed/error controls fail normally. consume at 518
+   spends the token before testing it. There is no retry of a spent token or
+   persistent session cache of one. Joined refreshes use their existing full
+   refresh operation; additional refresh/preparation attempts increment the
+   generation even if they coalesce or are throttled.
+
+3. _PreparedChanges._settled/capture/consume bind the same session/client/window,
+   activation, window selection and previous control identity, workspace selection
+   generation, window version, preparation/display-read/observation generations,
+   related/approval epochs and exact nullable prepared document revision.
+   Navigation no-ops and selection round trips advance counters; disposal and
+   activation cancel outstanding reads and invalidate old identities. Stream
+   wakes invalidate the preparation even when a scheduled read coalesces.
+
+4. Actual consumption is established in display_window.dart:_read, after merge:
+   _consumedChanges requires cursor exhaustion, no trimming and no deferred page
+   record. The predicate additionally requires changesAfter == window revision ==
+   control projection revision, coherent generation, canonical == projection,
+   CHANGES as the completed operation, no pending read/selection/latest/content
+   work, failure/error/newer flag or deferred retained record, and following latest.
+   Related pagination, trimming/deferred records and pending related/approval
+   work reject capture. A finished HTTP response or an initial/latest page alone
+   is insufficient. display_history.dart validates request identity, generation,
+   throughRevision and record bounds before window state can advance. Available
+   older transcript pages are intentionally not treated as unconsumed deltas.
+
+5. Null prepared CAS remains null. The pre-existing display-view getter maps the
+   empty canonical log to null; the witness compares that nullable value exactly
+   and compares canonical/projection zero separately. Fresh head/generation/active
+   mismatch rejects reuse. _submitTurn uses the original submission admission
+   unchanged; a change after fresh control still conflicts at append. Admission
+   receipts, draft-origin reconciliation, exact requested-turn control, terminal
+   retry handling, start acknowledgement and journal cleanup are unchanged.
+
+6. Approval/history and related context logic remains below the conditional
+   window read. Post-admission requested-turn checks and assistant_ui.dart's
+   post-action refresh are unchanged. The skip cannot suppress a necessary
+   context/approval/history-return read by skipping the entire refresh. Draft,
+   attachment, denied-start, explicit-retry and lost-ack regression coverage is
+   retained; no broader cadence or budget change was made.
+
+7. Window records are immutable lists; parsed record values use recursive
+   _immutableJson. A retained public snapshot cannot mutate the live list/value
+   or become the new window after an update. The independent public ownership
+   test confirms retained snapshots survive a later send unchanged.
+
+8. The library already used private parts at baseline. The patch adds no public
+   export, witness parameter, submission field, wire field or new host API; all
+   public method signatures and entrypoints remain. The private proof helpers
+   are injected only into the producer's disposable compiler copy. The native
+   tests use original, uninstrumented production code and public imports.
+
+9. Identity assurance is bounded by the established account-owned lifecycle:
+   README requires controller disposal on logout/account change. Client/session
+   identities are final and the witness cannot transfer to a replacement object.
+   Public disposal during the second control and producer replacement/retry tests
+   prevent late admission/reuse. A host silently switching principal behind the
+   same live protectedHeaders callback is outside that supported lifecycle; the
+   protocol has no principal identifier with which this client could detect it.
+   Current authorization still runs on control, append and start. Preview must
+   independently retain its disposal and account-scoped storage guarantees.
+
+Independent native PostgreSQL proof
+----------------------------------
+Used existing PostgreSQL 15.19 binaries and the repo's existing locked pg 8.23.0
+driver and disposable-cluster pattern from JS test/run-agent-stop-postgres.mjs.
+run-native-review.mjs creates its own loopback cluster, dedicated database and
+non-superuser fixture role. It never accepts DATABASE_URL or attaches to an
+existing service. The same existing Flutter HTTP gateway is copied into evidence;
+only its PGlite adapter block is replaced by JS.79's public postgres(pool) adapter.
+Public migration, event/projection/CAS/admission/start paths are real PostgreSQL.
+The HTTP/provider fixture remains synthetic, with no tools or external effects.
+All successful runs stop their owned clusters cleanly; server logs are retained.
+
+public_review_test.dart independently adds 11 behavioral assertions using the
+real public controller/session/window and existing HTTP recorder/store boundary.
+No private helpers or source instrumentation are used. It is an independent
+test design, not an independent reimplementation of the database or gateway.
+The recorder, synthetic provider and gateway fixture are reused producer tooling.
+
+Same driver, same JS.79 gateway, fresh native database per run:
+ baseline .41: 11/11 pass, control/changes/control/changes before admission
+ candidate:   11/11 pass, control/changes/control before admission
+ Dart 3.4 candidate: 11/11 pass, same three reads
+
+Both current baseline/candidate settle at canonical revision 7, completed,
+Synthetic send / Finished once, exactly one admission/start/provider invocation,
+null original expectedRevision, exact original mutation receipt identities and
+cleared journal. native-summary.json compares semantic output and preserves raw
+IDs/timestamps in the traces. New tests cover another preparation during retain,
+concurrent refresh joining second control, concurrent send rejection, stale CAS
+after control, revoked access during retain, disposal during second control,
+real 65-record partial cursor continuation, snapshot immutability, restored
+journal full refresh and snapshot fallback's two read_since operations.
+
+This is TRUE isolated native PostgreSQL service proof, distinct from the repeated
+24-case embedded PGlite proof. It is not the Preview service, its installed Git
+dependency, production RLS, multi-process failover or a real provider proof.
+
+Toolchain minimum and check results
+----------------------------------
+Declared client minimum: Dart >=3.4.0. Widgets: Dart >=3.10.0 and Flutter >=3.38.0
+(pubspec lines 7-8; README line 42). No source minimum was changed.
+
+Official Flutter 3.38.0 archive contains Dart 3.10.0-290.4.beta. With the correct
+isolated FLUTTER_ROOT its normal resolver rejects the widget Dart constraint.
+Official 3.38.1 supplies Dart 3.10.0 and is the first release in that line meeting
+both declared constraints. Its isolated normal resolution succeeds; the compiler
+then proves the widget failure above. No further versions were pursued.
+
+Archive provenance: https://docs.flutter.dev/install/archive
+Metadata: https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json
+3.38.0 framework a0e9b9dbf78c8a5ef39b45a7efd40ed2de19c1a7, full archive SHA256
+ c9cc746283f02dbad5da2785b4837b62f7956e3135fa9af87c7dde2d2bd6c5a6
+3.38.1 framework b45fa18946ecc2d9b4009952c636ba7e2ffbb787, full archive SHA256
+ 8f19a3d9e70b183c8b746910fb6d905c27c5865b5245aa72c645205fa8aaeab2
+Both streamed archive hashes match the official release metadata. Extracted only
+the SDK/framework/Git files needed for tests, excluding unused platform/devtools
+artifacts to respect disk space. Removed only this review's incompatible 3.38.0
+temporary extraction after preserving identity; no shared SDK was changed.
+
+PASS: current client fatal-infos analysis; isolated Dart 3.10 client analysis.
+PASS: fresh frozen JS TypeScript build; 478 build artifact identities match.
+PASS: 24 producer public gateway cases independently rerun, embedded PGlite.
+PASS: 11 new native cases each on baseline/current candidate/minimum Dart 3.4.
+PASS: 95 producer private predicates rerun on existing official Dart 3.4.0.
+PASS: 125 current focused client regressions (includes 24 display-session tests).
+PASS: 161 current shared widget regressions in the combined run described below.
+PASS: current packaged composer diagnostic with its required instrumentation, 1.
+FAIL: isolated Flutter 3.38.1 widget analysis, two undefined_method errors.
+FAIL: minimum widget test compilation, six file-load failures, zero tests run.
+PASS: node syntax checks and git diff --check.
+
+The existing current SDK is Flutter 3.41.7/Dart 3.11.5. Current SDK read-only native
+cache stamp warnings were retained; they did not prevent the stated passing tests.
+Tests used one worker and expensive checks ran sequentially, each <=240-second
+bound. Full CI was not invoked; the five-minute full-CI autoskip contract/config
+was preserved. This review does not replace later configured release checks.
+
+Failed/setup attempts preserved
+------------------------------
+native-attempt1/: native latency exposed a test-fixture race. Start acknowledgement
+could precede provider entry, so /test/finish was issued before a wait existed.
+The conversation remained running at revision 6; 10 assertions passed, success
+and teardown failed. Test correction waits for the fixture invocation counter
+before releasing it (including teardown). Both unchanged baseline and candidate
+then pass all 11; no runtime or provider implementation was modified. Initial
+test source, raw trace, database/server logs and failure log remain preserved.
+
+minimum-resolve-attempt1.log: invalid Flutter --directory CLI option. Retried with
+an isolated working directory. minimum-resolve.log: inherited FLUTTER_ROOT caused
+a mixed-root setup despite using the downloaded executable; this is NOT minimum
+qualification. Its lock is retained as minimum-mixed-root.lock. Correct-root
+3.38.0 resolution failed the real SDK constraint as recorded. Correct-root 3.38.1
+resolution uses its own Flutter/flutter_test/sky_engine, cache and lock and passes.
+
+flutter-extract.log: tar returned 2 for an optional flutter/version path absent
+from the 3.38.0 archive. Other selected files extracted and full stream hash
+matched. Version identity comes from bin/cache/flutter.version.json. Corrected
+3.38.1 extraction omitted the absent optional path and exited 0. Initial wrong
+archive URLs returned 404 without downloading; see setup-attempts.txt.
+
+current-widgets-tests.log is an OVERALL FAILED combined invocation: 161 shared
+tests passed but the additional diagnostic composer test failed its private
+stack-attribution assertion because check-shared-widgets does not instrument
+stacks. Re-running that diagnostic through run-presend-trace (its documented
+runner) passed. It was a reviewer runner mismatch, not a production behavior
+failure. The initial minimum runner included that diagnostic; all six files
+failed minimum compilation before assertions. Its exact script is preserved as
+minimum-runner-attempt1.mjs; the reusable run-minimum.mjs now excludes diagnostic
+tests requiring instrumentation. The genuine two widget compile errors remain
+failed, not relabeled as a runner mismatch or fixed by this change.
+
+Reproduction and remaining work
+-------------------------------
+From Flutter root, sequentially with timeout -k 5s 240s:
+ node docs/qa/presend-independent-review-2026-10-07/run-native-review.mjs
+ node docs/qa/presend-independent-review-2026-10-07/run-native-review.mjs --baseline
+ node docs/qa/presend-independent-review-2026-10-07/run-native-review.mjs --dart34
+ node docs/qa/presend-independent-review-2026-10-07/run-minimum.mjs analyze-client
+ node docs/qa/presend-independent-review-2026-10-07/run-minimum.mjs analyze-widgets
+ node docs/qa/presend-independent-review-2026-10-07/run-minimum.mjs test
+Native scripts require the existing locked pg fixture and JS dist. Minimum scripts
+require the retained review-owned official SDK and isolated resolver package.
+Use separate evidence destinations or archive existing run output before reruns.
+The baseline compiler copy reads Git objects into a disposable directory only;
+there is no checkout/worktree/restore of the shared tree. These are explicit
+source-qualification maps, not installed Git dependency adoption.
+
+Owning writer must correct the two compatibility calls and return for minimum/
+current verification. Parent alone owns publication decisions and exact Git pin.
+No immutable published candidate/adopted consumer lock exists from this review.
+Preview must adopt the exact authorized published Flutter SHA and matching lock,
+keep JS .79/7ff3b9f23467ce01e578d7039c3ffa35e2f557b6 frozen, and remeasure using
+unchanged full driver SHA256
+ 59ce35e604506920f9e385c4f4968dad57c710979eb8151883aad7efd57bcca7
+The full 126/120 first-window failure remains OPEN. This proves one saved request,
+not enough budget, whole Preview readiness or all 26 consumer continuity duties.
+Host account disposal/auth/RLS, actual Preview PostgreSQL configuration, native
+iOS/Android/device behavior, installed package adoption, rate-window/device timing
+and real provider conditions remain unverified here. No consumer access or new
+owner decision was necessary for this completed review.

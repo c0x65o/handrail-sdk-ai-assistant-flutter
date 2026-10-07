@@ -1,0 +1,53 @@
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_client_test.dart
+00:00 +0 -1: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_client_test.dart [E]
+  Failed to load "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_client_test.dart":
+  ../../.dart_tool/presend-kfGdZU/lib/src/display_window.dart:58:5: Error: Variables must be declared using the keywords 'const', 'final', 'var' or a type name.
+  Try adding the name of the type of the variable or the keyword 'var'.
+      _consumedChanges = false;
+      ^^^^^^^^^^^^^^^^
+  ../../.dart_tool/presend-kfGdZU/lib/src/display_window.dart:59:5: Error: Variables must be declared using the keywords 'const', 'final', 'var' or a type name.
+  Try adding the name of the type of the variable or the keyword 'var'.
+      _observationGeneration++;
+      ^^^^^^^^^^^^^^^^^^^^^^
+  ../../.dart_tool/presend-kfGdZU/lib/src/display_window.dart:59:5: Error: Expected ';' after this.
+      _observationGeneration++;
+      ^^^^^^^^^^^^^^^^^^^^^^
+  ../../.dart_tool/presend-kfGdZU/lib/src/display_window.dart:59:27: Error: Operator declarations must be preceded by the keyword 'operator'.
+  Try adding the keyword 'operator'.
+      _observationGeneration++;
+                            ^^
+  ../../.dart_tool/presend-kfGdZU/lib/src/display_window.dart:59:27: Error: The string '++' isn't a user-definable operator.
+      _observationGeneration++;
+                            ^^
+  ../../.dart_tool/presend-kfGdZU/lib/src/display_window.dart:59:27: Error: A method declaration needs an explicit list of parameters.
+  Try adding a parameter list to the method declaration.
+      _observationGeneration++;
+                            ^^
+  ../../.dart_tool/presend-kfGdZU/lib/src/display_window.dart:64:8: Error: '_consumedChanges' is already declared in this scope.
+    bool _consumedChanges = false;
+         ^^^^^^^^^^^^^^^^
+  ../../.dart_tool/presend-kfGdZU/lib/src/display_window.dart:58:5: Context: Previous declaration of '_consumedChanges'.
+      _consumedChanges = false;
+      ^^^^^^^^^^^^^^^^
+  ../../.dart_tool/presend-kfGdZU/lib/src/display_window.dart:63:7: Error: '_observationGeneration' is already declared in this scope.
+    int _observationGeneration = 0;
+        ^^^^^^^^^^^^^^^^^^^^^^
+  ../../.dart_tool/presend-kfGdZU/lib/src/display_window.dart:59:5: Context: Previous declaration of '_observationGeneration'.
+      _observationGeneration++;
+      ^^^^^^^^^^^^^^^^^^^^^^
+  ../../.dart_tool/presend-kfGdZU/lib/src/display_window.dart:37:7: Error: The non-abstract class 'HandrailDisplayWindow' is missing implementations for these members:
+   - HandrailDisplayWindow.++
+  Try to either
+   - provide an implementation,
+   - inherit an implementation from a superclass or mixin,
+   - mark the class as abstract, or
+   - provide a 'noSuchMethod' implementation.
+  class HandrailDisplayWindow {
+        ^^^^^^^^^^^^^^^^^^^^^
+  ../../.dart_tool/presend-kfGdZU/lib/src/display_window.dart:59:27: Context: 'HandrailDisplayWindow.++' is defined here.
+      _observationGeneration++;
+                            ^^
+00:00 +0 -1: Some tests failed.
+
+Failing tests:
+  /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_client_test.dart: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_client_test.dart

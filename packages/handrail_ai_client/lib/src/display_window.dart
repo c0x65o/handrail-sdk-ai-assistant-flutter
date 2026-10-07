@@ -57,9 +57,13 @@ class HandrailDisplayWindow {
       _changesAfter = 0;
   List<HandrailDisplayRecord> _records = const [];
   bool _hasOlder = false, _hasNewer = false, _disposed = false;
+  // Includes attempted/no-op navigation and reads, not just changed content.
+  int _observationGeneration = 0;
+  bool _consumedChanges = false;
   bool _followingLatest = true;
   bool get followingLatest => _followingLatest;
   void setFollowingLatest(bool value) {
+    if (_followingLatest != value) _observationGeneration++;
     _followingLatest = value;
   }
 
@@ -187,6 +191,8 @@ class HandrailDisplayWindow {
     _failedOperation = null;
     _changesCursor = null;
     _changesAfter = 0;
+    _consumedChanges = false;
+    _observationGeneration++;
     _change = HandrailDisplayWindowOperation.initial;
     _version++;
   }
@@ -224,6 +230,7 @@ class HandrailDisplayWindow {
       int offset,
       Future<void> cancellation,
       bool recordText) async {
+    _observationGeneration++;
     final selection = _selection;
     if (!(recordText ? capability.recordText : capability.messageText) ||
         !_current(selection) ||
@@ -290,15 +297,22 @@ class HandrailDisplayWindow {
   }
 
   Future<void> loadOlder() {
+    _observationGeneration++;
     _followingLatest = false;
     return _hasOlder
         ? _read(HandrailDisplayWindowOperation.older)
         : Future.value();
   }
 
-  Future<void> loadNewer() =>
-      _hasNewer ? _read(HandrailDisplayWindowOperation.newer) : Future.value();
+  Future<void> loadNewer() {
+    _observationGeneration++;
+    return _hasNewer
+        ? _read(HandrailDisplayWindowOperation.newer)
+        : Future.value();
+  }
+
   Future<void> jumpToLatest() {
+    _observationGeneration++;
     _followingLatest = true;
     if (_queuedLatest != null) return _queuedLatest!;
     if (_pending != null &&
@@ -339,6 +353,8 @@ class HandrailDisplayWindow {
           : HandrailDisplayWindowOperation.initial));
 
   Future<void> _read(HandrailDisplayWindowOperation operation) {
+    _observationGeneration++;
+    _consumedChanges = false;
     if (_disposed)
       return Future.error(StateError('Display window is disposed.'));
     if (_pending != null) return _pending!;
@@ -403,6 +419,11 @@ class HandrailDisplayWindow {
           _activeTurnId = page.activeTurnId;
           if (changedContent || trimmed) _version++;
           _change = operation;
+          // A response ending is insufficient: merging must finish, the cursor
+          // must be exhausted, and no deferred content or trim may remain.
+          _consumedChanges = page.nextCursor == null &&
+              !trimmed &&
+              !page.records.any((record) => record.deferred);
         } else {
           final older = operation == HandrailDisplayWindowOperation.older;
           final replacement =

@@ -1,0 +1,45 @@
+--- tool/display_polling_test.dart
++++ isolated/display_polling_supported_test.dart
+@@ -171,7 +171,7 @@
+           expect(
+             tester
+                 .widget<FilledButton>(
+-                  find.widgetWithText(FilledButton, 'Jump to latest'),
++                  find.ancestor(of: find.text('Jump to latest'), matching: find.byWidgetPredicate((widget) => widget is FilledButton)),
+                 )
+                 .enabled,
+             isTrue,
+@@ -232,13 +232,13 @@
+           await tester.pump(const Duration(milliseconds: 16));
+         }
+         FilledButton jump() => tester.widget<FilledButton>(
+-          find.widgetWithText(FilledButton, 'Jump to latest'),
++          find.ancestor(of: find.text('Jump to latest'), matching: find.byWidgetPredicate((widget) => widget is FilledButton)),
+         );
+         final colors = <Color?>[];
+         Color? renderedColor() => tester
+             .widget<Material>(
+               find.descendant(
+-                of: find.widgetWithText(FilledButton, 'Jump to latest'),
++                of: find.ancestor(of: find.text('Jump to latest'), matching: find.byWidgetPredicate((widget) => widget is FilledButton)),
+                 matching: find.byType(Material),
+               ),
+             )
+@@ -272,7 +272,7 @@
+         await tester.tap(find.text('Jump to latest'));
+         await tester.pump();
+         expect(
+-          find.widgetWithText(FilledButton, 'Jump to latest'),
++          find.ancestor(of: find.text('Jump to latest'), matching: find.byWidgetPredicate((widget) => widget is FilledButton)),
+           findsNothing,
+         );
+         expect(f.pages, reads, reason: 'Latest must wait for synchronization');
+@@ -283,7 +283,7 @@
+         expect(f.pages, reads + 1);
+         expect(window.state.loading, HandrailDisplayWindowOperation.latest);
+         expect(
+-          find.widgetWithText(FilledButton, 'Jump to latest'),
++          find.ancestor(of: find.text('Jump to latest'), matching: find.byWidgetPredicate((widget) => widget is FilledButton)),
+           findsNothing,
+         );
+         f.pageGate!.complete();

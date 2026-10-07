@@ -1,0 +1,12 @@
+{
+  "entryFiles": 548,
+  "unchanged": 546,
+  "onlyChanged": [
+    "packages/handrail_ai_widgets/lib/conversation_transcript.dart",
+    "packages/handrail_ai_widgets/lib/display_transcript.dart"
+  ],
+  "jsArtifactsMatch": 478,
+  "clientWitnessDiffSha256": "89f8833e781b1e8b7459560d99bbc4dfc65db7fdcff2c8c8f70a45a3c554f53e",
+  "allFinalCheckExitCodes": 0,
+  "gitDiffCheckExitCode": 0
+}

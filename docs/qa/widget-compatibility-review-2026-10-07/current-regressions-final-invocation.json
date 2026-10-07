@@ -1,0 +1,21 @@
+{
+  "runtime": "current",
+  "mode": "test",
+  "sdk": "/opt/handrail/.handrail/flutter-sdk",
+  "temp": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/widget-compatibility-u97n3F",
+  "args": [
+    "/opt/handrail/.handrail/flutter-sdk/bin/cache/flutter_tools.snapshot",
+    "--no-version-check",
+    "--suppress-analytics",
+    "--packages",
+    "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/widget-compatibility-u97n3F/packages/handrail_ai_widgets/.dart_tool/package_config.json",
+    "test",
+    "--no-pub",
+    "--concurrency=1",
+    "--reporter=expanded",
+    "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart",
+    "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart",
+    "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart",
+    "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart"
+  ]
+}

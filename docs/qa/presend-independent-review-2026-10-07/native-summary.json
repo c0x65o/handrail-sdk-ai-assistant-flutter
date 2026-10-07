@@ -1,0 +1,80 @@
+{
+  "native-baseline": {
+    "preAdmissionReads": [
+      "control",
+      "changes",
+      "control",
+      "changes"
+    ],
+    "expectedRevision": null,
+    "canonicalRevision": 7,
+    "roles": [
+      "user",
+      "assistant"
+    ],
+    "content": [
+      [
+        {
+          "type": "text",
+          "text": "Synthetic send"
+        }
+      ],
+      [
+        {
+          "type": "text",
+          "text": "Finished once"
+        }
+      ]
+    ],
+    "turn": {
+      "turn_id": "turn_op-review-success",
+      "status": "completed",
+      "remote_may_still_be_running": false,
+      "cancellation_reason": null,
+      "error": null
+    },
+    "providerInvocations": 1,
+    "admissions": 1,
+    "starts": 1,
+    "originalReceiptIdsMatch": true
+  },
+  "native-candidate": {
+    "preAdmissionReads": [
+      "control",
+      "changes",
+      "control"
+    ],
+    "expectedRevision": null,
+    "canonicalRevision": 7,
+    "roles": [
+      "user",
+      "assistant"
+    ],
+    "content": [
+      [
+        {
+          "type": "text",
+          "text": "Synthetic send"
+        }
+      ],
+      [
+        {
+          "type": "text",
+          "text": "Finished once"
+        }
+      ]
+    ],
+    "turn": {
+      "turn_id": "turn_op-review-success",
+      "status": "completed",
+      "remote_may_still_be_running": false,
+      "cancellation_reason": null,
+      "error": null
+    },
+    "providerInvocations": 1,
+    "admissions": 1,
+    "starts": 1,
+    "originalReceiptIdsMatch": true
+  },
+  "interpretation": "Same uninstrumented public test driver and JS.79 public gateway; native PostgreSQL 15.19, not PGlite, not the Preview service. Driver difference only baseline expected read count; synthetic provider only."
+}

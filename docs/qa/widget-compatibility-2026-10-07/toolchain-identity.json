@@ -1,0 +1,38 @@
+{
+  "minimum": {
+    "version": {
+      "frameworkVersion": "3.38.1",
+      "channel": "stable",
+      "repositoryUrl": "https://github.com/flutter/flutter.git",
+      "frameworkRevision": "b45fa18946ecc2d9b4009952c636ba7e2ffbb787",
+      "frameworkCommitDate": "2025-11-12 22:09:06 -0600",
+      "engineRevision": "b5990e5ccc5e325fd24f0746e7d6689bbebc7c65",
+      "engineCommitDate": "2025-11-12 21:08:24.000Z",
+      "engineContentHash": "78c3c9557e50ee7c676fa37562558c59efd8406a",
+      "engineBuildDate": "2025-11-12 13:45:47.955",
+      "dartSdkVersion": "3.10.0",
+      "devToolsVersion": "2.51.1",
+      "flutterVersion": "3.38.1"
+    },
+    "tickerSourceSha256": "eb13e8f05ef88c1214508027846af03c1420cca5a181209928392f0cec209dac"
+  },
+  "current": {
+    "version": {
+      "frameworkVersion": "3.41.7",
+      "channel": "[user-branch]",
+      "repositoryUrl": "unknown source",
+      "frameworkRevision": "cc0734ac716fbb8b90f3f9db8020958b1553afa7",
+      "frameworkCommitDate": "2026-04-15 21:21:08 -0700",
+      "engineRevision": "59aa584fdf100e6c78c785d8a5b565d1de4b48ab",
+      "engineCommitDate": "2026-04-16 02:32:16.000Z",
+      "engineContentHash": "7a53c052bc4b472cf780b199087e1368e4a9aa8c",
+      "engineBuildDate": "2026-04-15 22:00:22.023",
+      "dartSdkVersion": "3.11.5",
+      "devToolsVersion": "2.54.2",
+      "flutterVersion": "3.41.7"
+    },
+    "tickerSourceSha256": "77e71d1d6d1c66df181dd56f6ad49d00b75f1b10731e0708f05a247871d4676f"
+  },
+  "minimumArchiveProvenance": "docs/qa/presend-independent-review-2026-10-07/flutter-supported-archive.sha256",
+  "minimumArchiveSha256": "8f19a3d9e70b183c8b746910fb6d905c27c5865b5245aa72c645205fa8aaeab2  -\n"
+}

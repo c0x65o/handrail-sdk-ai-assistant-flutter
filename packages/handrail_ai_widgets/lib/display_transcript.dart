@@ -296,7 +296,11 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
   bool get _visible =>
       mounted &&
       _foreground &&
-      TickerMode.valuesOf(context).enabled &&
+      // Flutter >=3.38.0 support needs of's inherited enabled subscription.
+      // Once the minimum is >=3.41.7, use valuesOf(context).enabled and remove
+      // this ignore.
+      // ignore: deprecated_member_use
+      TickerMode.of(context) &&
       ModalRoute.of(context)?.isCurrent != false;
   bool get _busy => _requesting || _refreshing || _state['loading'] != null;
   // Latest navigation queues behind synchronization in the display window.

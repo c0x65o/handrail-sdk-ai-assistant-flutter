@@ -1,0 +1,29 @@
+{
+  "flutterBase": "5cf833d0bb9d9dd001e697947f9f3e4945b17d20",
+  "jsUnchanged": "7ff3b9f23467ce01e578d7039c3ffa35e2f557b6",
+  "productionDiffSha256": "89f8833e781b1e8b7459560d99bbc4dfc65db7fdcff2c8c8f70a45a3c554f53e",
+  "production": {
+    "packages/handrail_ai_client/lib/handrail_ai_client.dart": {
+      "baseSha256": "2fb69fa2f61c9d00f5cd406300efb20af924aa556b34fe91dbffd05ebba55876",
+      "candidateSha256": "694d001bd3624d7e6bf174beea82a66ead6ce7b9e6a8ebc3dcb787a9f1b9634e"
+    },
+    "packages/handrail_ai_client/lib/src/session.dart": {
+      "baseSha256": "e123bce7884b0995b5fa88d68f1c77b5787dac02b97bbf9ea77de5f0064f3df6",
+      "candidateSha256": "9d1b861dfa0db1d16fdf54fb378f75a1f3e64dc7861d8d78a8b7d2e82b895f8a"
+    },
+    "packages/handrail_ai_client/lib/src/display_session.dart": {
+      "baseSha256": "147a9caa64aadda22041eb0cbcfd96246f0a977cc5725b8b54a895adfc43c566",
+      "candidateSha256": "e288eff783e8a879dc6ae652ddbc2760336f7db5d6839e1f8488e9411e9fe72a"
+    },
+    "packages/handrail_ai_client/lib/src/display_window.dart": {
+      "baseSha256": "6d74d7fb106b24f0e6eab39e30b7ef3b2383699235c9e6ebcc60f470e26b8673",
+      "candidateSha256": "49214297e2e6597d936ec61acedbe7300669415303854e1e771c220816bbfa30"
+    }
+  },
+  "jsDistAssistantSha256": "2754f205cb8bb79858baa6f32b38ebfe066e0bb73cffde531bb2c5d3de952760",
+  "minimumDartArchive": {
+    "url": "https://storage.googleapis.com/dart-archive/channels/stable/release/3.4.0/sdk/dartsdk-linux-x64-release.zip",
+    "sha256": "631acea14a87a3c5d34f4fbd67ec8670cfe1345cbaa8fb8a3c45095880858620"
+  },
+  "previewDriverSha256RequiredUnchanged": "59ce35e604506920f9e385c4f4968dad57c710979eb8151883aad7efd57bcca7"
+}

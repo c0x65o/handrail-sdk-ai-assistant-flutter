@@ -1,0 +1,23 @@
+00:00 +0: loading packages/handrail_ai_client/test/display_session_test.dart
+00:00 +0: navigation during related refresh retains one automatic reconciliation
+00:05 +1: disposing a replacement page cancels both reads and fences late responses
+00:05 +2: a replacement selection completes the overlapping session refresh
+00:05 +3: history throttle backs off reads but preserves owned cancellation
+00:06 +4: stream event bursts cannot bypass the configured refresh interval
+00:07 +5: acknowledges delivery before a held history refresh and replaces the local echo by identity
+00:07 +6: clearing saved history releases an unprojected sent message
+00:07 +7: does not acknowledge uncertain admission
+00:07 +8: does not acknowledge rejected admission
+00:07 +9: presentation version changes for paging but not an unchanged poll
+00:07 +10: related state covers the retained window and ignores an obsolete activity page
+00:07 +11: a live removal overtakes a held activity page without resurrection
+00:07 +12: partial presentation pairs citations with retained sources across pages and removals
+00:07 +13: activity pages retain loaded records, apply live tombstones and explicitly bound memory
+00:07 +14: denied activity page clears all presentation and publishes a nonretryable error
+00:07 +15: long context references remain bounded and later groups load only on demand
+00:08 +16: standard session selects one bounded page and refreshes live text without snapshots or event replay
+00:08 +17: uses requested-turn controls for old completion and never restarts an admitted terminal turn
+00:08 +18: preparing blocks sends and revoked access evicts all visible content
+00:08 +19: disposal cancels a stalled bounded read and late completion cannot republish
+00:08 +20: sends through canonical admission and verifies the exact turn without loading the log
+00:08 +21: All tests passed!

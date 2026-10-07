@@ -1,0 +1,14 @@
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart
+00:00 +0: snapshot visibility: ticker
+00:00 +1: snapshot visibility: ancestor
+00:00 +2: snapshot visibility: background
+00:00 +3: snapshot visibility: route
+00:01 +4: display visibility: ticker
+00:01 +5: display visibility: ancestor
+00:01 +6: display visibility: background
+00:01 +7: display visibility: route
+00:01 +8: conversation display visibility: ticker
+00:01 +9: conversation display visibility: ancestor
+00:01 +10: conversation display visibility: background
+00:01 +11: conversation display visibility: route
+00:01 +12: All tests passed!

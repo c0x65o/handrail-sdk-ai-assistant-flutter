@@ -1,0 +1,13 @@
+{
+  "status": 124,
+  "result": "FAILED: outer 240-second timeout; original runner buffered child output and was terminated before writing it. No test pass count available.",
+  "runtime": "minimum",
+  "temp": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/widget-compatibility-EQZwAL",
+  "tests": [
+    "packages/handrail_ai_widgets/test/transcript_visibility_test.dart",
+    "packages/handrail_ai_widgets/test/conversation_transcript_test.dart",
+    "packages/handrail_ai_widgets/test/display_transcript_test.dart",
+    "packages/handrail_ai_widgets/test/assistant_workspace_test.dart",
+    ".dart_tool/widget-compatibility-polling-8UKsoC/display_polling_supported_test.dart"
+  ]
+}

@@ -1,0 +1,6 @@
+Analyzing lib...
+
+   info - conversation_transcript.dart:239:21 - 'of' is deprecated and shouldn't be used. Use TickerMode.valuesOf to get both enabled and forceFrames. This feature was deprecated after v3.35.0-0.0.pre. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+   info - display_transcript.dart:299:18 - 'of' is deprecated and shouldn't be used. Use TickerMode.valuesOf to get both enabled and forceFrames. This feature was deprecated after v3.35.0-0.0.pre. Try replacing the use of the deprecated member with the replacement. - deprecated_member_use
+
+2 issues found.

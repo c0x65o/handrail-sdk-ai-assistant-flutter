@@ -1,0 +1,26 @@
+diff --git a/packages/handrail_ai_widgets/lib/conversation_transcript.dart b/packages/handrail_ai_widgets/lib/conversation_transcript.dart
+index 9d6e30e..f505f67 100644
+--- a/packages/handrail_ai_widgets/lib/conversation_transcript.dart
++++ b/packages/handrail_ai_widgets/lib/conversation_transcript.dart
+@@ -236,7 +236,7 @@ class _TranscriptState extends State<HandrailConversationTranscript>
+         !_foreground ||
+         !_scroll.hasClients ||
+         _scroll.position.extentAfter >= 72 ||
+-        !TickerMode.valuesOf(context).enabled ||
++        !TickerMode.of(context) ||
+         ModalRoute.of(context)?.isCurrent == false ||
+         _state['running'] == true ||
+         _state['pending'] == true ||
+diff --git a/packages/handrail_ai_widgets/lib/display_transcript.dart b/packages/handrail_ai_widgets/lib/display_transcript.dart
+index ae07505..c3deb41 100644
+--- a/packages/handrail_ai_widgets/lib/display_transcript.dart
++++ b/packages/handrail_ai_widgets/lib/display_transcript.dart
+@@ -296,7 +296,7 @@ class _DisplayTranscriptState extends State<HandrailDisplayTranscript>
+   bool get _visible =>
+       mounted &&
+       _foreground &&
+-      TickerMode.valuesOf(context).enabled &&
++      TickerMode.of(context) &&
+       ModalRoute.of(context)?.isCurrent != false;
+   bool get _busy => _requesting || _refreshing || _state['loading'] != null;
+   // Latest navigation queues behind synchronization in the display window.

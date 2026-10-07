@@ -1,0 +1,26 @@
+--- a/packages/handrail_ai_widgets/lib/conversation_transcript.dart
++++ b/packages/handrail_ai_widgets/lib/conversation_transcript.dart
+@@ -236,6 +236,10 @@
+         !_foreground ||
+         !_scroll.hasClients ||
+         _scroll.position.extentAfter >= 72 ||
++        // Flutter >=3.38.0 support needs of's inherited enabled subscription.
++        // Once the minimum is >=3.41.7, use valuesOf(context).enabled and remove
++        // this ignore.
++        // ignore: deprecated_member_use
+         !TickerMode.of(context) ||
+         ModalRoute.of(context)?.isCurrent == false ||
+         _state['running'] == true ||
+--- a/packages/handrail_ai_widgets/lib/display_transcript.dart
++++ b/packages/handrail_ai_widgets/lib/display_transcript.dart
+@@ -296,6 +296,10 @@
+   bool get _visible =>
+       mounted &&
+       _foreground &&
++      // Flutter >=3.38.0 support needs of's inherited enabled subscription.
++      // Once the minimum is >=3.41.7, use valuesOf(context).enabled and remove
++      // this ignore.
++      // ignore: deprecated_member_use
+       TickerMode.of(context) &&
+       ModalRoute.of(context)?.isCurrent != false;
+   bool get _busy => _requesting || _refreshing || _state['loading'] != null;

@@ -1,0 +1,341 @@
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart
+00:00 +0 -1: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart [E]
+  Failed to load "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart":
+  Compilation failed for testPath=/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart: lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+          !TickerMode.valuesOf(context).enabled ||
+                      ^^^^^^^^
+  lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+        TickerMode.valuesOf(context).enabled &&
+                   ^^^^^^^^
+  .
+00:00 +0 -1: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart
+00:00 +0 -1: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart [E]
+  Error: The Dart compiler exited unexpectedly.
+  package:flutter_tools/src/base/common.dart 34:3  throwToolExit
+  package:flutter_tools/src/compile.dart 911:11    DefaultResidentCompiler._compile.<fn>
+  dart:async/zone.dart 1538:47                     _rootRunUnary
+  dart:async/zone.dart 1429:19                     _CustomZone.runUnary
+  dart:async/future_impl.dart 948:45               Future._propagateToListeners.handleValueCallback
+  dart:async/future_impl.dart 977:13               Future._propagateToListeners
+  dart:async/future_impl.dart 862:9                Future._propagateToListeners
+  dart:async/future_impl.dart 720:5                Future._completeWithValue
+  dart:async/future_impl.dart 804:7                Future._asyncCompleteWithValue.<fn>
+  dart:async/zone.dart 1525:13                     _rootRun
+  dart:async/zone.dart 1422:19                     _CustomZone.run
+  dart:async/zone.dart 1321:7                      _CustomZone.runGuarded
+  dart:async/zone.dart 1362:23                     _CustomZone.bindCallbackGuarded.<fn>
+  dart:async/schedule_microtask.dart 40:35         _microtaskLoop
+  dart:async/schedule_microtask.dart 49:5          _startMicrotaskLoop
+  dart:isolate-patch/isolate_patch.dart 127:13     _runPendingImmediateCallback
+  dart:isolate-patch/isolate_patch.dart 194:5      _RawReceivePort._handleMessage
+  
+00:00 +0 -2: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart [E]
+  Failed to load "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart":
+  Compilation failed for testPath=/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+          !TickerMode.valuesOf(context).enabled ||
+                      ^^^^^^^^
+  lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+        TickerMode.valuesOf(context).enabled &&
+                   ^^^^^^^^
+  .
+00:00 +0 -2: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart
+00:00 +0 -2: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart [E]
+  Error: The Dart compiler exited unexpectedly.
+  package:flutter_tools/src/base/common.dart 34:3  throwToolExit
+  package:flutter_tools/src/compile.dart 911:11    DefaultResidentCompiler._compile.<fn>
+  dart:async/zone.dart 1538:47                     _rootRunUnary
+  dart:async/zone.dart 1429:19                     _CustomZone.runUnary
+  dart:async/future_impl.dart 948:45               Future._propagateToListeners.handleValueCallback
+  dart:async/future_impl.dart 977:13               Future._propagateToListeners
+  dart:async/future_impl.dart 862:9                Future._propagateToListeners
+  dart:async/future_impl.dart 720:5                Future._completeWithValue
+  dart:async/future_impl.dart 804:7                Future._asyncCompleteWithValue.<fn>
+  dart:async/zone.dart 1525:13                     _rootRun
+  dart:async/zone.dart 1422:19                     _CustomZone.run
+  dart:async/zone.dart 1321:7                      _CustomZone.runGuarded
+  dart:async/zone.dart 1362:23                     _CustomZone.bindCallbackGuarded.<fn>
+  dart:async/schedule_microtask.dart 40:35         _microtaskLoop
+  dart:async/schedule_microtask.dart 49:5          _startMicrotaskLoop
+  dart:isolate-patch/isolate_patch.dart 127:13     _runPendingImmediateCallback
+  dart:isolate-patch/isolate_patch.dart 194:5      _RawReceivePort._handleMessage
+  
+00:00 +0 -3: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart [E]
+  Failed to load "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart":
+  Compilation failed for testPath=/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart: lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+          !TickerMode.valuesOf(context).enabled ||
+                      ^^^^^^^^
+  lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+        TickerMode.valuesOf(context).enabled &&
+                   ^^^^^^^^
+  .
+00:00 +0 -3: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart
+00:00 +0 -3: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart [E]
+  Error: The Dart compiler exited unexpectedly.
+  package:flutter_tools/src/base/common.dart 34:3  throwToolExit
+  package:flutter_tools/src/compile.dart 911:11    DefaultResidentCompiler._compile.<fn>
+  dart:async/zone.dart 1538:47                     _rootRunUnary
+  dart:async/zone.dart 1429:19                     _CustomZone.runUnary
+  dart:async/future_impl.dart 948:45               Future._propagateToListeners.handleValueCallback
+  dart:async/future_impl.dart 977:13               Future._propagateToListeners
+  dart:async/future_impl.dart 862:9                Future._propagateToListeners
+  dart:async/future_impl.dart 720:5                Future._completeWithValue
+  dart:async/future_impl.dart 804:7                Future._asyncCompleteWithValue.<fn>
+  dart:async/zone.dart 1525:13                     _rootRun
+  dart:async/zone.dart 1422:19                     _CustomZone.run
+  dart:async/zone.dart 1321:7                      _CustomZone.runGuarded
+  dart:async/zone.dart 1362:23                     _CustomZone.bindCallbackGuarded.<fn>
+  dart:async/schedule_microtask.dart 40:35         _microtaskLoop
+  dart:async/schedule_microtask.dart 49:5          _startMicrotaskLoop
+  dart:isolate-patch/isolate_patch.dart 127:13     _runPendingImmediateCallback
+  dart:isolate-patch/isolate_patch.dart 194:5      _RawReceivePort._handleMessage
+  
+00:00 +0 -4: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart [E]
+  Failed to load "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart":
+  Compilation failed for testPath=/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart: lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+          !TickerMode.valuesOf(context).enabled ||
+                      ^^^^^^^^
+  lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+        TickerMode.valuesOf(context).enabled &&
+                   ^^^^^^^^
+  .
+00:00 +0 -4: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart
+00:00 +0 -4: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart [E]
+  Error: The Dart compiler exited unexpectedly.
+  package:flutter_tools/src/base/common.dart 34:3  throwToolExit
+  package:flutter_tools/src/compile.dart 911:11    DefaultResidentCompiler._compile.<fn>
+  dart:async/zone.dart 1538:47                     _rootRunUnary
+  dart:async/zone.dart 1429:19                     _CustomZone.runUnary
+  dart:async/future_impl.dart 948:45               Future._propagateToListeners.handleValueCallback
+  dart:async/future_impl.dart 977:13               Future._propagateToListeners
+  dart:async/future_impl.dart 862:9                Future._propagateToListeners
+  dart:async/future_impl.dart 720:5                Future._completeWithValue
+  dart:async/future_impl.dart 804:7                Future._asyncCompleteWithValue.<fn>
+  dart:async/zone.dart 1525:13                     _rootRun
+  dart:async/zone.dart 1422:19                     _CustomZone.run
+  dart:async/zone.dart 1321:7                      _CustomZone.runGuarded
+  dart:async/zone.dart 1362:23                     _CustomZone.bindCallbackGuarded.<fn>
+  dart:async/schedule_microtask.dart 40:35         _microtaskLoop
+  dart:async/schedule_microtask.dart 49:5          _startMicrotaskLoop
+  dart:isolate-patch/isolate_patch.dart 127:13     _runPendingImmediateCallback
+  dart:isolate-patch/isolate_patch.dart 194:5      _RawReceivePort._handleMessage
+  
+00:00 +0 -5: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart [E]
+  Failed to load "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart":
+  Compilation failed for testPath=/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+          !TickerMode.valuesOf(context).enabled ||
+                      ^^^^^^^^
+  lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+        TickerMode.valuesOf(context).enabled &&
+                   ^^^^^^^^
+  .
+00:00 +0 -5: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart
+00:00 +0 -5: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart [E]
+  Error: The Dart compiler exited unexpectedly.
+  package:flutter_tools/src/base/common.dart 34:3  throwToolExit
+  package:flutter_tools/src/compile.dart 911:11    DefaultResidentCompiler._compile.<fn>
+  dart:async/zone.dart 1538:47                     _rootRunUnary
+  dart:async/zone.dart 1429:19                     _CustomZone.runUnary
+  dart:async/future_impl.dart 948:45               Future._propagateToListeners.handleValueCallback
+  dart:async/future_impl.dart 977:13               Future._propagateToListeners
+  dart:async/future_impl.dart 862:9                Future._propagateToListeners
+  dart:async/future_impl.dart 720:5                Future._completeWithValue
+  dart:async/future_impl.dart 804:7                Future._asyncCompleteWithValue.<fn>
+  dart:async/zone.dart 1525:13                     _rootRun
+  dart:async/zone.dart 1422:19                     _CustomZone.run
+  dart:async/zone.dart 1321:7                      _CustomZone.runGuarded
+  dart:async/zone.dart 1362:23                     _CustomZone.bindCallbackGuarded.<fn>
+  dart:async/schedule_microtask.dart 40:35         _microtaskLoop
+  dart:async/schedule_microtask.dart 49:5          _startMicrotaskLoop
+  dart:isolate-patch/isolate_patch.dart 127:13     _runPendingImmediateCallback
+  dart:isolate-patch/isolate_patch.dart 194:5      _RawReceivePort._handleMessage
+  
+00:00 +0 -6: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart [E]
+  Failed to load "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart":
+  Compilation failed for testPath=/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+          !TickerMode.valuesOf(context).enabled ||
+                      ^^^^^^^^
+  lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+        TickerMode.valuesOf(context).enabled &&
+                   ^^^^^^^^
+  .
+00:00 +0 -6: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart
+00:00 +0 -6: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart [E]
+  Error: The Dart compiler exited unexpectedly.
+  package:flutter_tools/src/base/common.dart 34:3  throwToolExit
+  package:flutter_tools/src/compile.dart 911:11    DefaultResidentCompiler._compile.<fn>
+  dart:async/zone.dart 1538:47                     _rootRunUnary
+  dart:async/zone.dart 1429:19                     _CustomZone.runUnary
+  dart:async/future_impl.dart 948:45               Future._propagateToListeners.handleValueCallback
+  dart:async/future_impl.dart 977:13               Future._propagateToListeners
+  dart:async/future_impl.dart 862:9                Future._propagateToListeners
+  dart:async/future_impl.dart 720:5                Future._completeWithValue
+  dart:async/future_impl.dart 804:7                Future._asyncCompleteWithValue.<fn>
+  dart:async/zone.dart 1525:13                     _rootRun
+  dart:async/zone.dart 1422:19                     _CustomZone.run
+  dart:async/zone.dart 1321:7                      _CustomZone.runGuarded
+  dart:async/zone.dart 1362:23                     _CustomZone.bindCallbackGuarded.<fn>
+  dart:async/schedule_microtask.dart 40:35         _microtaskLoop
+  dart:async/schedule_microtask.dart 49:5          _startMicrotaskLoop
+  dart:isolate-patch/isolate_patch.dart 127:13     _runPendingImmediateCallback
+  dart:isolate-patch/isolate_patch.dart 194:5      _RawReceivePort._handleMessage
+  
+00:00 +0 -7: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart [E]
+  Failed to load "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart":
+  Compilation failed for testPath=/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+          !TickerMode.valuesOf(context).enabled ||
+                      ^^^^^^^^
+  lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+        TickerMode.valuesOf(context).enabled &&
+                   ^^^^^^^^
+  .
+00:00 +0 -7: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart
+00:00 +0 -7: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart [E]
+  Error: The Dart compiler exited unexpectedly.
+  package:flutter_tools/src/base/common.dart 34:3  throwToolExit
+  package:flutter_tools/src/compile.dart 911:11    DefaultResidentCompiler._compile.<fn>
+  dart:async/zone.dart 1538:47                     _rootRunUnary
+  dart:async/zone.dart 1429:19                     _CustomZone.runUnary
+  dart:async/future_impl.dart 948:45               Future._propagateToListeners.handleValueCallback
+  dart:async/future_impl.dart 977:13               Future._propagateToListeners
+  dart:async/future_impl.dart 862:9                Future._propagateToListeners
+  dart:async/future_impl.dart 720:5                Future._completeWithValue
+  dart:async/future_impl.dart 804:7                Future._asyncCompleteWithValue.<fn>
+  dart:async/zone.dart 1525:13                     _rootRun
+  dart:async/zone.dart 1422:19                     _CustomZone.run
+  dart:async/zone.dart 1321:7                      _CustomZone.runGuarded
+  dart:async/zone.dart 1362:23                     _CustomZone.bindCallbackGuarded.<fn>
+  dart:async/schedule_microtask.dart 40:35         _microtaskLoop
+  dart:async/schedule_microtask.dart 49:5          _startMicrotaskLoop
+  dart:isolate-patch/isolate_patch.dart 127:13     _runPendingImmediateCallback
+  dart:isolate-patch/isolate_patch.dart 194:5      _RawReceivePort._handleMessage
+  
+00:00 +0 -8: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart [E]
+  Failed to load "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart":
+  Compilation failed for testPath=/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+          !TickerMode.valuesOf(context).enabled ||
+                      ^^^^^^^^
+  lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+        TickerMode.valuesOf(context).enabled &&
+                   ^^^^^^^^
+  .
+00:00 +0 -8: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart
+00:00 +0 -8: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart [E]
+  Error: The Dart compiler exited unexpectedly.
+  package:flutter_tools/src/base/common.dart 34:3  throwToolExit
+  package:flutter_tools/src/compile.dart 911:11    DefaultResidentCompiler._compile.<fn>
+  dart:async/zone.dart 1538:47                     _rootRunUnary
+  dart:async/zone.dart 1429:19                     _CustomZone.runUnary
+  dart:async/future_impl.dart 948:45               Future._propagateToListeners.handleValueCallback
+  dart:async/future_impl.dart 977:13               Future._propagateToListeners
+  dart:async/future_impl.dart 862:9                Future._propagateToListeners
+  dart:async/future_impl.dart 720:5                Future._completeWithValue
+  dart:async/future_impl.dart 804:7                Future._asyncCompleteWithValue.<fn>
+  dart:async/zone.dart 1525:13                     _rootRun
+  dart:async/zone.dart 1422:19                     _CustomZone.run
+  dart:async/zone.dart 1321:7                      _CustomZone.runGuarded
+  dart:async/zone.dart 1362:23                     _CustomZone.bindCallbackGuarded.<fn>
+  dart:async/schedule_microtask.dart 40:35         _microtaskLoop
+  dart:async/schedule_microtask.dart 49:5          _startMicrotaskLoop
+  dart:isolate-patch/isolate_patch.dart 127:13     _runPendingImmediateCallback
+  dart:isolate-patch/isolate_patch.dart 194:5      _RawReceivePort._handleMessage
+  
+00:00 +0 -9: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart [E]
+  Failed to load "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart":
+  Compilation failed for testPath=/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+          !TickerMode.valuesOf(context).enabled ||
+                      ^^^^^^^^
+  lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+        TickerMode.valuesOf(context).enabled &&
+                   ^^^^^^^^
+  .
+00:00 +0 -9: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart
+00:00 +0 -9: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart [E]
+  Error: The Dart compiler exited unexpectedly.
+  package:flutter_tools/src/base/common.dart 34:3  throwToolExit
+  package:flutter_tools/src/compile.dart 911:11    DefaultResidentCompiler._compile.<fn>
+  dart:async/zone.dart 1538:47                     _rootRunUnary
+  dart:async/zone.dart 1429:19                     _CustomZone.runUnary
+  dart:async/future_impl.dart 948:45               Future._propagateToListeners.handleValueCallback
+  dart:async/future_impl.dart 977:13               Future._propagateToListeners
+  dart:async/future_impl.dart 862:9                Future._propagateToListeners
+  dart:async/future_impl.dart 720:5                Future._completeWithValue
+  dart:async/future_impl.dart 804:7                Future._asyncCompleteWithValue.<fn>
+  dart:async/zone.dart 1525:13                     _rootRun
+  dart:async/zone.dart 1422:19                     _CustomZone.run
+  dart:async/zone.dart 1321:7                      _CustomZone.runGuarded
+  dart:async/zone.dart 1362:23                     _CustomZone.bindCallbackGuarded.<fn>
+  dart:async/schedule_microtask.dart 40:35         _microtaskLoop
+  dart:async/schedule_microtask.dart 49:5          _startMicrotaskLoop
+  dart:isolate-patch/isolate_patch.dart 127:13     _runPendingImmediateCallback
+  dart:isolate-patch/isolate_patch.dart 194:5      _RawReceivePort._handleMessage
+  
+00:00 +0 -10: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart [E]
+  Failed to load "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart":
+  Compilation failed for testPath=/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+          !TickerMode.valuesOf(context).enabled ||
+                      ^^^^^^^^
+  lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+        TickerMode.valuesOf(context).enabled &&
+                   ^^^^^^^^
+  .
+00:00 +0 -10: Some tests failed.
+lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+        !TickerMode.valuesOf(context).enabled ||
+                    ^^^^^^^^
+lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+      TickerMode.valuesOf(context).enabled &&
+                 ^^^^^^^^
+lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+        !TickerMode.valuesOf(context).enabled ||
+                    ^^^^^^^^
+lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+      TickerMode.valuesOf(context).enabled &&
+                 ^^^^^^^^
+lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+        !TickerMode.valuesOf(context).enabled ||
+                    ^^^^^^^^
+lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+      TickerMode.valuesOf(context).enabled &&
+                 ^^^^^^^^
+lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+        !TickerMode.valuesOf(context).enabled ||
+                    ^^^^^^^^
+lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+      TickerMode.valuesOf(context).enabled &&
+                 ^^^^^^^^
+lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+        !TickerMode.valuesOf(context).enabled ||
+                    ^^^^^^^^
+lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+      TickerMode.valuesOf(context).enabled &&
+                 ^^^^^^^^
+lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+        !TickerMode.valuesOf(context).enabled ||
+                    ^^^^^^^^
+lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+      TickerMode.valuesOf(context).enabled &&
+                 ^^^^^^^^
+lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+        !TickerMode.valuesOf(context).enabled ||
+                    ^^^^^^^^
+lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+      TickerMode.valuesOf(context).enabled &&
+                 ^^^^^^^^
+lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+        !TickerMode.valuesOf(context).enabled ||
+                    ^^^^^^^^
+lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+      TickerMode.valuesOf(context).enabled &&
+                 ^^^^^^^^
+lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+        !TickerMode.valuesOf(context).enabled ||
+                    ^^^^^^^^
+lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+      TickerMode.valuesOf(context).enabled &&
+                 ^^^^^^^^
+lib/conversation_transcript.dart:239:21: Error: Member not found: 'TickerMode.valuesOf'.
+        !TickerMode.valuesOf(context).enabled ||
+                    ^^^^^^^^
+lib/display_transcript.dart:299:18: Error: Member not found: 'TickerMode.valuesOf'.
+      TickerMode.valuesOf(context).enabled &&
+                 ^^^^^^^^

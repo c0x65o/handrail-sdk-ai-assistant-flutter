@@ -1,0 +1,82 @@
+[
+  {
+    "name": "current client analysis",
+    "status": "passed",
+    "log": "client-analysis.log"
+  },
+  {
+    "name": "Dart 3.10 client analysis",
+    "status": "passed",
+    "log": "minimum-client-analysis.log"
+  },
+  {
+    "name": "JS .79 fresh TypeScript build",
+    "status": "passed",
+    "log": "js79-compile.log"
+  },
+  {
+    "name": "PGlite producer public suite (24)",
+    "status": "passed",
+    "log": "pglite-reproduction.log"
+  },
+  {
+    "name": "Native PostgreSQL baseline (11)",
+    "status": "passed",
+    "log": "native-baseline.log"
+  },
+  {
+    "name": "Native PostgreSQL candidate (11)",
+    "status": "passed",
+    "log": "native-candidate.log"
+  },
+  {
+    "name": "Native PostgreSQL Dart 3.4 candidate (11)",
+    "status": "passed",
+    "log": "native-dart34.log"
+  },
+  {
+    "name": "Dart 3.4 producer private predicates (95)",
+    "status": "passed",
+    "log": "dart34-predicates.log"
+  },
+  {
+    "name": "Current client regressions (125)",
+    "status": "passed",
+    "log": "client-regressions.log"
+  },
+  {
+    "name": "Current combined widgets: 161 passed, 1 diagnostic runner mismatch",
+    "status": "failed",
+    "log": "current-widgets-tests.log"
+  },
+  {
+    "name": "Current diagnostic composer through required instrumented runner (1)",
+    "status": "passed",
+    "log": "current-composer-instrumented.log"
+  },
+  {
+    "name": "Flutter 3.38.0 proper-root SDK resolution",
+    "status": "failed",
+    "log": "minimum-resolve-correct-root.log"
+  },
+  {
+    "name": "Flutter 3.38.1 isolated resolution",
+    "status": "passed",
+    "log": "minimum-supported-resolve.log"
+  },
+  {
+    "name": "Flutter 3.38.1 widget analysis: 2 errors",
+    "status": "failed",
+    "log": "minimum-widgets-analysis.log"
+  },
+  {
+    "name": "Flutter 3.38.1 widget compilation: 6 load failures, 0 executed",
+    "status": "failed",
+    "log": "minimum-widgets-tests.log"
+  },
+  {
+    "name": "Initial native fixture: release before provider entry",
+    "status": "failed",
+    "log": "native-attempt1.log"
+  }
+]

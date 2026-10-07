@@ -1,0 +1,12 @@
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_predicate_test.dart
+00:00 +0 -1: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_predicate_test.dart [E]
+  Failed to load "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_predicate_test.dart":
+  ../../tool/presend_predicate_test.dart:26:19: Error: The getter 'close' isn't defined for the type 'Fixture'.
+   - 'Fixture' is from 'test/display_session_test.dart'.
+  Try correcting the name to the name of an existing getter, or defining a getter or field named 'close'.
+      addTearDown(f.close);
+                    ^^^^^
+00:00 +0 -1: Some tests failed.
+
+Failing tests:
+  /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_predicate_test.dart: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_predicate_test.dart

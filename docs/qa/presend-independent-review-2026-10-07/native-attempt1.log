@@ -1,0 +1,37 @@
+native-candidate: fresh native PostgreSQL cluster, dedicated non-superuser role; uninstrumented Dart source; loopback gateway; fixture provider only.
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart
+00:00 +0: (setUpAll)
+00:00 +0: public controller completes once at revision 7 after asynchronous retain
+00:03 +0 -1: public controller completes once at revision 7 after asynchronous retain [E]
+  Expected: <7>
+    Actual: <6>
+  
+  package:matcher                                                          expect
+  ../../.dart_tool/independent-review-pNkTC8/public_review_test.dart 53:5  main.<fn>
+  
+00:03 +0 -1: a second public preparation during retain invalidates the send witness
+00:03 +1 -1: concurrent refresh joining the second control forces changes
+00:03 +2 -1: concurrent send cannot spend another operation witness
+00:03 +3 -1: remote append after fresh control rejects the ORIGINAL nullable CAS
+00:03 +4 -1: authorization revoked while retaining prevents any admission
+00:03 +5 -1: dispose during second control prevents late result admission
+00:03 +6 -1: partial page uses the real returned cursor on second changes read
+00:03 +7 -1: retained public window snapshot stays immutable and detached
+00:03 +8 -1: restored journal bypasses private optimization
+00:03 +9 -1: snapshot fallback retains both read_since operations
+00:03 +10 -1: (tearDownAll)
+00:23 +10 -2: (tearDownAll) [E]
+  TimeoutException after 0:00:20.000000: Future not completed
+  ../../.dart_tool/independent-review-pNkTC8/fixture.dart 66:5  PresendServer.close
+  
+00:23 +10 -2: Some tests failed.
+
+Failing tests:
+  /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart: (tearDownAll)
+  /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart: public controller completes once at revision 7 after asynchronous retain
+
+Consider enabling the flag chain-stack-traces to receive more detailed exceptions.
+For example, 'dart test --chain-stack-traces'.
+Error: Review command failed: /opt/handrail/.handrail/flutter-sdk/bin/cache/dart-sdk/bin/dart (1)
+
+Owned native PostgreSQL stopped: true

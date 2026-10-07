@@ -1,0 +1,10 @@
+{
+  "packages/handrail_ai_widgets/lib/conversation_transcript.dart": {
+    "sha256": "20bb7a8c9a6891e7d943b8b29fb98c96c4d726fd0e4da447f3a9ef571c2b5e98",
+    "identicalToBase": true
+  },
+  "packages/handrail_ai_widgets/lib/display_transcript.dart": {
+    "sha256": "81aca850087b7dda170f6440463fafe825001b6296f940f52abe1fefdf1b22b0",
+    "identicalToBase": true
+  }
+}

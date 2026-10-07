@@ -1,0 +1,499 @@
+[
+  {
+    "event": "http",
+    "session": "review-fallback",
+    "id": 1,
+    "phase": "open",
+    "startUs": 238,
+    "inFlightAtStart": [],
+    "path": "/api/ai/conversations/create",
+    "request": {
+      "idempotencyKey": "review-fallback"
+    },
+    "localCanonicalRevision": null,
+    "submitting": null,
+    "refreshContext": null,
+    "caller": "other (see stack)",
+    "stack": "#0      PresendTrace.send (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/fixture.dart:101:62)\n#1      BaseClient._sendUnstreamed (package:http/src/base_client.dart:93:38)\n#2      BaseClient.post (package:http/src/base_client.dart:32:7)\n#3      HandrailAiClient._post (package:handrail_ai_client/handrail_ai_client.dart:824:36)\n<asynchronous suspension>\n#4      PresendFixture.open (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/fixture.dart:251:21)\n<asynchronous suspension>\n#5      main.open (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart:24:5)\n<asynchronous suspension>\n#6      main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart:177:15)\n<asynchronous suspension>\n#7      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)\n<asynchronous suspension>\n#8      Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)\n<asynchronous suspension>\n#9      Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)\n<asynchronous suspension>\n",
+    "status": 200,
+    "response": {
+      "status": "created"
+    },
+    "endUs": 4458
+  },
+  {
+    "event": "http",
+    "session": "review-fallback",
+    "id": 2,
+    "phase": "open",
+    "startUs": 4747,
+    "inFlightAtStart": [],
+    "path": "/api/ai/conversations/get",
+    "request": {
+      "conversationId": "04be6699-5bed-4f39-b7dc-f31908f84171"
+    },
+    "localCanonicalRevision": null,
+    "submitting": null,
+    "refreshContext": null,
+    "caller": "other (see stack)",
+    "stack": "#0      PresendTrace.send (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/fixture.dart:101:62)\n#1      BaseClient._sendUnstreamed (package:http/src/base_client.dart:93:38)\n#2      BaseClient.post (package:http/src/base_client.dart:32:7)\n#3      HandrailAiClient._post (package:handrail_ai_client/handrail_ai_client.dart:824:36)\n<asynchronous suspension>\n#4      HandrailAssistantController.getDescriptor (package:handrail_ai_client/src/assistant_controller.dart:760:18)\n<asynchronous suspension>\n#5      HandrailAssistantController.openConversation (package:handrail_ai_client/src/assistant_controller.dart:807:7)\n<asynchronous suspension>\n#6      PresendFixture.open (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/fixture.dart:257:5)\n<asynchronous suspension>\n#7      main.open (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart:24:5)\n<asynchronous suspension>\n#8      main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart:177:15)\n<asynchronous suspension>\n#9      Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)\n<asynchronous suspension>\n#10     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)\n<asynchronous suspension>\n#11     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)\n<asynchronous suspension>\n",
+    "status": 200,
+    "response": {
+      "status": "found"
+    },
+    "endUs": 6338
+  },
+  {
+    "event": "http",
+    "session": "review-fallback",
+    "id": 3,
+    "phase": "open",
+    "startUs": 6625,
+    "inFlightAtStart": [],
+    "path": "/api/ai/capabilities",
+    "request": {},
+    "localCanonicalRevision": null,
+    "submitting": false,
+    "refreshContext": null,
+    "caller": "other (see stack)",
+    "stack": "#0      PresendTrace.send (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/fixture.dart:101:62)\n#1      BaseClient._sendUnstreamed (package:http/src/base_client.dart:93:38)\n#2      BaseClient.get (package:http/src/base_client.dart:27:7)\n#3      HandrailAiClient.capabilities (package:handrail_ai_client/handrail_ai_client.dart:643:36)\n<asynchronous suspension>\n#4      HandrailConversationSession._refresh (package:handrail_ai_client/src/session.dart:569:25)\n<asynchronous suspension>\n#5      HandrailConversationSession._refreshWithPreparation.<anonymous closure> (package:handrail_ai_client/src/session.dart:556:76)\n<asynchronous suspension>\n#6      HandrailConversationSession.initialize (package:handrail_ai_client/src/session.dart:523:7)\n<asynchronous suspension>\n#7      HandrailAssistantController.ensureSession (package:handrail_ai_client/src/assistant_controller.dart:730:5)\n<asynchronous suspension>\n#8      HandrailAssistantController.openConversation (package:handrail_ai_client/src/assistant_controller.dart:817:23)\n<asynchronous suspension>\n#9      PresendFixture.open (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/fixture.dart:257:5)\n<asynchronous suspension>\n#10     main.open (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart:24:5)\n<asynchronous suspension>\n#11     main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart:177:15)\n<asynchronous suspension>\n#12     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)\n<asynchronous suspension>\n#13     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)\n<asynchronous suspension>\n#14     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)\n<asynchronous suspension>\n",
+    "status": 200,
+    "response": {},
+    "endUs": 7571
+  },
+  {
+    "event": "http",
+    "session": "review-fallback",
+    "id": 4,
+    "phase": "open",
+    "startUs": 7837,
+    "inFlightAtStart": [],
+    "path": "/api/ai/synchronization",
+    "request": {
+      "operation": "pull_snapshot",
+      "input": {
+        "conversationId": "04be6699-5bed-4f39-b7dc-f31908f84171"
+      }
+    },
+    "localCanonicalRevision": null,
+    "submitting": false,
+    "refreshContext": null,
+    "caller": "other (see stack)",
+    "stack": "#0      PresendTrace.send (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/fixture.dart:101:62)\n#1      BaseClient._sendUnstreamed (package:http/src/base_client.dart:93:38)\n#2      BaseClient.post (package:http/src/base_client.dart:32:7)\n#3      HandrailAiClient._post (package:handrail_ai_client/handrail_ai_client.dart:824:36)\n<asynchronous suspension>\n#4      HandrailConversationSession._refresh (package:handrail_ai_client/src/session.dart:598:33)\n<asynchronous suspension>\n#5      HandrailConversationSession._refreshWithPreparation.<anonymous closure> (package:handrail_ai_client/src/session.dart:556:76)\n<asynchronous suspension>\n#6      HandrailConversationSession.initialize (package:handrail_ai_client/src/session.dart:523:7)\n<asynchronous suspension>\n#7      HandrailAssistantController.ensureSession (package:handrail_ai_client/src/assistant_controller.dart:730:5)\n<asynchronous suspension>\n#8      HandrailAssistantController.openConversation (package:handrail_ai_client/src/assistant_controller.dart:817:23)\n<asynchronous suspension>\n#9      PresendFixture.open (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/fixture.dart:257:5)\n<asynchronous suspension>\n#10     main.open (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart:24:5)\n<asynchronous suspension>\n#11     main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart:177:15)\n<asynchronous suspension>\n#12     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)\n<asynchronous suspension>\n#13     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)\n<asynchronous suspension>\n#14     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)\n<asynchronous suspension>\n",
+    "status": 200,
+    "response": {
+      "status": "snapshot"
+    },
+    "endUs": 12916
+  },
+  {
+    "session": "review-fallback",
+    "event": "ready",
+    "us": 13900,
+    "phase": "open",
+    "conversationId": "04be6699-5bed-4f39-b7dc-f31908f84171"
+  },
+  {
+    "event": "http",
+    "session": "review-fallback",
+    "id": 5,
+    "phase": "send",
+    "startUs": 14461,
+    "inFlightAtStart": [],
+    "path": "/api/ai/synchronization",
+    "request": {
+      "operation": "read_since",
+      "input": {
+        "conversationId": "04be6699-5bed-4f39-b7dc-f31908f84171",
+        "afterRevision": null
+      }
+    },
+    "localCanonicalRevision": null,
+    "submitting": false,
+    "refreshContext": null,
+    "caller": "prepareTurn",
+    "stack": "#0      PresendTrace.send (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/fixture.dart:101:62)\n#1      BaseClient._sendUnstreamed (package:http/src/base_client.dart:93:38)\n#2      BaseClient.post (package:http/src/base_client.dart:32:7)\n#3      HandrailAiClient._post (package:handrail_ai_client/handrail_ai_client.dart:824:36)\n<asynchronous suspension>\n#4      HandrailConversationSession._refresh (package:handrail_ai_client/src/session.dart:580:33)\n<asynchronous suspension>\n#5      HandrailConversationSession._refreshWithPreparation.<anonymous closure> (package:handrail_ai_client/src/session.dart:556:76)\n<asynchronous suspension>\n#6      HandrailConversationSession.prepareTurn (package:handrail_ai_client/src/session.dart:775:5)\n<asynchronous suspension>\n#7      HandrailConversationSession.sendMessage (package:handrail_ai_client/src/session.dart:821:26)\n<asynchronous suspension>\n#8      HandrailAssistantController.sendMessage (package:handrail_ai_client/src/assistant_controller.dart:958:22)\n<asynchronous suspension>\n#9      main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart:178:5)\n<asynchronous suspension>\n#10     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)\n<asynchronous suspension>\n#11     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)\n<asynchronous suspension>\n#12     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)\n<asynchronous suspension>\n",
+    "status": 200,
+    "response": {
+      "status": "events",
+      "revision": null
+    },
+    "endUs": 20914
+  },
+  {
+    "session": "review-fallback",
+    "event": "retained",
+    "us": 21288,
+    "phase": "send",
+    "submission": {
+      "version": 1,
+      "admission": {
+        "conversationId": "04be6699-5bed-4f39-b7dc-f31908f84171",
+        "expectedRevision": null,
+        "mutations": [
+          {
+            "mutationId": "mutation_op-review-fallback_0",
+            "events": [
+              {
+                "version": 1,
+                "event_id": "event_op-review-fallback_0",
+                "conversation_id": "04be6699-5bed-4f39-b7dc-f31908f84171",
+                "revision": 1,
+                "occurred_at": "2026-10-07T04:38:54.140580Z",
+                "mutation_id": "mutation_op-review-fallback_0",
+                "actor": {
+                  "type": "user"
+                },
+                "source": {
+                  "type": "client",
+                  "client_id": "handrail-mobile"
+                },
+                "payload": {
+                  "type": "message.created",
+                  "message_id": "message_op-review-fallback",
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Synthetic send"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "mutationId": "mutation_op-review-fallback_1",
+            "events": [
+              {
+                "version": 1,
+                "event_id": "event_op-review-fallback_1",
+                "conversation_id": "04be6699-5bed-4f39-b7dc-f31908f84171",
+                "revision": 2,
+                "occurred_at": "2026-10-07T04:38:54.140580Z",
+                "mutation_id": "mutation_op-review-fallback_1",
+                "actor": {
+                  "type": "assistant"
+                },
+                "source": {
+                  "type": "runtime"
+                },
+                "payload": {
+                  "type": "turn.started",
+                  "turn_id": "turn_op-review-fallback",
+                  "input_message_ids": [
+                    "message_op-review-fallback"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "start": {
+        "conversationId": "04be6699-5bed-4f39-b7dc-f31908f84171",
+        "conversationTurnId": "turn_op-review-fallback",
+        "mutationId": "mutation_op-review-fallback_0",
+        "idempotencyKey": "start_op-review-fallback",
+        "request": {
+          "protocol_version": "handrail.ai-runtime.v1",
+          "continuation_of": null,
+          "tools": [],
+          "tool_results": [],
+          "generation": {
+            "max_output_tokens": 100,
+            "temperature": 0
+          },
+          "correlation_hints": {},
+          "messages": [
+            {
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Synthetic send"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "event": "http",
+    "session": "review-fallback",
+    "id": 6,
+    "phase": "send",
+    "startUs": 21547,
+    "inFlightAtStart": [],
+    "path": "/api/ai/synchronization",
+    "request": {
+      "operation": "read_since",
+      "input": {
+        "conversationId": "04be6699-5bed-4f39-b7dc-f31908f84171",
+        "afterRevision": null
+      }
+    },
+    "localCanonicalRevision": null,
+    "submitting": true,
+    "refreshContext": null,
+    "caller": "_submitTurn",
+    "stack": "#0      PresendTrace.send (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/fixture.dart:101:62)\n#1      BaseClient._sendUnstreamed (package:http/src/base_client.dart:93:38)\n#2      BaseClient.post (package:http/src/base_client.dart:32:7)\n#3      HandrailAiClient._post (package:handrail_ai_client/handrail_ai_client.dart:824:36)\n<asynchronous suspension>\n#4      HandrailConversationSession._refresh (package:handrail_ai_client/src/session.dart:580:33)\n<asynchronous suspension>\n#5      HandrailConversationSession._refreshWithPreparation.<anonymous closure> (package:handrail_ai_client/src/session.dart:556:76)\n<asynchronous suspension>\n#6      HandrailConversationSession._submitTurn (package:handrail_ai_client/src/session.dart:976:5)\n<asynchronous suspension>\n#7      HandrailConversationSession._submit.<anonymous closure> (package:handrail_ai_client/src/session.dart:933:21)\n<asynchronous suspension>\n#8      HandrailConversationSession._submitRetained (package:handrail_ai_client/src/session.dart:868:7)\n<asynchronous suspension>\n#9      HandrailConversationSession.sendMessage (package:handrail_ai_client/src/session.dart:834:7)\n<asynchronous suspension>\n#10     HandrailAssistantController.sendMessage (package:handrail_ai_client/src/assistant_controller.dart:958:22)\n<asynchronous suspension>\n#11     main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart:178:5)\n<asynchronous suspension>\n#12     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)\n<asynchronous suspension>\n#13     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)\n<asynchronous suspension>\n#14     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)\n<asynchronous suspension>\n",
+    "status": 200,
+    "response": {
+      "status": "events",
+      "revision": null
+    },
+    "endUs": 26269
+  },
+  {
+    "event": "http",
+    "session": "review-fallback",
+    "id": 7,
+    "phase": "send",
+    "startUs": 26556,
+    "inFlightAtStart": [],
+    "path": "/api/ai/synchronization",
+    "request": {
+      "operation": "append_mutations",
+      "input": {
+        "conversationId": "04be6699-5bed-4f39-b7dc-f31908f84171",
+        "expectedRevision": null,
+        "mutations": [
+          {
+            "mutationId": "mutation_op-review-fallback_0",
+            "events": [
+              {
+                "version": 1,
+                "event_id": "event_op-review-fallback_0",
+                "conversation_id": "04be6699-5bed-4f39-b7dc-f31908f84171",
+                "revision": 1,
+                "occurred_at": "2026-10-07T04:38:54.140580Z",
+                "mutation_id": "mutation_op-review-fallback_0",
+                "actor": {
+                  "type": "user"
+                },
+                "source": {
+                  "type": "client",
+                  "client_id": "handrail-mobile"
+                },
+                "payload": {
+                  "type": "message.created",
+                  "message_id": "message_op-review-fallback",
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Synthetic send"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "mutationId": "mutation_op-review-fallback_1",
+            "events": [
+              {
+                "version": 1,
+                "event_id": "event_op-review-fallback_1",
+                "conversation_id": "04be6699-5bed-4f39-b7dc-f31908f84171",
+                "revision": 2,
+                "occurred_at": "2026-10-07T04:38:54.140580Z",
+                "mutation_id": "mutation_op-review-fallback_1",
+                "actor": {
+                  "type": "assistant"
+                },
+                "source": {
+                  "type": "runtime"
+                },
+                "payload": {
+                  "type": "turn.started",
+                  "turn_id": "turn_op-review-fallback",
+                  "input_message_ids": [
+                    "message_op-review-fallback"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "localCanonicalRevision": null,
+    "submitting": true,
+    "refreshContext": null,
+    "caller": "_submitTurn",
+    "stack": "#0      PresendTrace.send (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/fixture.dart:101:62)\n#1      BaseClient._sendUnstreamed (package:http/src/base_client.dart:93:38)\n#2      BaseClient.post (package:http/src/base_client.dart:32:7)\n#3      HandrailAiClient._post (package:handrail_ai_client/handrail_ai_client.dart:824:36)\n<asynchronous suspension>\n#4      HandrailConversationSession._submitTurn (package:handrail_ai_client/src/session.dart:983:29)\n<asynchronous suspension>\n#5      HandrailConversationSession._submit.<anonymous closure> (package:handrail_ai_client/src/session.dart:933:21)\n<asynchronous suspension>\n#6      HandrailConversationSession._submitRetained (package:handrail_ai_client/src/session.dart:868:7)\n<asynchronous suspension>\n#7      HandrailConversationSession.sendMessage (package:handrail_ai_client/src/session.dart:834:7)\n<asynchronous suspension>\n#8      HandrailAssistantController.sendMessage (package:handrail_ai_client/src/assistant_controller.dart:958:22)\n<asynchronous suspension>\n#9      main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart:178:5)\n<asynchronous suspension>\n#10     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)\n<asynchronous suspension>\n#11     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)\n<asynchronous suspension>\n#12     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)\n<asynchronous suspension>\n",
+    "status": 200,
+    "response": {
+      "status": "mutations",
+      "acknowledgements": [
+        {
+          "status": "accepted",
+          "mutationId": "mutation_op-review-fallback_0",
+          "events": [
+            {
+              "version": 1,
+              "event_id": "assistant-sync:d845e9a133f5af17a0dc951569d96a94",
+              "conversation_id": "04be6699-5bed-4f39-b7dc-f31908f84171",
+              "revision": 1,
+              "occurred_at": "2026-10-07T04:38:54.151Z",
+              "actor": {
+                "type": "user",
+                "id": "user"
+              },
+              "source": {
+                "type": "sync"
+              },
+              "mutation_id": "mutation_op-review-fallback_0",
+              "payload": {
+                "type": "message.created",
+                "message_id": "message_op-review-fallback",
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Synthetic send"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "status": "accepted",
+          "mutationId": "mutation_op-review-fallback_1",
+          "events": [
+            {
+              "version": 1,
+              "event_id": "assistant-sync:e10d5967fda7e5d464a4832b3d2821e7",
+              "conversation_id": "04be6699-5bed-4f39-b7dc-f31908f84171",
+              "revision": 2,
+              "occurred_at": "2026-10-07T04:38:54.151Z",
+              "actor": {
+                "type": "assistant"
+              },
+              "source": {
+                "type": "sync"
+              },
+              "mutation_id": "mutation_op-review-fallback_1",
+              "payload": {
+                "type": "turn.started",
+                "turn_id": "turn_op-review-fallback",
+                "input_message_ids": [
+                  "message_op-review-fallback"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "endUs": 39159
+  },
+  {
+    "session": "review-fallback",
+    "event": "accepted",
+    "us": 39337,
+    "phase": "send"
+  },
+  {
+    "event": "http",
+    "session": "review-fallback",
+    "id": 8,
+    "phase": "send",
+    "startUs": 39608,
+    "inFlightAtStart": [],
+    "path": "/api/ai/synchronization",
+    "request": {
+      "operation": "read_since",
+      "input": {
+        "conversationId": "04be6699-5bed-4f39-b7dc-f31908f84171",
+        "afterRevision": null
+      }
+    },
+    "localCanonicalRevision": null,
+    "submitting": true,
+    "refreshContext": null,
+    "caller": "_submitTurn",
+    "stack": "#0      PresendTrace.send (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/fixture.dart:101:62)\n#1      BaseClient._sendUnstreamed (package:http/src/base_client.dart:93:38)\n#2      BaseClient.post (package:http/src/base_client.dart:32:7)\n#3      HandrailAiClient._post (package:handrail_ai_client/handrail_ai_client.dart:824:36)\n<asynchronous suspension>\n#4      HandrailConversationSession._refresh (package:handrail_ai_client/src/session.dart:580:33)\n<asynchronous suspension>\n#5      HandrailConversationSession._refreshWithPreparation.<anonymous closure> (package:handrail_ai_client/src/session.dart:556:76)\n<asynchronous suspension>\n#6      HandrailConversationSession._submitTurn (package:handrail_ai_client/src/session.dart:1029:57)\n<asynchronous suspension>\n#7      HandrailConversationSession._submit.<anonymous closure> (package:handrail_ai_client/src/session.dart:933:21)\n<asynchronous suspension>\n#8      HandrailConversationSession._submitRetained (package:handrail_ai_client/src/session.dart:868:7)\n<asynchronous suspension>\n#9      HandrailConversationSession.sendMessage (package:handrail_ai_client/src/session.dart:834:7)\n<asynchronous suspension>\n#10     HandrailAssistantController.sendMessage (package:handrail_ai_client/src/assistant_controller.dart:958:22)\n<asynchronous suspension>\n#11     main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart:178:5)\n<asynchronous suspension>\n#12     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)\n<asynchronous suspension>\n#13     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)\n<asynchronous suspension>\n#14     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)\n<asynchronous suspension>\n",
+    "status": 200,
+    "response": {
+      "status": "events",
+      "revision": 2
+    },
+    "endUs": 46019
+  },
+  {
+    "event": "http",
+    "session": "review-fallback",
+    "id": 9,
+    "phase": "send",
+    "startUs": 46324,
+    "inFlightAtStart": [],
+    "path": "/api/ai/synchronization",
+    "request": {
+      "operation": "pull_snapshot",
+      "input": {
+        "conversationId": "04be6699-5bed-4f39-b7dc-f31908f84171"
+      }
+    },
+    "localCanonicalRevision": null,
+    "submitting": true,
+    "refreshContext": null,
+    "caller": "_submitTurn",
+    "stack": "#0      PresendTrace.send (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/fixture.dart:101:62)\n#1      BaseClient._sendUnstreamed (package:http/src/base_client.dart:93:38)\n#2      BaseClient.post (package:http/src/base_client.dart:32:7)\n#3      HandrailAiClient._post (package:handrail_ai_client/handrail_ai_client.dart:824:36)\n<asynchronous suspension>\n#4      HandrailConversationSession._refresh (package:handrail_ai_client/src/session.dart:598:33)\n<asynchronous suspension>\n#5      HandrailConversationSession._refreshWithPreparation.<anonymous closure> (package:handrail_ai_client/src/session.dart:556:76)\n<asynchronous suspension>\n#6      HandrailConversationSession._submitTurn (package:handrail_ai_client/src/session.dart:1029:57)\n<asynchronous suspension>\n#7      HandrailConversationSession._submit.<anonymous closure> (package:handrail_ai_client/src/session.dart:933:21)\n<asynchronous suspension>\n#8      HandrailConversationSession._submitRetained (package:handrail_ai_client/src/session.dart:868:7)\n<asynchronous suspension>\n#9      HandrailConversationSession.sendMessage (package:handrail_ai_client/src/session.dart:834:7)\n<asynchronous suspension>\n#10     HandrailAssistantController.sendMessage (package:handrail_ai_client/src/assistant_controller.dart:958:22)\n<asynchronous suspension>\n#11     main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/public_review_test.dart:178:5)\n<asynchronous suspension>\n#12     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:15)\n<asynchronous suspension>\n#13     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:11)\n<asynchronous suspension>\n#14     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:9)\n<asynchronous suspension>\n",
+    "status": 200,
+    "response": {
+      "status": "snapshot"
+    },
+    "endUs": 51398
+  },
+  {
+    "event": "http",
+    "session": "review-fallback",
+    "id": 10,
+    "phase": "send",
+    "startUs": 52314,
+    "inFlightAtStart": [],
+    "path": "/api/ai/turns/start",
+    "request": {
+      "conversationId": "04be6699-5bed-4f39-b7dc-f31908f84171",
+      "conversationTurnId": "turn_op-review-fallback",
+      "mutationId": "mutation_op-review-fallback_0",
+      "idempotencyKey": "start_op-review-fallback",
+      "request": {
+        "protocol_version": "handrail.ai-runtime.v1",
+        "continuation_of": null,
+        "tools": [],
+        "tool_results": [],
+        "generation": {
+          "max_output_tokens": 100,
+          "temperature": 0
+        },
+        "correlation_hints": {},
+        "messages": [
+          {
+            "role": "user",
+            "content": [
+              {
+                "type": "text",
+                "text": "Synthetic send"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "localCanonicalRevision": 2,
+    "submitting": true,
+    "refreshContext": null,
+    "caller": "other (see stack)",
+    "stack": "#0      PresendTrace.send (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-pNkTC8/fixture.dart:101:62)\n#1      HandrailAiClient._readStreamRequest (package:handrail_ai_client/handrail_ai_client.dart:903:48)\n<asynchronous suspension>\n#2      HandrailAiClient._streamRequest.<anonymous closure>.<anonymous closure> (package:handrail_ai_client/handrail_ai_client.dart:873:62)\n<asynchronous suspension>\n",
+    "status": 200,
+    "headersUs": 58146,
+    "endUs": 58147
+  }
+]

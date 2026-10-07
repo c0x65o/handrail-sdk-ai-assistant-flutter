@@ -1,0 +1,421 @@
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart
+00:00 +0: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart: snapshot visibility: ticker
+00:00 +1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart: snapshot visibility: ancestor
+00:01 +2: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart: snapshot visibility: background
+00:01 +3: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart: snapshot visibility: route
+00:01 +4: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart: display visibility: ticker
+00:01 +5: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart: display visibility: ancestor
+00:01 +6: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart: display visibility: background
+00:01 +7: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart: display visibility: route
+00:01 +8: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart: conversation display visibility: ticker
+00:01 +9: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart: conversation display visibility: ancestor
+00:01 +10: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart: conversation display visibility: background
+00:01 +11: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/transcript_visibility_test.dart: conversation display visibility: route
+00:01 +12: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart
+00:02 +12: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: saved cancellation presents user
+00:03 +13: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: saved cancellation presents timeout
+00:03 +14: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: saved cancellation presents superseded
+00:03 +15: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: saved cancellation presents runtime_shutdown
+00:03 +16: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: executed A and declined B stay settled while actual failures remain visible (partial=false)
+00:03 +17: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: executed A and declined B stay settled while actual failures remain visible (partial=true)
+00:03 +18: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: answer takes over progress and keeps tool details before its response
+00:03 +19: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: delivery feedback reconciles the saved message without duplicate bubbles
+00:04 +20: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: current tool names and changing status remain visible with activity collapsed
+00:04 +21: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: standard transcript uses bounded pages with citations, activity and no duplicate selection
+00:05 +22: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: branding preserves operational message identity (false)
+00:05 +23: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: branding preserves operational message identity (true)
+00:05 +24: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: message-link policy is independent of a citation resolver veto (false)
+00:05 +25: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: message-link policy is independent of a citation resolver veto (true)
+00:05 +26: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: user, system and tool message text stays literal
+00:05 +27: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: protected copy reports an accessible failure and retries exact visible text
+00:05 +28: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: a stale copy failure cannot replace a later success
+00:05 +29: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: minimal transcript supplies Markdown, safe citations, copy, results and private activity
+00:05 +30: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: new replies preserve a scrolled-up position and become read at the visible end
+00:06 +31: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: covered and background replies become read only when the transcript is visible
+00:06 +32: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: a prior conversation retry cannot unlock a later retry
+00:06 +33: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: custom domain formatting retains SDK account isolation and visible read lifecycle
+00:06 +34: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/conversation_transcript_test.dart: account replacement clears old content and error recovery works with large text
+00:06 +35: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart
+00:07 +35: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart: default transcript reads large text on demand and retains one bounded section
+00:08 +36: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart: scope replacement aborts large text reads and cannot expose their late content
+00:09 +37: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart: a changed large message requires explicit reload without displaying mixed revisions
+00:09 +38: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart: session-owned windows restore durable anchors without another initial read
+00:09 +39: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart: polls transient failures only in the foreground and stops at permission errors
+00:09 +40: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart: loads one selected page, anchors prepend and delayed layout, bounds rows
+00:09 +41: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart: virtualized bodies keep their visible anchor through width changes and remount on navigation
+00:09 +42: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart: switches immediately, ignores old scope changes and cancels on unmount
+00:09 +43: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart: keeps errors retryable and deferred content explicit without auto reads
+00:09 +44: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart: restores account-scoped message positions and foreground latest acknowledgements
+00:10 +45: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/display_transcript_test.dart: keeps narrow scaled text accessible and never announces hidden pages as read
+00:10 +46: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart
+00:10 +46: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart: standard editor keeps an accessible name after typing
+00:11 +47: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart: custom named composer and expanded editor keep their label
+00:12 +48: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart: minimal composer inherits host colors and font (Brightness.dark)
+00:12 +49: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart: minimal composer inherits host colors and font (Brightness.light)
+00:12 +50: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart: host form constraints do not stretch or clip the shared editor
+00:12 +51: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart: expanded editor keeps the draft and closes on account scope change
+00:12 +52: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart: draft starts above the aligned toolbar at 320.0
+00:12 +53: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart: draft starts above the aligned toolbar at 390.0
+00:12 +54: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart: draft starts above the aligned toolbar at 768.0
+00:12 +55: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart: host theme styles the shared composer and hides unavailable attachments
+00:12 +56: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart: Send focuses once, Enter sends, and a running draft stays editable
+00:12 +57: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart: IME composition and an explicit newline setting do not send
+00:12 +58: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_test.dart: approval switch changes the next-message preference
+00:12 +59: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart
+00:13 +59: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: replayed origin removes only its exact saved revision after recreation
+00:13 +60: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: origin capture does not identify a newer edit written while it waits
+00:13 +61: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: typing during cleanup survives immediate owner disposal and flush
+00:13 +62: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: cleanup preserves another writer without rebasing over unseen text
+00:13 +63: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: typing during restoration wins and admission preserves later edits
+00:13 +64: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: coalesces slow writes and flushes before disposing account text
+00:13 +65: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: storage conflict retains the editor until an explicit reload
+00:13 +66: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: retry reconciles the original revision with later draft null
+00:13 +67: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: retry reconciles the original revision with later draft 
+00:13 +68: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: retry reconciles the original revision with later draft later
+00:13 +69: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: retry reconciles the original revision with later draft original
+00:13 +70: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: retry without this draft submission identity cannot clear text
+00:13 +71: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: acceptance clears only the submitted revision after completed
+00:13 +72: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: acceptance clears only the submitted revision after failed
+00:13 +73: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: acceptance clears only the submitted revision after cancelled
+00:13 +74: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: keeps edits before admission, including a return to identical text
+00:13 +75: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: ignores old callbacks after scope reset or disposal
+00:13 +76: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/draft_controller_test.dart: retains a deliberate empty draft after an admitted failure
+00:13 +77: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart
+00:14 +77: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: a blank unassigned composer preserves the saved chat draft on reload
+00:14 +78: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: a slow save retains its old text budget after editor disposal
+00:14 +79: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: text budgets preserve edits across chats, pending sends and restoration
+00:14 +80: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: text count is bounded even when all unsaved drafts are very small
+00:14 +81: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: a capacity-blocked saved draft remains in storage and can be reopened
+00:14 +82: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: oversized paste preserves the previous draft and its send revision
+00:14 +83: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: empty drafts are evicted without storage while unsaved text survives
+00:14 +84: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: file budgets span chats and reject additions atomically
+00:14 +85: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: opaque host selections still obey the account file-count limit
+00:14 +86: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: accepted sends retain their file budget until callbacks settle
+00:14 +87: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: cancelled host transfers keep their permit and retry identity
+00:14 +88: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: removing a cancelled transfer cannot bypass the retained byte limit
+00:14 +89: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: selection snapshots upload bytes once and rejects invalid replacements
+00:14 +90: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: persists separate chats across controller replacement and discards only the selected journal
+00:14 +91: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: adopts unassigned text and releases old saved idle controllers without losing their drafts
+00:14 +92: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: Stop retains the upload key; removal and admission release it once
+00:14 +93: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: discard, replacement and account disposal release separate drafts
+00:14 +94: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: reopening a saved send acknowledges only its captured conversation draft
+00:14 +95: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: admission clears only submitted selections in their own chat
+00:14 +96: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: failed upload keeps text/files; retry admission clears original only
+00:14 +97: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/composer_drafts_test.dart: discard and dispose invalidate background admission safely
+00:14 +98: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart
+00:15 +98: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: verified selected deletion clears the composer on publication
+00:16 +99: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: standard binding restores files and exposes retry at width 390.0, scale 1.0
+00:16 +100: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: standard binding restores files and exposes retry at width 320.0, scale 2.0
+00:16 +101: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: standard binding captures durable origins and owns replay cleanup outside the view
+00:17 +102: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: capacity errors keep the editor usable and are announced
+00:17 +103: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: standard composer restores encrypted-adapter text and presents save failure/retry without losing edits
+00:17 +104: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: account replacement excludes a late Clear confirmation
+00:17 +105: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: single conversation Clear is explicit and preserves drafts at width 390.0
+00:17 +106: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: single conversation Clear is explicit and preserves drafts at width 1200.0
+00:18 +107: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: default workspace request passes the installed JS protocol parser
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: <0>
+  Actual: <1>
+node:internal/modules/cjs/loader:1433
+  throw err;
+  ^
+
+Error: Cannot find module
+'/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/tool/gateway/validate-request.mjs'
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1430:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1040:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1045:22)
+    at Function._load (node:internal/modules/cjs/loader:1216:25)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v22.23.1
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart:514:7)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1059:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart line 514
+The test description was:
+  default workspace request passes the installed JS protocol parser
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:18 +107 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: default workspace request passes the installed JS protocol parser [E]
+  Test failed. See exception logs above.
+  The test description was: default workspace request passes the installed JS protocol parser
+  
+00:18 +107 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: platform editor hooks preserve the shared composer
+00:19 +108 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: pending approval remains visible without messages or tool activity
+00:19 +109 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: confirmed deletion discards only that conversation’s drafts and files
+00:19 +110 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: clearing account drafts while expanded detaches the old editor safely
+00:19 +111 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: hides the routine counter but explains an overlong draft
+00:20 +112 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: business slots and editor settings retain default controls and submission gates
+00:20 +113 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: minimal workspace supplies history, transcript, voice, files and admission-safe sending
+00:20 +114 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: upload preserves origin, context, approval and later conversation drafts
+00:21 +115 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: replacement account excludes late admission and resets approval controls
+00:21 +116 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: an account change closes approval settings from the previous account
+00:21 +117 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: default workspace remains usable at width 320.0 and text scale 2.0
+00:21 +118 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_widgets/test/assistant_workspace_test.dart: default workspace remains usable at width 1000.0 and text scale 1.0
+00:21 +119 -1: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart
+00:22 +119 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: (setUpAll)
+00:23 +119 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: terminal pending releases Send without replay; bounded=true
+00:25 +120 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: terminal pending releases Send without replay; bounded=false
+00:26 +121 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: missing bounded=true
+00:26 +122 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: foreign bounded=true
+00:26 +123 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: queued bounded=true
+00:26 +124 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: running bounded=true
+00:26 +125 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: waiting_for_tool_result bounded=true
+00:26 +126 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: waiting_for_approval bounded=true
+00:26 +127 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: 401 bounded=true
+00:26 +128 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: 403 bounded=true
+00:26 +129 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: 404 bounded=true
+00:26 +130 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: 503 bounded=true
+00:26 +131 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: cold reopen settles exact terminal without replay; bounded=true
+00:26 +132 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: local cleanup failure retains journal and later converges; bounded=true
+00:26 +133 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: local delete failure retains journal and later converges; bounded=true
+00:27 +134 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: local read failure retains journal and later converges; bounded=true
+00:27 +135 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: cleanup preserves newer text and file selections; bounded=true
+00:27 +136 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: disposal/account replacement during terminal read cannot clean old account; bounded=true
+00:27 +137 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: newer pending replacement survives terminal cleanup; bounded=true
+00:27 +138 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: missing bounded=false
+00:27 +139 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: foreign bounded=false
+00:27 +140 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: queued bounded=false
+00:27 +141 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: running bounded=false
+00:27 +142 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: waiting_for_tool_result bounded=false
+00:27 +143 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: waiting_for_approval bounded=false
+00:27 +144 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: 401 bounded=false
+00:27 +145 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: 403 bounded=false
+00:27 +146 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: 404 bounded=false
+00:27 +147 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: retains uncertain or unauthorized pending: 503 bounded=false
+00:27 +148 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: cold reopen settles exact terminal without replay; bounded=false
+00:27 +149 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: local cleanup failure retains journal and later converges; bounded=false
+00:27 +150 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: local delete failure retains journal and later converges; bounded=false
+00:27 +151 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: local read failure retains journal and later converges; bounded=false
+00:27 +152 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: cleanup preserves newer text and file selections; bounded=false
+00:27 +153 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: disposal/account replacement during terminal read cannot clean old account; bounded=false
+00:27 +154 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: newer pending replacement survives terminal cleanup; bounded=false
+00:27 +155 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: acknowledged deletion with lost reply recovers; bounded=true
+00:27 +156 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: acknowledged deletion with lost read recovers; bounded=true
+00:27 +157 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: disposal during cleanup retains journal; bounded=true
+00:27 +158 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: reopen cleanup failure recovers with observation; bounded=true
+00:27 +159 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: reopen delete failure recovers with observation; bounded=true
+00:27 +160 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: acknowledged deletion with lost reply recovers; bounded=false
+00:27 +161 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: acknowledged deletion with lost read recovers; bounded=false
+00:27 +162 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: disposal during cleanup retains journal; bounded=false
+00:27 +163 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: reopen cleanup failure recovers with observation; bounded=false
+00:27 +164 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: reopen delete failure recovers with observation; bounded=false
+00:27 +165 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: requested turn proof rejects missing control
+00:27 +166 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: requested turn proof rejects foreign-turn control
+00:27 +167 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: requested turn proof rejects foreign-conversation control
+00:27 +168 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: requested turn proof rejects stale control
+00:27 +169 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: requested turn proof rejects generation control
+00:27 +170 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: requested turn proof rejects preparing control
+00:27 +171 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: bounded exact requested turn settles even when latest is a different turn
+00:27 +172 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: lost start reply settles without retry; bounded=true
+00:27 +173 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: selection change cancels pending reconciliation; bounded=true
+00:27 +174 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: lost start reply settles without retry; bounded=false
+00:27 +175 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: selection change cancels pending reconciliation; bounded=false
+00:27 +176 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/terminal_pending_test.dart: (tearDownAll)
+00:27 +176 -1: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart
+00:28 +176 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: lost start uses explicit UI Retry once; bounded=true accepted=false
+00:31 +177 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: lost start uses explicit UI Retry once; bounded=true accepted=true
+00:32 +178 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: terminal denial Retry enables follow-up without replay; bounded=true
+00:32 +179 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: selection during Retry read 1 prevents replay; bounded=true
+00:33 +180 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: reentry during Retry read 1 prevents replay; bounded=true
+00:34 +181 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: dispose during Retry read 1 prevents replay; bounded=true
+00:34 +182 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: replacement during Retry read 1 prevents replay; bounded=true
+00:35 +183 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: selection during Retry read 3 prevents replay; bounded=true
+00:35 +184 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: reentry during Retry read 3 prevents replay; bounded=true
+00:36 +185 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: dispose during Retry read 3 prevents replay; bounded=true
+00:36 +186 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: replacement during Retry read 3 prevents replay; bounded=true
+00:36 +187 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: Retry retains pending on 401; bounded=true
+00:37 +188 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: Retry retains pending on 403; bounded=true
+00:37 +189 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: Retry retains pending on 503; bounded=true
+00:38 +190 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: Retry retains pending on busy; bounded=true
+00:38 +191 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: Retry retains pending on archived; bounded=true
+00:38 +192 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: Retry retains pending on storage; bounded=true
+00:39 +193 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: read-only Retry without pending recovers history; bounded=true
+00:39 +194 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: lost start uses explicit UI Retry once; bounded=false accepted=false
+00:39 +195 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: lost start uses explicit UI Retry once; bounded=false accepted=true
+00:40 +196 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: terminal denial Retry enables follow-up without replay; bounded=false
+00:40 +197 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: selection during Retry read 1 prevents replay; bounded=false
+00:40 +198 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: reentry during Retry read 1 prevents replay; bounded=false
+00:40 +199 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: dispose during Retry read 1 prevents replay; bounded=false
+00:41 +200 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: replacement during Retry read 1 prevents replay; bounded=false
+00:41 +201 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: selection during Retry read 3 prevents replay; bounded=false
+00:41 +202 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: reentry during Retry read 3 prevents replay; bounded=false
+00:41 +203 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: dispose during Retry read 3 prevents replay; bounded=false
+00:41 +204 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: replacement during Retry read 3 prevents replay; bounded=false
+00:42 +205 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: Retry retains pending on 401; bounded=false
+00:42 +206 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: Retry retains pending on 403; bounded=false
+00:42 +207 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: Retry retains pending on 503; bounded=false
+00:42 +208 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: Retry retains pending on busy; bounded=false
+00:42 +209 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: Retry retains pending on archived; bounded=false
+00:43 +210 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: Retry retains pending on storage; bounded=false
+00:43 +211 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: read-only Retry without pending recovers history; bounded=false
+00:43 +212 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: catalog Retry observes recovered empty history without creating
+00:43 +213 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: catalog Retry observes recovered existing history without creating
+00:43 +214 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: explicit Retry rejects foreign-turn exact-turn proof
+00:43 +215 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: explicit Retry rejects foreign-conversation exact-turn proof
+00:43 +216 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: explicit Retry rejects stale exact-turn proof
+00:44 +217 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: explicit Retry rejects generation exact-turn proof
+00:44 +218 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/transcript_retry_test.dart: explicit Retry rejects preparing exact-turn proof
+00:44 +219 -1: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart
+00:45 +219 -1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: latest completion preserves a 50.0 pixel pause (queued: false)
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following StateError was thrown running a test:
+Bad state: No element
+
+When the exception was thrown, this was the stack:
+#0      Iterable.single (dart:core/iterable.dart:694:25)
+#1      WidgetController.widget (package:flutter_test/src/controller.dart:808:30)
+#2      main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart:173:18)
+<asynchronous suspension>
+#3      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#4      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1059:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+The test description was:
+  latest completion preserves a 50.0 pixel pause (queued: false)
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:46 +219 -2: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: latest completion preserves a 50.0 pixel pause (queued: false) [E]
+  Test failed. See exception logs above.
+  The test description was: latest completion preserves a 50.0 pixel pause (queued: false)
+  
+00:46 +219 -2: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: latest completion preserves a 700.0 pixel pause (queued: false)
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following StateError was thrown running a test:
+Bad state: No element
+
+When the exception was thrown, this was the stack:
+#0      Iterable.single (dart:core/iterable.dart:694:25)
+#1      WidgetController.widget (package:flutter_test/src/controller.dart:808:30)
+#2      main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart:173:18)
+<asynchronous suspension>
+#3      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#4      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1059:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+The test description was:
+  latest completion preserves a 700.0 pixel pause (queued: false)
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:46 +219 -3: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: latest completion preserves a 700.0 pixel pause (queued: false) [E]
+  Test failed. See exception logs above.
+  The test description was: latest completion preserves a 700.0 pixel pause (queued: false)
+  
+00:46 +219 -3: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: latest completion preserves a 50.0 pixel pause (queued: true)
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following StateError was thrown running a test:
+Bad state: No element
+
+When the exception was thrown, this was the stack:
+#0      Iterable.single (dart:core/iterable.dart:694:25)
+#1      WidgetController.widget (package:flutter_test/src/controller.dart:808:30)
+#2      main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart:173:18)
+<asynchronous suspension>
+#3      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#4      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1059:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+The test description was:
+  latest completion preserves a 50.0 pixel pause (queued: true)
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:46 +219 -4: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: latest completion preserves a 50.0 pixel pause (queued: true) [E]
+  Test failed. See exception logs above.
+  The test description was: latest completion preserves a 50.0 pixel pause (queued: true)
+  
+00:46 +219 -4: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: latest completion preserves a 700.0 pixel pause (queued: true)
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following StateError was thrown running a test:
+Bad state: No element
+
+When the exception was thrown, this was the stack:
+#0      Iterable.single (dart:core/iterable.dart:694:25)
+#1      WidgetController.widget (package:flutter_test/src/controller.dart:808:30)
+#2      main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart:173:18)
+<asynchronous suspension>
+#3      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#4      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1059:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+The test description was:
+  latest completion preserves a 700.0 pixel pause (queued: true)
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:47 +219 -5: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: latest completion preserves a 700.0 pixel pause (queued: true) [E]
+  Test failed. See exception logs above.
+  The test description was: latest completion preserves a 700.0 pixel pause (queued: true)
+  
+00:47 +219 -5: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: Jump stays enabled during session refresh and serializes navigation
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following StateError was thrown running a test:
+Bad state: No element
+
+When the exception was thrown, this was the stack:
+#0      Iterable.single (dart:core/iterable.dart:694:25)
+#1      WidgetController.widget (package:flutter_test/src/controller.dart:808:30)
+#2      main.<anonymous closure>.jump (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart:234:39)
+#3      main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart:255:20)
+<asynchronous suspension>
+#4      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#5      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1059:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+The test description was:
+  Jump stays enabled during session refresh and serializes navigation
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:47 +219 -6: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: Jump stays enabled during session refresh and serializes navigation [E]
+  Test failed. See exception logs above.
+  The test description was: Jump stays enabled during session refresh and serializes navigation
+  
+00:47 +219 -6: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: Jump stays enabled during widget polling and serializes navigation
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following StateError was thrown running a test:
+Bad state: No element
+
+When the exception was thrown, this was the stack:
+#0      Iterable.single (dart:core/iterable.dart:694:25)
+#1      WidgetController.widget (package:flutter_test/src/controller.dart:808:30)
+#2      main.<anonymous closure>.jump (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart:234:39)
+#3      main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart:255:20)
+<asynchronous suspension>
+#4      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#5      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1059:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+The test description was:
+  Jump stays enabled during widget polling and serializes navigation
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:47 +219 -7: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: Jump stays enabled during widget polling and serializes navigation [E]
+  Test failed. See exception logs above.
+  The test description was: Jump stays enabled during widget polling and serializes navigation
+  
+00:47 +219 -7: Some tests failed.

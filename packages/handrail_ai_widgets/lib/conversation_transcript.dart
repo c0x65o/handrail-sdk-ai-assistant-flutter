@@ -236,7 +236,11 @@ class _TranscriptState extends State<HandrailConversationTranscript>
         !_foreground ||
         !_scroll.hasClients ||
         _scroll.position.extentAfter >= 72 ||
-        !TickerMode.valuesOf(context).enabled ||
+        // Flutter >=3.38.0 support needs of's inherited enabled subscription.
+        // Once the minimum is >=3.41.7, use valuesOf(context).enabled and remove
+        // this ignore.
+        // ignore: deprecated_member_use
+        !TickerMode.of(context) ||
         ModalRoute.of(context)?.isCurrent == false ||
         _state['running'] == true ||
         _state['pending'] == true ||

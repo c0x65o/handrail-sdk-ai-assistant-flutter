@@ -1,0 +1,15 @@
+{
+  "runtime": "minimum",
+  "mode": "analyze",
+  "sdk": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/presend-review-flutter-supported/flutter",
+  "temp": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/widget-compatibility-sE67fA",
+  "args": [
+    "analyze",
+    "--fatal-infos",
+    "lib"
+  ],
+  "elapsedMs": 8429,
+  "status": 0,
+  "signal": null,
+  "error": null
+}

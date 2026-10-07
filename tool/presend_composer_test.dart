@@ -9,9 +9,10 @@ import 'package:handrail_ai_client/handrail_ai_client.dart';
 import 'presend_fixture.dart';
 
 void main() {
-  testWidgets('public composer records the same sequential pre-send pair', (
+  testWidgets('public composer pre-send sequence preserves admission and start', (
     tester,
   ) async {
+    final baseline = Platform.environment['HANDRAIL_PRESEND_BASELINE'] == '1';
     // Use the isolated loopback gateway instead of flutter_test's HTTP 400 mock.
     final previousHttp = HttpOverrides.current;
     HttpOverrides.global = null;
@@ -31,7 +32,7 @@ void main() {
       drafts.dispose();
       var done = false;
       final closing = f
-          .close('../../docs/qa/presend-2026-10-06')
+          .close(Platform.environment['HANDRAIL_PRESEND_EVIDENCE'] ?? '../../docs/qa/presend-witness-2026-10-07/after')
           .whenComplete(() => done = true);
       for (var i = 0; !done && i < 200; i++) {
         await tester.pump();
@@ -88,12 +89,10 @@ void main() {
       'control',
       'changes',
       'control',
-      'changes',
+      if (baseline) 'changes',
     ]);
     expect(reads[0]['request'], reads[2]['request']);
-    expect(reads[1]['request'], reads[3]['request']);
     expect(reads[0]['response'], reads[2]['response']);
-    expect(reads[1]['response'], reads[3]['response']);
     expect(reads[1]['endUs'] as int, lessThan(reads[2]['startUs'] as int));
     expect(reads[0]['stack'].toString(), contains('_sendFromUi'));
     expect(reads[0]['caller'], 'prepareTurn');

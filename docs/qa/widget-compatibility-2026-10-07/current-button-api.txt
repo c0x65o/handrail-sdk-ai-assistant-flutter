@@ -1,0 +1,47 @@
+161:   FilledButton.tonalIcon({
+162:     super.key,
+163:     required super.onPressed,
+164:     super.onLongPress,
+165:     super.onHover,
+166:     super.onFocusChange,
+167:     super.style,
+168:     super.focusNode,
+169:     super.autofocus = false,
+170:     super.clipBehavior = Clip.none,
+171:     super.statesController,
+172:     Widget? icon,
+173:     required Widget label,
+174:     IconAlignment? iconAlignment,
+175:   }) : _variant = _FilledButtonVariant.tonal,
+176:        _addPadding = icon != null,
+177:        super(
+178:          child: icon != null
+179:              ? _FilledButtonWithIconChild(
+180:                  label: label,
+181:                  icon: icon,
+182:                  buttonStyle: style,
+183:                  iconAlignment: iconAlignment,
+184:                )
+185:              : label,
+186:        );
+187: 
+188:   /// A static convenience method that constructs a filled button
+189:   /// [ButtonStyle] given simple values.
+190:   ///
+191:   /// The [foregroundColor] and [disabledForegroundColor] colors are used
+192:   /// to create a [WidgetStateProperty] [ButtonStyle.foregroundColor], and
+193:   /// a derived [ButtonStyle.overlayColor] if [overlayColor] isn't specified.
+194:   ///
+195:   /// If [overlayColor] is specified and its value is [Colors.transparent]
+196:   /// then the pressed/focused/hovered highlights are effectively defeated.
+197:   /// Otherwise a [WidgetStateProperty] with the same opacities as the
+198:   /// default is created.
+199:   ///
+200:   /// Similarly, the [enabledMouseCursor] and [disabledMouseCursor]
+201:   /// parameters are used to construct [ButtonStyle.mouseCursor].
+202:   ///
+203:   /// The [iconColor], [disabledIconColor] are used to construct
+204:   /// [ButtonStyle.iconColor] and [iconSize] is used to construct
+205:   /// [ButtonStyle.iconSize].
+206:   ///
+207:   /// If [iconColor] is null, the button icon will use [foregroundColor]. If [foregroundColor] is also

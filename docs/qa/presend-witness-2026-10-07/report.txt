@@ -1,0 +1,233 @@
+Pre-send changes witness — source qualification, 2026-10-07 UTC
+
+Verdict and custody
+------------------
+Implemented the narrow Flutter-only candidate for independent review. The normal
+public controller and packaged composer save exactly ONE pre-admission changes
+request. Fresh authorized control, immutable canonical CAS, exact-turn checks,
+admission/start, initial/context/approval pages and post-action reads remain.
+No request intent, cadence, cap, provider contract, credential or wire change.
+No commit, push, PR, publication, deployment, consumer write or Handrail state
+mutation. Versions/manifests/locks are unchanged. JavaScript has no source diff.
+
+MCP current_context confirmed SDK project 6ef59b5e-e28f-4b79-adc3-97c6ba5e5322,
+WR 5167ebe9-435f-4c86-aa45-21b5ee04db8a and auth snapshot 08346f8bc724.
+Both repos were clean at entry and match the requested source:
+ Flutter client 0.1.41 / 5cf833d0bb9d9dd001e697947f9f3e4945b17d20
+ JS 0.2.79 / 7ff3b9f23467ce01e578d7039c3ffa35e2f557b6
+Read JS AGENTS, Flutter README/Makefile/client contract, existing pre-send report
+and tests, platform-contracts, display-history-api, canonical-admission-pagination,
+attached KBs and handrail-ai-sdk-implementation-contract. The old KB extraction
+path is superseded by repo guidance and this request. No other project access.
+
+Exact production diff: production.diff (four client library files only).
+SHA256: 89f8833e781b1e8b7459560d99bbc4dfc65db7fdcff2c8c8f70a45a3c554f53e
+source-hashes.json records every base/candidate source hash and the JS build hash.
+SHA256SUMS covers the evidence and harness files. Runtime diff excludes tests,
+diagnostic instrumentation, reports, temporary toolchains and generated dist.
+
+Private proof and bounds
+------------------------
+Only immediate session.sendMessage creates a local _PreparedChanges after its
+preparation completes. It is passed down the private submit call chain and is
+never serialized, attached to a public submission, globally cached or retained
+on the session. A failed retain drops it. Direct prepare/submit and all journal
+retry/reconstruction paths pass no witness. Joined preparation refreshes cannot
+create it. Every subsequent session refresh attempt/stream wake invalidates it.
+
+Capture requires a ready active account/session display, the exact nullable
+prepared document revision, and a fully consumed CHANGES operation. Initial
+pages are not proof. The window records _consumedChanges only after merging the
+response; a cursor, deferred response record or trim prevents that flag. The
+predicate also checks _changesAfter against the projection head, window head and
+generation, no read/selection/latest/content work outstanding, no error or failed
+operation, no newer window, following latest, and no deferred retained records.
+Session related/approval work, remaining related pagination, truncation and
+pending automatic display work fail closed. Available older transcript/history
+pages are not walked or treated as pending delta consumption.
+
+After the SECOND authorized control succeeds, consume spends the witness before
+checking it. It requires identical session, window, activation, window selection
+and previous control; unchanged workspace selection/window version, local
+preparation/display-read/observation generations and related/approval epochs;
+unchanged nullable document revision; plus matching fresh conversation,
+canonical head, projection head and generation, ready and no active remote turn.
+No null documentRevision is coerced to zero. Canonical and display zero are
+compared as their own control fields; admission expectedRevision remains null.
+
+Account identity is bound by the EXISTING account-owned client/controller/session
+lifetime contract: dispose on logout/account change. A replacement account or
+client cannot inherit the private witness. Workspace selection roundtrips,
+window selection/navigation/refresh/retry/content reads, stream observation,
+reset and generation changes invalidate it. Keeping the same controller while
+silently changing its host principal violates the existing supported lifecycle;
+the SDK has no principal identifier in control and does not hash/store bearer
+headers to manufacture one. Current host authorization still runs on every kept
+control, append and start. Replacement with disposal and revocation at control
+and append are tested. No new host identity API or protocol is introduced.
+
+On failure/uncertainty the old full refresh path remains. Omitting changes is
+the only conditional skip. Related/context/history logic still runs below that
+branch. All original append receipts, active/exact-turn checks, requested-turn
+verification, immutable CAS and start authorization remain unchanged. Changes
+after control still conflict at admission. Retry never regenerates an operation.
+
+Reproduction and measured equivalence
+------------------------------------
+The initial unchanged runtime run passed the existing 11 diagnostic cases
+(before-client.log and before/). Then the expanded SAME public test driver was
+run against a disposable compiler copy of the exact .41 Git source and against
+the candidate. The frozen source is read via git show into the temporary copy;
+no checkout/worktree or repository file restoration is used by this runner.
+
+                         Baseline .41          Candidate
+ empty public controller control,changes,      control,changes,
+                         control,changes       control
+ packaged public composer same four reads      same three reads
+ nonempty stable window   same four reads      same three reads
+
+Each normal run has one admission, one start and one simulated provider
+invocation. Both controller runs settle at canonical revision 7, completed,
+with one user message (Synthetic send), one assistant reply (Finished once),
+identical turn identity and no pending journal. The nonempty case retains CAS 2;
+the empty/controller/composer cases retain null. Receipt statuses and canonical
+revisions are identical (1,2 for empty; 3,4 for nonempty). Every receipt mutation
+ID matches its ORIGINAL request within each run. Lost-ack replays compare exact
+original admissions and invoke the provider once. summary.json independently
+compares these invariants; cross-run database UUIDs, server timestamps, generated
+composer operation UUIDs and assistant message UUIDs are intentionally excluded
+from cross-run equality, and preserved in raw evidence.
+
+The candidate's internal marks prove empty-head documentRevision=null,
+canonical/projection=0/0, generation=0, _changesAfter=0, exhausted cursor,
+consumedChanges=true, observationGeneration=0, then a successful one-use consume.
+Nonempty proof similarly observes head/watermark 2. The Preview supplied release
+trace (92/93/94/95, append96; API70..74; SQL90..94) supports attribution, but does
+NOT expose these private values. This SDK producer proof supplies them; it does
+not retroactively claim those values were directly measured in Preview.
+
+Counterexample qualification
+-----------------------------
+24 public JS.79 gateway tests exercise normal/changed preparation, joined
+refreshes, remote active turn/append/reset, stale CAS AFTER second control,
+revocation during retain/at append, session/window refresh, latest navigation,
+scroll and selection roundtrips, workspace roundtrip, navigation DURING fresh
+control, nonempty windows, real partial changes pagination, direct submit,
+reconstructed journal, disposed/replaced account, snapshot fallback and both
+lost-ack paths. Baseline and candidate both pass. Counterexamples retain changes
+(or required replacement pages/control rejection), never rebase CAS or bypass
+authority. Snapshot fallback retains both pre-admission read_since requests.
+
+95 direct private tests separately challenge capture/consume, one-use reuse,
+nullable CAS, identity/binding/observation/version changes, fresh heads/generation/
+active/preparing controls, pending reads/navigation/content, cursor/watermark,
+errors, trim/deferred/related/approval state. HTTP-boundary partial and deferred
+responses verify the actual window consumption flag, not just a fabricated
+network-end marker. Helpers are compiled ONLY into the disposable diagnostic
+library; there are no production testing exports. Existing window tests also
+exercise real trimming, pagination, generation reset and cancellation.
+
+122 focused client tests cover window/session/controller behavior, protected
+controls, actual JS PostgreSQL adapter submission/recovery, pending journals,
+newer draft/file versions, storage failures and cancellation. 161 shared widget
+tests cover canonical failed starts/reopen/explicit Retry in BOTH bounded and
+snapshot modes, auth/read/storage failures, navigation/account replacement,
+draft/file reconciliation and responsive workspace behavior. Final uninstrumented
+production display-session rerun passes all 24 tests, including three new default
+package regressions for immediate send and intervening refresh/navigation. These
+request-count checks run in the ordinary client suite without diagnostic tooling.
+
+Harness, toolchains and verification
+-----------------------------------
+The existing loopback gateway uses actual JS.79 Postgres persistence adapters,
+transactional event/projection/admission state and a fresh isolated PGlite
+PostgreSQL engine. JS was built normally with npm run build (TypeScript compile
+passed); HANDRAIL_TEST_JS_SDK_DIST points to that clean .79 build. The fixture's
+installed Git dependency is older, so this explicitly remains SOURCE
+qualification, not installed-dependency/consumer adoption. No JS dependency pin
+was changed. The synthetic provider has no tools, credentials, external URLs or
+live effects. No external PostgreSQL server, RLS or multi-process locking claim.
+
+Available current toolchain: Flutter 3.41.7 / Dart 3.11.5, Node 22.23.1.
+Current production client analyze and instrumented scoped analyze: no issues.
+Current private proof: 95 passed; public PG gateway: 24 passed; composer: 1 passed.
+Frozen .41 public PG gateway: 24 passed; frozen .41 public composer: 1 passed.
+Focused client: 122 passed; shared widgets: 161 passed (counts overlap other runs).
+Final uninstrumented display-session suite: 24 passed (package-regression.log).
+
+Client minimum Dart 3.4.0 was downloaded from the official public archive into
+ignored .dart_tool/presend-minimum, with archive hash in source-hashes.json.
+Dependencies were resolved only in its isolated source-qualification package;
+minimum-pubspec.lock preserves that resolution. No installed SDK package or repo
+lock was changed. On Dart 3.4.0: scoped analysis passes, all 95 private proof tests
+pass, and all 24 actual JS.79 PG gateway tests pass on final production source.
+Flutter 3.38 widget execution is UNVERIFIED: only the prepared 3.41.7 Flutter SDK
+is available. No large additional Flutter installation was attempted with only
+~4 GiB free; no SDK/cache permissions were changed. There is no widget runtime
+source change, but this does not substitute for a minimum Flutter run.
+
+Focused checks ran with one test worker and bounds under 240 seconds. Full CI
+was not invoked; its five-minute autoskip policy/configuration is unchanged.
+No suggested project checks were configured. node --check and git diff --check
+pass. Formatting is limited to edited/new code; existing unrelated formatting is
+retained. Existing shared native cache stamp warnings are nonfatal in passed
+widget runs and remain recorded.
+
+Reproduction from Flutter root (run checks sequentially)
+-------------------------------------------------------
+Set HANDRAIL_TEST_JS_SDK_DIST to the sibling .79 dist; use its normal npm run build
+first when regenerating dist. For each mode client, predicate, analyze:
+ timeout -k 5s 240s node tool/run-presend-trace.mjs /opt/handrail/.handrail/flutter-sdk MODE
+Composer additionally needs FLUTTER_ALREADY_LOCKED=true with this read-only cache.
+HANDRAIL_PRESEND_BASELINE=1 selects frozen .41 (client/composer only).
+HANDRAIL_PRESEND_EVIDENCE overrides the trace directory; use a separate directory
+for baseline, candidate and minimum to preserve evidence.
+For minimum, set HANDRAIL_PRESEND_CLIENT_CONFIG to the isolated minimum client's
+.dart_tool/package_config.json and use .dart_tool/presend-minimum/toolchain as
+the runner toolchain root. It links only the downloaded Dart SDK under
+bin/cache/dart-sdk. The runner directly executes the resolved test entrypoint,
+so it does not re-resolve or rewrite the installed package's protected pub cache.
+The temporary package map points handrail_ai_client at the current source copy.
+
+Focused current client command, from packages/handrail_ai_client:
+ dart test --concurrency=1 test/display_window_test.dart test/display_session_test.dart test/display_control_test.dart test/session_test.dart test/submission_gateway_test.dart test/assistant_controller_test.dart test/assistant_observation_test.dart test/pending_turn_store_test.dart test/conversation_drafts_test.dart test/attachment_drafts_test.dart --reporter expanded
+Shared current widget command, from repository root:
+ FLUTTER_ALREADY_LOCKED=true node tool/check-shared-widgets.mjs /opt/handrail/.handrail/flutter-sdk tool/terminal_pending_test.dart tool/transcript_retry_test.dart packages/handrail_ai_widgets/test/draft_controller_test.dart packages/handrail_ai_widgets/test/composer_drafts_test.dart packages/handrail_ai_widgets/test/assistant_workspace_test.dart
+
+Failed attempts retained, not counted as passes
+-----------------------------------------------
+initial-client.log: initial scripted edit duplicated declarations in the window;
+compile failed before tests. Corrected the edit, then compiled/tested successfully.
+initial-predicate.log: helper used Fixture.close instead of its disposal API.
+predicate.log: the reused HTTP fixture's zero-head page incorrectly contained
+revision-zero records. The empty-head fixture now returns no records.
+predicate-final.log: deferred fixture returned a record at/below afterRevision;
+wire validation correctly rejected it. Its remote revision now advances before
+that delta; predicate-qualified and final-source logs pass.
+minimum-client.log: dart run test attempted dependency acquisition in the shared
+read-only cache. Changed the fixture runner to execute the already-resolved test
+entrypoint directly; minimum-client-final and minimum-client-qualified pass.
+An initial evidence comparison tried exact receipts across different isolated
+DB UUIDs/timestamps. That assertion failed. summary.json compares receipt
+semantics across runs and separately verifies exact original identities within
+each run; it does not pretend independent database event IDs are equal.
+Routine setup attempts also included an incorrect optional Flutter archive HEAD
+URL (404, no download) and a minimum-package command before creating its temporary
+working directory. Both were local setup failures, not SDK tests or permission
+requests. No current SDK runtime check remains failed.
+
+Remaining independent review and consumer obligations
+-----------------------------------------------------
+Review the exact four-file production diff and account-lifetime assumption;
+complete Flutter 3.38 execution before claiming full minimum/current Flutter
+qualification.
+Parent alone owns Flutter-only native publication and release checks. There is
+no new immutable published candidate pin yet. JS must remain .79 at its full SHA.
+After approved publication, the Preview owner must use that EXACT immutable
+Flutter pin and matching lock with the unchanged full-consumer driver SHA256:
+ 59ce35e604506920f9e385c4f4968dad57c710979eb8151883aad7efd57bcca7
+Re-measure the complete first window and continuity obligations on that consumer.
+This one-call candidate is NOT a cure/acceptance claim for Preview's 126/120
+failure. The 56 same-head observations are NOT 56 removable calls. This SDK
+fixture does not measure consumer rate limiting, device timing or full-budget
+behavior, and does not authorize a consumer rollout or any live provider effect.

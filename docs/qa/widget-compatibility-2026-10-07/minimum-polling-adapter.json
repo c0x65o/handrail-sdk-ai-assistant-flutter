@@ -1,0 +1,7 @@
+{
+  "original": "tool/display_polling_test.dart",
+  "originalSha256": "53920696f93cb0f8354d08a4c64906506c6b9506b0eef7f1c99e7ae9f37f0e8a",
+  "adaptedSha256": "18b36de2a26e082bcd4cf62534f59c04a157643118b2135875832e975e401d38",
+  "replacements": 5,
+  "test": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/widget-compatibility-polling-8UKsoC/display_polling_supported_test.dart"
+}

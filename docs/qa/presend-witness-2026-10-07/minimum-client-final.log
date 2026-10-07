@@ -1,0 +1,28 @@
+00:00 [32m+0[0m: [1m[90mloading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_client_test.dart[0m[0m
+00:00 [32m+0[0m: (setUpAll)[0m
+00:02 [32m+0[0m: normal controller saves exactly the second changes read[0m
+00:02 [32m+1[0m: first preparation read observes a changed canonical head[0m
+00:03 [32m+2[0m: overlapping refresh callers singleflight but submit still reads again[0m
+00:03 [32m+3[0m: remote turn during journal write is caught by second control[0m
+00:03 [32m+4[0m: remote clear during retain changes generation and rejects stale admission[0m
+00:04 [32m+5[0m: canonical change during retain preserves stale CAS[0m
+00:04 [32m+6[0m: canonical change after second read preserves stale CAS[0m
+00:04 [32m+7[0m: auth revoked during retain rejects without start[0m
+00:04 [32m+8[0m: auth revoked at admission rejects without start[0m
+00:04 [32m+9[0m: session refresh during retain invalidates preparation[0m
+00:04 [32m+10[0m: window refresh during retain invalidates preparation[0m
+00:04 [32m+11[0m: latest during retain invalidates preparation[0m
+00:05 [32m+12[0m: scroll roundtrip during retain invalidates preparation[0m
+00:05 [32m+13[0m: selection roundtrip during retain invalidates preparation[0m
+00:05 [32m+14[0m: workspace roundtrip during retain invalidates preparation[0m
+00:05 [32m+15[0m: navigation during second authorized control invalidates witness[0m
+00:05 [32m+16[0m: nonempty stable window saves one request with unchanged canonical CAS[0m
+00:06 [32m+17[0m: partial multi-page changes retain the second cursor read[0m
+00:06 [32m+18[0m: direct submit gets full read[0m
+00:06 [32m+19[0m: reconstructed journal gets full read[0m
+00:07 [32m+20[0m: account replacement disposes witness before admission[0m
+00:07 [32m+21[0m: snapshot fallback keeps both pre-admission read_since requests[0m
+00:07 [32m+22[0m: lost admission acknowledgement retries exact saved operation[0m
+00:08 [32m+23[0m: lost start acknowledgement retries exact saved operation[0m
+00:08 [32m+24[0m: (tearDownAll)[0m
+00:08 [32m+24[0m: All tests passed![0m

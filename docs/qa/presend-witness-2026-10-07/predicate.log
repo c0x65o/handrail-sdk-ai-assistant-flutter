@@ -1,0 +1,111 @@
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_predicate_test.dart
+00:00 +0: consumed witness succeeds once at canonical head 0
+00:00 +0 -1: consumed witness succeeds once at canonical head 0 [E]
+  HandrailGatewayException(synchronization_failed): Conversation synchronization is temporarily unavailable.
+  package:handrail_ai_client/src/session.dart 673:7           HandrailConversationSession._refresh
+  ===== asynchronous gap ===========================
+  package:handrail_ai_client/handrail_ai_client.dart 1093:11  _presendRefresh.<fn>
+  ===== asynchronous gap ===========================
+  package:handrail_ai_client/src/session.dart 560:105         HandrailConversationSession._refreshWithPreparation.<fn>
+  ===== asynchronous gap ===========================
+  package:handrail_ai_client/src/session.dart 523:7           HandrailConversationSession.initialize
+  ===== asynchronous gap ===========================
+  ../../tool/presend_predicate_test.dart 27:5                 main.fixture
+  ===== asynchronous gap ===========================
+  ../../tool/presend_predicate_test.dart 36:17                main.<fn>
+  
+00:00 +0 -1: consumed witness succeeds once at canonical head 100
+00:00 +1 -1: one-use predicate rejects closed activation
+00:00 +2 -1: one-use predicate rejects disposed
+00:00 +3 -1: one-use predicate rejects inactive
+00:00 +4 -1: one-use predicate rejects document missing
+00:00 +5 -1: one-use predicate rejects document revision
+00:00 +6 -1: one-use predicate rejects error
+00:00 +7 -1: one-use predicate rejects refresh error
+00:00 +8 -1: one-use predicate rejects scheduled refresh
+00:00 +9 -1: one-use predicate rejects stream refresh
+00:00 +10 -1: one-use predicate rejects display loading
+00:00 +11 -1: one-use predicate rejects related loading
+00:00 +12 -1: one-use predicate rejects approval loading
+00:00 +13 -1: one-use predicate rejects related pagination
+00:00 +14 -1: one-use predicate rejects related trim
+00:00 +15 -1: one-use predicate rejects window disposed
+00:00 +16 -1: one-use predicate rejects window selection
+00:00 +17 -1: one-use predicate rejects window conversation
+00:00 +18 -1: one-use predicate rejects window preparing
+00:00 +19 -1: one-use predicate rejects window generation
+00:00 +20 -1: one-use predicate rejects window revision
+00:00 +21 -1: one-use predicate rejects watermark
+00:00 +22 -1: one-use predicate rejects cursor
+00:00 +23 -1: one-use predicate rejects unconsumed
+00:00 +24 -1: one-use predicate rejects initial page
+00:00 +25 -1: one-use predicate rejects pending
+00:00 +26 -1: one-use predicate rejects queued latest
+00:00 +27 -1: one-use predicate rejects read request
+00:00 +28 -1: one-use predicate rejects content request
+00:00 +29 -1: one-use predicate rejects loading
+00:00 +30 -1: one-use predicate rejects failed
+00:00 +31 -1: one-use predicate rejects window error
+00:00 +32 -1: one-use predicate rejects newer
+00:00 +33 -1: one-use predicate rejects scrolled
+00:00 +34 -1: one-use predicate rejects deferred
+00:00 +35 -1: one-use predicate rejects reuse
+00:00 +36 -1: one-use predicate rejects session
+00:00 +37 -1: one-use predicate rejects client
+00:00 +38 -1: one-use predicate rejects activation
+00:00 +39 -1: one-use predicate rejects refresh
+00:00 +40 -1: one-use predicate rejects observation
+00:00 +41 -1: one-use predicate rejects display read
+00:00 +42 -1: one-use predicate rejects related epoch
+00:00 +43 -1: one-use predicate rejects related version
+00:00 +44 -1: one-use predicate rejects approval epoch
+00:00 +45 -1: one-use predicate rejects window observation
+00:00 +46 -1: one-use predicate rejects window replaced
+00:00 +47 -1: one-use predicate rejects control replaced
+00:00 +48 -1: one-use predicate rejects fresh conversation
+00:00 +49 -1: one-use predicate rejects fresh generation
+00:00 +50 -1: one-use predicate rejects fresh canonical
+00:00 +51 -1: one-use predicate rejects fresh projection
+00:00 +52 -1: one-use predicate rejects fresh preparing
+00:00 +53 -1: one-use predicate rejects fresh active
+00:00 +54 -1: capture rejects closed activation
+00:00 +55 -1: capture rejects disposed
+00:00 +56 -1: capture rejects inactive
+00:00 +57 -1: capture rejects document missing
+00:00 +58 -1: capture rejects document revision
+00:00 +59 -1: capture rejects error
+00:00 +60 -1: capture rejects refresh error
+00:00 +61 -1: capture rejects scheduled refresh
+00:00 +62 -1: capture rejects stream refresh
+00:00 +63 -1: capture rejects display loading
+00:00 +64 -1: capture rejects related loading
+00:00 +65 -1: capture rejects approval loading
+00:00 +66 -1: capture rejects related pagination
+00:00 +67 -1: capture rejects related trim
+00:00 +68 -1: capture rejects window disposed
+00:00 +69 -1: capture rejects window selection
+00:00 +70 -1: capture rejects window conversation
+00:00 +71 -1: capture rejects window preparing
+00:00 +72 -1: capture rejects window generation
+00:00 +73 -1: capture rejects window revision
+00:00 +74 -1: capture rejects watermark
+00:00 +75 -1: capture rejects cursor
+00:00 +76 -1: capture rejects unconsumed
+00:00 +77 -1: capture rejects initial page
+00:00 +78 -1: capture rejects pending
+00:00 +79 -1: capture rejects queued latest
+00:00 +80 -1: capture rejects read request
+00:00 +81 -1: capture rejects content request
+00:00 +82 -1: capture rejects loading
+00:00 +83 -1: capture rejects failed
+00:00 +84 -1: capture rejects window error
+00:00 +85 -1: capture rejects newer
+00:00 +86 -1: capture rejects scrolled
+00:00 +87 -1: capture rejects deferred
+00:00 +88 -1: Some tests failed.
+
+Failing tests:
+  /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_predicate_test.dart: consumed witness succeeds once at canonical head 0
+
+Consider enabling the flag chain-stack-traces to receive more detailed exceptions.
+For example, 'dart test --chain-stack-traces'.

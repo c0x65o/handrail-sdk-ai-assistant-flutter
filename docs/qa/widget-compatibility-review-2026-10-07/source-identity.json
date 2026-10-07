@@ -1,0 +1,31 @@
+{
+  "entryFiles": 548,
+  "unchangedFiles": 546,
+  "changedFiles": [
+    "packages/handrail_ai_widgets/lib/conversation_transcript.dart",
+    "packages/handrail_ai_widgets/lib/display_transcript.dart"
+  ],
+  "files": {
+    "packages/handrail_ai_widgets/lib/conversation_transcript.dart": {
+      "headSha256": "20bb7a8c9a6891e7d943b8b29fb98c96c4d726fd0e4da447f3a9ef571c2b5e98",
+      "entrySha256": "60ac6a178303a0a36e475c7856db3bd16763b36fe35f1d4db4ccf204e5e0dbc3",
+      "finalSha256": "7875a3e736de7a3734412199905f521933c3b7f0b9736cadecb46bc1a251c4ec",
+      "onlyCompatibilityReplacementAndComments": true
+    },
+    "packages/handrail_ai_widgets/lib/display_transcript.dart": {
+      "headSha256": "81aca850087b7dda170f6440463fafe825001b6296f940f52abe1fefdf1b22b0",
+      "entrySha256": "4ff8c0979ee44551f0b571018f31967e42c010991bfe00be052bd830d40e4ec9",
+      "finalSha256": "1bb9717bb28942b3bee819c77dc7d5ef7162e089a0fdf782d87615ff33c6ae64",
+      "onlyCompatibilityReplacementAndComments": true
+    }
+  },
+  "clientDiffSha256": "89f8833e781b1e8b7459560d99bbc4dfc65db7fdcff2c8c8f70a45a3c554f53e",
+  "runtimeAndCommentsDiffSha256": "deb5b6a963178859c839660f7985043f65b300319f4801770d8df031c5bbce44",
+  "commentsOnlyDiffSha256": "0086df26c510ba19fd6a9ea351850aaeff425ac3faae52487a4dd2cb5920c61c",
+  "jsHead": "7ff3b9f23467ce01e578d7039c3ffa35e2f557b6",
+  "jsVersion": "0.2.79",
+  "jsClean": true,
+  "jsArtifactsCompared": 478,
+  "jsArtifactsAllMatch": true,
+  "priorJsTreeHash": "f3753a633112f1d2a8bd454395a2b03f3fe3728679405ccc72292aa977fef4de"
+}

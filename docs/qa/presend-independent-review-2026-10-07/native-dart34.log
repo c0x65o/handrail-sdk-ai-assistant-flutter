@@ -1,0 +1,17 @@
+native-dart34: fresh native PostgreSQL cluster, dedicated non-superuser role; uninstrumented Dart source; loopback gateway; fixture provider only.
+00:00 [32m+0[0m: [1m[90mloading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/independent-review-GB30AJ/public_review_test.dart[0m[0m
+00:00 [32m+0[0m: (setUpAll)[0m
+00:00 [32m+0[0m: public controller completes once at revision 7 after asynchronous retain[0m
+00:00 [32m+1[0m: a second public preparation during retain invalidates the send witness[0m
+00:01 [32m+2[0m: concurrent refresh joining the second control forces changes[0m
+00:01 [32m+3[0m: concurrent send cannot spend another operation witness[0m
+00:01 [32m+4[0m: remote append after fresh control rejects the ORIGINAL nullable CAS[0m
+00:01 [32m+5[0m: authorization revoked while retaining prevents any admission[0m
+00:01 [32m+6[0m: dispose during second control prevents late result admission[0m
+00:01 [32m+7[0m: partial page uses the real returned cursor on second changes read[0m
+00:01 [32m+8[0m: retained public window snapshot stays immutable and detached[0m
+00:02 [32m+9[0m: restored journal bypasses private optimization[0m
+00:02 [32m+10[0m: snapshot fallback retains both read_since operations[0m
+00:02 [32m+11[0m: (tearDownAll)[0m
+00:02 [32m+11[0m: All tests passed![0m
+Owned native PostgreSQL stopped: true

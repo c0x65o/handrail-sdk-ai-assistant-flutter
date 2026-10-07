@@ -1,0 +1,23 @@
+--- original/run-check.mjs
++++ review/run-check.mjs
+@@ -1,5 +1,5 @@
+ // Isolated source qualification. Never writes prior review evidence or SDK files.
+-import { existsSync, cpSync, readFileSync, writeFileSync, mkdirSync, mkdtempSync, symlinkSync } from 'node:fs';
++import { existsSync, cpSync, readFileSync, writeFileSync, mkdirSync, mkdtempSync, symlinkSync, openSync, closeSync } from 'node:fs';
+ import { dirname, resolve, join } from 'node:path';
+ import { fileURLToPath, pathToFileURL } from 'node:url';
+ import { spawnSync } from 'node:child_process';
+@@ -60,9 +60,11 @@
+   HANDRAIL_TEST_JS_SDK_DIST: resolve(root, '../handrail-sdk-ai-assistant-js/dist') };
+ if (runtime === 'minimum') env.PUB_CACHE = join(root, '.dart_tool/presend-review-pub-cache');
+ const start = Date.now();
++const log = openSync(join(evidence, `${label}.log`), 'wx');
++writeFileSync(join(evidence, `${label}-invocation.json`), JSON.stringify({ runtime, mode, sdk, temp, args }, null, 2) + '\n');
+ const result = spawnSync(join(sdk, 'bin/cache/dart-sdk/bin/dart'), args,
+-  { cwd: widgets, env, encoding: 'utf8', timeout: 240000, maxBuffer: 16 * 1024 * 1024 });
+-writeFileSync(join(evidence, `${label}.log`), result.stdout + result.stderr);
++  { cwd: widgets, env, stdio: ['ignore', log, log], timeout: 230000, killSignal: 'SIGKILL' });
++closeSync(log);
+ writeFileSync(join(evidence, `${label}.json`), JSON.stringify({runtime, mode, sdk, temp, args, elapsedMs: Date.now() - start,
+   status: result.status, signal: result.signal, error: result.error?.message ?? null}, null, 2) + '\n');
+ console.log(JSON.stringify({ label, status: result.status, seconds: (Date.now() - start) / 1000, log: join(evidence, `${label}.log`) }));

@@ -1,0 +1,6 @@
+Analyzing lib...
+
+  error - conversation_transcript.dart:239:21 - The method 'valuesOf' isn't defined for the type 'TickerMode'. Try correcting the name to the name of an existing method, or defining a method named 'valuesOf'. - undefined_method
+  error - display_transcript.dart:299:18 - The method 'valuesOf' isn't defined for the type 'TickerMode'. Try correcting the name to the name of an existing method, or defining a method named 'valuesOf'. - undefined_method
+
+2 issues found.

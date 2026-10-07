@@ -265,6 +265,7 @@ class HandrailConversationSession {
           ? pollingInterval!
           : const Duration(seconds: 5);
   int _observationGeneration = 0;
+  int _preparationGeneration = 0, _displayReadGeneration = 0;
   bool _disposed = false;
 
   HandrailConversationSession(
@@ -532,7 +533,12 @@ class HandrailConversationSession {
     }
   }
 
-  Future<void> refresh({bool automatic = false}) {
+  Future<void> refresh({bool automatic = false}) =>
+      _refreshWithPreparation(automatic: automatic);
+
+  Future<void> _refreshWithPreparation(
+      {bool automatic = false, _PreparedChanges? preparation}) {
+    _preparationGeneration++;
     if (_disposed)
       return Future.error(StateError('Conversation session is disposed'));
     if ((automatic || _error?.statusCode == 429) &&
@@ -547,7 +553,7 @@ class HandrailConversationSession {
             _automaticRefreshInterval) {
       return _refreshing ?? Future<void>.value();
     }
-    return _refreshing ??= _refresh().whenComplete(() {
+    return _refreshing ??= _refresh(preparation: preparation).whenComplete(() {
       _refreshing = null;
       if (_displayRefreshRequested) {
         _displayRefreshRequested = false;
@@ -556,7 +562,7 @@ class HandrailConversationSession {
     });
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({_PreparedChanges? preparation}) async {
     final activation = _displayActivation;
     _lastRefreshStarted = DateTime.now();
     try {
@@ -566,7 +572,7 @@ class HandrailConversationSession {
         throw const HandrailGatewayException('synchronization_unavailable',
             'Saved conversation synchronization is unavailable.');
       if (_capabilities!.displayHistory?.control == true) {
-        await _refreshDisplay();
+        await _refreshDisplay(preparation: preparation);
         if (_disposed || activation.isCompleted) return;
       } else {
         var pull = _document == null;
@@ -738,6 +744,7 @@ class HandrailConversationSession {
   }
 
   void _scheduleStreamRefresh() {
+    _preparationGeneration++;
     if (_disposed ||
         (_error != null && !_error!.retryable) ||
         _streamRefreshTimer != null) return;
@@ -809,14 +816,23 @@ class HandrailConversationSession {
     _publish();
     var retained = false;
     try {
+      final preparationGeneration = _preparationGeneration;
+      final preparingAlone = _refreshing == null;
       final submission = await prepareTurn(
           operationId: operationId,
           clientId: clientId,
           request: _object(preview._start['request']),
           localDraft: preview.localDraft);
+      final preparation =
+          preparingAlone && _preparationGeneration == preparationGeneration + 1
+              ? _PreparedChanges.capture(this,
+                  preparedRevision:
+                      submission._admission['expectedRevision'] as int?)
+              : null;
       await pendingStore.retain(submission);
       retained = true;
-      await _submitRetained(submission, pendingStore, onAccepted);
+      await _submitRetained(submission, pendingStore, onAccepted,
+          preparation: preparation);
       return submission;
     } finally {
       _preparingSend = false;
@@ -846,10 +862,13 @@ class HandrailConversationSession {
       HandrailTurnSubmission submission,
       HandrailPendingTurnStore pendingStore,
       void Function(HandrailTurnSubmission)? onAccepted,
-      {Future<void> Function()? beforeSubmit}) async {
+      {Future<void> Function()? beforeSubmit,
+      _PreparedChanges? preparation}) async {
     try {
       await _submit(submission,
-          onAccepted: onAccepted, beforeSubmit: beforeSubmit);
+          onAccepted: onAccepted,
+          beforeSubmit: beforeSubmit,
+          preparation: preparation);
     } on _RejectedAdmission {
       // A definite rejection admits nothing. Keep editable drafts/files while
       // releasing the exact journal so the user can correct the request.
@@ -872,7 +891,8 @@ class HandrailConversationSession {
 
   Future<void> _submit(HandrailTurnSubmission submission,
       {void Function(HandrailTurnSubmission)? onAccepted,
-      Future<void> Function()? beforeSubmit}) {
+      Future<void> Function()? beforeSubmit,
+      _PreparedChanges? preparation}) {
     if (_disposed)
       return Future.error(StateError('Conversation session is disposed'));
     if (submission.conversationId != conversationId)
@@ -895,7 +915,7 @@ class HandrailConversationSession {
     _admissionCallbacks.clear();
     _registerAdmissionCallback(onAccepted);
     final submitting = _submitting = _submitTurn(submission,
-            beforeSubmit: beforeSubmit)
+            beforeSubmit: beforeSubmit, preparation: preparation)
         .catchError((Object cause) {
       if (_disposed) throw cause;
       if (cause is _RejectedAdmission) {
@@ -951,8 +971,9 @@ class HandrailConversationSession {
   }
 
   Future<void> _submitTurn(HandrailTurnSubmission submission,
-      {Future<void> Function()? beforeSubmit}) async {
-    await refresh();
+      {Future<void> Function()? beforeSubmit,
+      _PreparedChanges? preparation}) async {
+    await _refreshWithPreparation(preparation: preparation);
     if (beforeSubmit != null) await beforeSubmit();
     if (_disposed) throw StateError('Conversation session is disposed');
     final active = _document!.activeTurnId;

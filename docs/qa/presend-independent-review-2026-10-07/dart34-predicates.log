@@ -1,0 +1,97 @@
+00:00 [32m+0[0m: [1m[90mloading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_predicate_test.dart[0m[0m
+00:00 [32m+0[0m: partial response is not consumption proof[0m
+00:00 [32m+1[0m: deferred response is not consumption proof[0m
+00:00 [32m+2[0m: null prepared revision is never coerced to zero[0m
+00:00 [32m+3[0m: consumed witness succeeds once at canonical head 0[0m
+00:00 [32m+4[0m: consumed witness succeeds once at canonical head 100[0m
+00:00 [32m+5[0m: one-use predicate rejects closed activation[0m
+00:00 [32m+6[0m: one-use predicate rejects disposed[0m
+00:00 [32m+7[0m: one-use predicate rejects inactive[0m
+00:00 [32m+8[0m: one-use predicate rejects document missing[0m
+00:00 [32m+9[0m: one-use predicate rejects document revision[0m
+00:00 [32m+10[0m: one-use predicate rejects error[0m
+00:00 [32m+11[0m: one-use predicate rejects refresh error[0m
+00:00 [32m+12[0m: one-use predicate rejects scheduled refresh[0m
+00:00 [32m+13[0m: one-use predicate rejects stream refresh[0m
+00:00 [32m+14[0m: one-use predicate rejects display loading[0m
+00:00 [32m+15[0m: one-use predicate rejects related loading[0m
+00:00 [32m+16[0m: one-use predicate rejects approval loading[0m
+00:00 [32m+17[0m: one-use predicate rejects related pagination[0m
+00:00 [32m+18[0m: one-use predicate rejects related trim[0m
+00:00 [32m+19[0m: one-use predicate rejects window disposed[0m
+00:00 [32m+20[0m: one-use predicate rejects window selection[0m
+00:00 [32m+21[0m: one-use predicate rejects window conversation[0m
+00:00 [32m+22[0m: one-use predicate rejects window preparing[0m
+00:00 [32m+23[0m: one-use predicate rejects window generation[0m
+00:00 [32m+24[0m: one-use predicate rejects window revision[0m
+00:00 [32m+25[0m: one-use predicate rejects watermark[0m
+00:00 [32m+26[0m: one-use predicate rejects cursor[0m
+00:00 [32m+27[0m: one-use predicate rejects unconsumed[0m
+00:00 [32m+28[0m: one-use predicate rejects initial page[0m
+00:00 [32m+29[0m: one-use predicate rejects pending[0m
+00:00 [32m+30[0m: one-use predicate rejects queued latest[0m
+00:00 [32m+31[0m: one-use predicate rejects read request[0m
+00:00 [32m+32[0m: one-use predicate rejects content request[0m
+00:00 [32m+33[0m: one-use predicate rejects loading[0m
+00:00 [32m+34[0m: one-use predicate rejects failed[0m
+00:00 [32m+35[0m: one-use predicate rejects window error[0m
+00:00 [32m+36[0m: one-use predicate rejects newer[0m
+00:00 [32m+37[0m: one-use predicate rejects scrolled[0m
+00:00 [32m+38[0m: one-use predicate rejects deferred[0m
+00:00 [32m+39[0m: one-use predicate rejects reuse[0m
+00:00 [32m+40[0m: one-use predicate rejects session[0m
+00:00 [32m+41[0m: one-use predicate rejects client[0m
+00:00 [32m+42[0m: one-use predicate rejects activation[0m
+00:00 [32m+43[0m: one-use predicate rejects refresh[0m
+00:00 [32m+44[0m: one-use predicate rejects observation[0m
+00:00 [32m+45[0m: one-use predicate rejects display read[0m
+00:00 [32m+46[0m: one-use predicate rejects related epoch[0m
+00:00 [32m+47[0m: one-use predicate rejects related version[0m
+00:00 [32m+48[0m: one-use predicate rejects approval epoch[0m
+00:00 [32m+49[0m: one-use predicate rejects prepared revision[0m
+00:00 [32m+50[0m: one-use predicate rejects window observation[0m
+00:00 [32m+51[0m: one-use predicate rejects window replaced[0m
+00:00 [32m+52[0m: one-use predicate rejects control replaced[0m
+00:00 [32m+53[0m: one-use predicate rejects window version[0m
+00:00 [32m+54[0m: one-use predicate rejects workspace selection[0m
+00:00 [32m+55[0m: one-use predicate rejects fresh conversation[0m
+00:00 [32m+56[0m: one-use predicate rejects fresh generation[0m
+00:00 [32m+57[0m: one-use predicate rejects fresh canonical[0m
+00:00 [32m+58[0m: one-use predicate rejects fresh projection[0m
+00:00 [32m+59[0m: one-use predicate rejects fresh preparing[0m
+00:00 [32m+60[0m: one-use predicate rejects fresh active[0m
+00:00 [32m+61[0m: capture rejects closed activation[0m
+00:00 [32m+62[0m: capture rejects disposed[0m
+00:00 [32m+63[0m: capture rejects inactive[0m
+00:00 [32m+64[0m: capture rejects document missing[0m
+00:00 [32m+65[0m: capture rejects document revision[0m
+00:00 [32m+66[0m: capture rejects error[0m
+00:00 [32m+67[0m: capture rejects refresh error[0m
+00:00 [32m+68[0m: capture rejects scheduled refresh[0m
+00:00 [32m+69[0m: capture rejects stream refresh[0m
+00:00 [32m+70[0m: capture rejects display loading[0m
+00:00 [32m+71[0m: capture rejects related loading[0m
+00:00 [32m+72[0m: capture rejects approval loading[0m
+00:00 [32m+73[0m: capture rejects related pagination[0m
+00:00 [32m+74[0m: capture rejects related trim[0m
+00:00 [32m+75[0m: capture rejects window disposed[0m
+00:00 [32m+76[0m: capture rejects window selection[0m
+00:00 [32m+77[0m: capture rejects window conversation[0m
+00:00 [32m+78[0m: capture rejects window preparing[0m
+00:00 [32m+79[0m: capture rejects window generation[0m
+00:00 [32m+80[0m: capture rejects window revision[0m
+00:00 [32m+81[0m: capture rejects watermark[0m
+00:00 [32m+82[0m: capture rejects cursor[0m
+00:00 [32m+83[0m: capture rejects unconsumed[0m
+00:00 [32m+84[0m: capture rejects initial page[0m
+00:00 [32m+85[0m: capture rejects pending[0m
+00:00 [32m+86[0m: capture rejects queued latest[0m
+00:00 [32m+87[0m: capture rejects read request[0m
+00:00 [32m+88[0m: capture rejects content request[0m
+00:00 [32m+89[0m: capture rejects loading[0m
+00:00 [32m+90[0m: capture rejects failed[0m
+00:00 [32m+91[0m: capture rejects window error[0m
+00:00 [32m+92[0m: capture rejects newer[0m
+00:00 [32m+93[0m: capture rejects scrolled[0m
+00:00 [32m+94[0m: capture rejects deferred[0m
+00:00 [32m+95[0m: All tests passed![0m

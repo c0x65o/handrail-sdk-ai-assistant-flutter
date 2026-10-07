@@ -1,0 +1,22 @@
+{
+  "widget-compatibility-2026-10-07": {
+    "entries": 59,
+    "failures": []
+  },
+  "presend-independent-review-2026-10-07": {
+    "entries": 127,
+    "failures": []
+  },
+  "presend-witness-2026-10-07": {
+    "entries": 125,
+    "failures": [
+      "packages/handrail_ai_client/test/display_session_test.dart",
+      "tool/presend_client_test.dart",
+      "tool/presend_composer_test.dart",
+      "tool/presend_fixture.dart",
+      "tool/presend_predicate_test.dart",
+      "tool/presend_private.dart",
+      "tool/run-presend-trace.mjs"
+    ]
+  }
+}

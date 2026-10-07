@@ -1,0 +1,15 @@
+{
+  "runtime": "current",
+  "mode": "analyze",
+  "sdk": "/opt/handrail/.handrail/flutter-sdk",
+  "temp": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/widget-compatibility-EgsorH",
+  "args": [
+    "analyze",
+    "--fatal-infos",
+    "lib"
+  ],
+  "elapsedMs": 11348,
+  "status": 0,
+  "signal": null,
+  "error": null
+}

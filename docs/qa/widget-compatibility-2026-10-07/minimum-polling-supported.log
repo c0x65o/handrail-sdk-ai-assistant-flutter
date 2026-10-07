@@ -1,0 +1,8 @@
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/widget-compatibility-polling-8UKsoC/display_polling_supported_test.dart
+00:00 +0: latest completion preserves a 50.0 pixel pause (queued: false)
+00:00 +1: latest completion preserves a 700.0 pixel pause (queued: false)
+00:01 +2: latest completion preserves a 50.0 pixel pause (queued: true)
+00:01 +3: latest completion preserves a 700.0 pixel pause (queued: true)
+00:01 +4: Jump stays enabled during session refresh and serializes navigation
+00:01 +5: Jump stays enabled during widget polling and serializes navigation
+00:01 +6: All tests passed!

@@ -1,0 +1,95 @@
+177:   factory FilledButton.tonalIcon({
+178:     Key? key,
+179:     required VoidCallback? onPressed,
+180:     VoidCallback? onLongPress,
+181:     ValueChanged<bool>? onHover,
+182:     ValueChanged<bool>? onFocusChange,
+183:     ButtonStyle? style,
+184:     FocusNode? focusNode,
+185:     bool? autofocus,
+186:     Clip? clipBehavior,
+187:     MaterialStatesController? statesController,
+188:     Widget? icon,
+189:     required Widget label,
+190:     IconAlignment? iconAlignment,
+191:   }) {
+192:     if (icon == null) {
+193:       return FilledButton.tonal(
+194:         key: key,
+195:         onPressed: onPressed,
+196:         onLongPress: onLongPress,
+197:         onHover: onHover,
+198:         onFocusChange: onFocusChange,
+199:         style: style,
+200:         focusNode: focusNode,
+201:         autofocus: autofocus ?? false,
+202:         clipBehavior: clipBehavior ?? Clip.none,
+203:         statesController: statesController,
+204:         child: label,
+205:       );
+206:     }
+207:     return _FilledButtonWithIcon.tonal(
+208:       key: key,
+209:       onPressed: onPressed,
+210:       onLongPress: onLongPress,
+211:       onHover: onHover,
+212:       onFocusChange: onFocusChange,
+213:       style: style,
+214:       focusNode: focusNode,
+215:       autofocus: autofocus,
+216:       clipBehavior: clipBehavior,
+217:       statesController: statesController,
+218:       icon: icon,
+219:       label: label,
+220:       iconAlignment: iconAlignment,
+221:     );
+222:   }
+223: 
+
+499: class _FilledButtonWithIcon extends FilledButton {
+500:   _FilledButtonWithIcon({
+501:     super.key,
+502:     required super.onPressed,
+503:     super.onLongPress,
+504:     super.onHover,
+505:     super.onFocusChange,
+506:     super.style,
+507:     super.focusNode,
+508:     bool? autofocus,
+509:     super.clipBehavior,
+510:     super.statesController,
+511:     required Widget icon,
+512:     required Widget label,
+513:     IconAlignment? iconAlignment,
+514:   }) : super(
+515:          autofocus: autofocus ?? false,
+516:          child: _FilledButtonWithIconChild(
+517:            icon: icon,
+518:            label: label,
+519:            buttonStyle: style,
+520:            iconAlignment: iconAlignment,
+521:          ),
+522:        );
+523: 
+524:   _FilledButtonWithIcon.tonal({
+525:     super.key,
+526:     required super.onPressed,
+527:     super.onLongPress,
+528:     super.onHover,
+529:     super.onFocusChange,
+530:     super.style,
+531:     super.focusNode,
+532:     bool? autofocus,
+533:     super.clipBehavior,
+534:     super.statesController,
+535:     required Widget icon,
+536:     required Widget label,
+537:     IconAlignment? iconAlignment,
+538:   }) : super.tonal(
+539:          autofocus: autofocus ?? false,
+540:          child: _FilledButtonWithIconChild(
+541:            icon: icon,
+542:            label: label,
+543:            buttonStyle: style,
+544:            iconAlignment: iconAlignment,
+545:          ),

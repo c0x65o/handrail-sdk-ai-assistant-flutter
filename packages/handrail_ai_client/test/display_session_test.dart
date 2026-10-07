@@ -842,6 +842,77 @@ void main() {
     expect(f.session.document, null);
   });
 
+  for (final intervening in ['none', 'refresh', 'navigation']) {
+    test('immediate send changes witness: $intervening during retain',
+        () async {
+      final f = Fixture();
+      addTearDown(f.dispose);
+      await f.session.initialize();
+      f.requests.clear();
+      final storage = <String, String>{};
+      final pending = HandrailKeyValuePendingTurnStore(
+          namespace: 'witness-$intervening',
+          read: (key) async => storage[key],
+          write: (key, value) async {
+            storage[key] = value;
+            if (intervening == 'refresh') await f.session.refresh();
+            if (intervening == 'navigation') {
+              await f.session.displayWindow!.jumpToLatest();
+            }
+          },
+          delete: (key) async {
+            storage.remove(key);
+          });
+      var accepted = 0;
+      final submission = await f.session.sendMessage(
+          operationId: 'prepared',
+          clientId: 'client',
+          pendingStore: pending,
+          onAccepted: (_) {
+            accepted++;
+          },
+          request: {
+            'protocol_version': 'handrail.ai-runtime.v1',
+            'messages': [
+              {
+                'role': 'user',
+                'content': [
+                  {'type': 'text', 'text': 'Hello'}
+                ]
+              }
+            ],
+            'tools': [],
+            'tool_results': [],
+            'continuation_of': null,
+            'generation': {},
+            'correlation_hints': {},
+          });
+      final admissionIndex =
+          f.requests.indexWhere((r) => r['operation'] == 'append_mutations');
+      expect(admissionIndex, greaterThan(0));
+      expect(
+          f.requests
+              .take(admissionIndex)
+              .where((r) => ['control', 'changes'].contains(r['operation']))
+              .map((r) => r['operation']),
+          [
+            'control',
+            'changes',
+            if (intervening == 'refresh') ...['control', 'changes'],
+            'control',
+            if (intervening != 'none') 'changes',
+          ]);
+      expect((f.requests[admissionIndex]['input'] as Map)['expectedRevision'],
+          100);
+      expect(f.requests.where((r) => r['operation'] == 'append_mutations'),
+          hasLength(1));
+      expect(f.requests.where((r) => r['path'] == '/ai/turns/start'),
+          hasLength(1));
+      expect(accepted, 1);
+      expect(await pending.load(submission.conversationId), isNull);
+    });
+  }
+
   test(
       'sends through canonical admission and verifies the exact turn without loading the log',
       () async {

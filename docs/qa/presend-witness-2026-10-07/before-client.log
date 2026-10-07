@@ -1,0 +1,15 @@
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_client_test.dart
+00:00 +0: (setUpAll)
+00:02 +0: normal controller has sequential identical pre-admission read pairs
+00:02 +1: first preparation read observes a changed canonical head
+00:02 +2: overlapping refresh callers singleflight but submit still reads again
+00:03 +3: remote turn during journal write is caught by second control
+00:03 +4: remote clear during retain changes generation and rejects stale admission
+00:03 +5: canonical change during retain preserves stale CAS
+00:03 +6: canonical change after second read preserves stale CAS
+00:04 +7: auth revoked during retain rejects without start
+00:04 +8: auth revoked at admission rejects without start
+00:04 +9: lost admission acknowledgement retries exact saved operation
+00:04 +10: lost start acknowledgement retries exact saved operation
+00:04 +11: (tearDownAll)
+00:05 +11: All tests passed!

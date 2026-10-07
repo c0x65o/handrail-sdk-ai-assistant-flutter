@@ -1,0 +1,45 @@
+FileSystemException: Cannot open file, path = '/opt/handrail/.handrail/flutter-sdk/bin/cache/pub-cache/hosted-hashes/pub.dev/macros-0.1.0-main.0.sha256' (OS Error: Read-only file system, errno = 30)
+#0      HostedSource._throwFriendlyError (package:pub/src/source/hosted.dart:1702:7)
+#1      HostedSource._download.<anonymous closure> (package:pub/src/source/hosted.dart:1522:9)
+<asynchronous suspension>
+#2      withTempDir (package:pub/src/io.dart:987:12)
+<asynchronous suspension>
+#3      HostedSource._download (package:pub/src/source/hosted.dart:1449:12)
+<asynchronous suspension>
+#4      HostedSource.downloadToSystemCache (package:pub/src/source/hosted.dart:1191:21)
+<asynchronous suspension>
+#5      SystemCache.downloadPackage (package:pub/src/system_cache.dart:235:20)
+<asynchronous suspension>
+#6      SolveResult.downloadCachedPackages.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:pub/src/solver/result.dart:68:23)
+<asynchronous suspension>
+#7      SolveResult.downloadCachedPackages.<anonymous closure>.<anonymous closure> (package:pub/src/solver/result.dart:66:20)
+<asynchronous suspension>
+#8      Future.wait.<anonymous closure> (dart:async/future.dart:524:21)
+<asynchronous suspension>
+#9      SolveResult.downloadCachedPackages.<anonymous closure> (package:pub/src/solver/result.dart:63:14)
+<asynchronous suspension>
+#10     Progress.stop (package:pub/src/progress.dart:61:3)
+<asynchronous suspension>
+#11     SolveResult.downloadCachedPackages (package:pub/src/solver/result.dart:62:32)
+<asynchronous suspension>
+#12     Entrypoint.acquireDependencies (package:pub/src/entrypoint.dart:553:25)
+<asynchronous suspension>
+#13     Entrypoint.ensureUpToDate.<anonymous closure> (package:pub/src/entrypoint.dart:1115:13)
+<asynchronous suspension>
+#14     errorsOnlyUnlessTerminal (package:pub/src/log.dart:433:18)
+<asynchronous suspension>
+#15     Entrypoint.ensureUpToDate (package:pub/src/entrypoint.dart:1114:11)
+<asynchronous suspension>
+#16     getExecutableForCommand (package:pub/src/executable.dart:320:21)
+<asynchronous suspension>
+#17     RunCommand.run (package:dartdev/src/commands/run.dart:321:20)
+<asynchronous suspension>
+#18     CommandRunner.runCommand (package:args/command_runner.dart:212:13)
+<asynchronous suspension>
+#19     DartdevRunner.runCommand (package:dartdev/dartdev.dart:232:18)
+<asynchronous suspension>
+#20     runDartdev (package:dartdev/dartdev.dart:46:16)
+<asynchronous suspension>
+#21     main (file:///b/s/w/ir/x/w/sdk/pkg/dartdev/bin/dartdev.dart:13:5)
+<asynchronous suspension>
+

@@ -1,0 +1,22 @@
+{
+  "runtime": "current",
+  "mode": "test",
+  "sdk": "/opt/handrail/.handrail/flutter-sdk",
+  "temp": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/widget-compatibility-oej76m",
+  "args": [
+    "/opt/handrail/.handrail/flutter-sdk/bin/cache/flutter_tools.snapshot",
+    "--no-version-check",
+    "--suppress-analytics",
+    "--packages",
+    "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/.dart_tool/widget-compatibility-oej76m/packages/handrail_ai_widgets/.dart_tool/package_config.json",
+    "test",
+    "--no-pub",
+    "--concurrency=1",
+    "--reporter=expanded",
+    "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart"
+  ],
+  "elapsedMs": 12069,
+  "status": 0,
+  "signal": null,
+  "error": null
+}

@@ -1,0 +1,414 @@
+diff --git a/packages/handrail_ai_client/lib/handrail_ai_client.dart b/packages/handrail_ai_client/lib/handrail_ai_client.dart
+index 82080cf..6b21db8 100644
+--- a/packages/handrail_ai_client/lib/handrail_ai_client.dart
++++ b/packages/handrail_ai_client/lib/handrail_ai_client.dart
+@@ -359,6 +359,7 @@ class HandrailConversationWorkspace {
+     sync: true,
+   );
+   String? _selectedConversationId;
++  int _selectionGeneration = 0;
+ 
+   Stream<HandrailConversationWorkspaceSnapshot> get changes => _changes.stream;
+   HandrailConversationWorkspaceSnapshot get snapshot => _snapshot();
+@@ -370,7 +371,10 @@ class HandrailConversationWorkspace {
+       state,
+       unread: current?.unread ?? false,
+     );
+-    if (select) _selectedConversationId = state.conversationId;
++    if (select) {
++      _selectionGeneration++;
++      _selectedConversationId = state.conversationId;
++    }
+     _publish();
+   }
+ 
+@@ -401,6 +405,7 @@ class HandrailConversationWorkspace {
+   }
+ 
+   void select(String? conversationId) {
++    _selectionGeneration++;
+     if (_forgotten.contains(conversationId)) return;
+     _selectedConversationId = conversationId;
+     final selected = conversationId == null ? null : _entries[conversationId];
+@@ -413,6 +418,7 @@ class HandrailConversationWorkspace {
+   }
+ 
+   void close(String conversationId) {
++    _selectionGeneration++;
+     _entries.remove(conversationId);
+     if (_selectedConversationId == conversationId)
+       _selectedConversationId = null;
+diff --git a/packages/handrail_ai_client/lib/src/display_session.dart b/packages/handrail_ai_client/lib/src/display_session.dart
+index 3bc9963..2ab328b 100644
+--- a/packages/handrail_ai_client/lib/src/display_session.dart
++++ b/packages/handrail_ai_client/lib/src/display_session.dart
+@@ -141,6 +141,7 @@ extension _HandrailBoundedSession on HandrailConversationSession {
+ 
+   Future<T> _displayRead<T>(Future<T> Function(Future<void>) read) async {
+     if (_disposed) throw StateError('Conversation session is disposed');
++    _displayReadGeneration++;
+     final request = Completer<void>();
+     _displayRequests.add(request);
+     try {
+@@ -151,7 +152,7 @@ extension _HandrailBoundedSession on HandrailConversationSession {
+     }
+   }
+ 
+-  Future<void> _refreshDisplay() async {
++  Future<void> _refreshDisplay({_PreparedChanges? preparation}) async {
+     final capability = _capabilities!.displayHistory!;
+     final activation = _displayActivation;
+     late HandrailDisplayControl control;
+@@ -177,6 +178,9 @@ extension _HandrailBoundedSession on HandrailConversationSession {
+           'Saved conversation controls are temporarily behind.',
+           retryable: true);
+     }
++    // Always authorize/read control first. The witness is spent even when its
++    // predicate fails; all uncertain cases retain the ordinary window read.
++    final reuseChanges = preparation?.consume(this, control) ?? false;
+     final previous = _control;
+     if (previous?.generation != control.generation) {
+       if (previous != null) _outgoingMessage = null;
+@@ -212,7 +216,7 @@ extension _HandrailBoundedSession on HandrailConversationSession {
+     if (window.state.conversationId == null ||
+         previous?.generation != control.generation) {
+       await window.select(conversationId);
+-    } else {
++    } else if (!reuseChanges) {
+       await window.refresh();
+     }
+     await window._settleSelection(conversationId);
+@@ -423,3 +427,119 @@ extension _HandrailBoundedSession on HandrailConversationSession {
+     }
+   }
+ }
++
++// One immediate send's local proof, never serialized or exposed to hosts. The
++// account-owned session/client must be disposed on identity changes, as required
++// by the existing controller contract. This grants no authorization or CAS.
++class _PreparedChanges {
++  final HandrailConversationSession session;
++  final HandrailDisplayControl control;
++  final HandrailDisplayWindow window;
++  final Completer<void> activation, selection;
++  final int workspaceSelection, windowVersion;
++  final int preparationGeneration, displayReadGeneration, observationGeneration;
++  final int windowObservation, relatedEpoch, relatedVersion, approvalEpoch;
++  final int? documentRevision;
++  bool _used = false;
++
++  _PreparedChanges._(this.session, this.control, this.window)
++      : activation = session._displayActivation,
++        selection = window._selection,
++        workspaceSelection = session.workspace._selectionGeneration,
++        windowVersion = window._version,
++        preparationGeneration = session._preparationGeneration,
++        displayReadGeneration = session._displayReadGeneration,
++        observationGeneration = session._observationGeneration,
++        windowObservation = window._observationGeneration,
++        relatedEpoch = session._relatedEpoch,
++        relatedVersion = session._relatedVersion,
++        approvalEpoch = session._approvalHistoryEpoch,
++        documentRevision = session._document!.revision;
++
++  static bool _settled(HandrailConversationSession s, HandrailDisplayControl c,
++          HandrailDisplayWindow w) =>
++      !s._disposed &&
++      s._displayActive &&
++      !s._displayActivation.isCompleted &&
++      !s.workspace._changes.isClosed &&
++      s.workspace._selectedConversationId == s.conversationId &&
++      s._document is HandrailConversationDisplayView &&
++      s._document!.conversationId == s.conversationId &&
++      s._document!.activeTurnId == null &&
++      s._error == null &&
++      s._refreshError == null &&
++      !s._displayRefreshRequested &&
++      s._streamRefreshTimer == null &&
++      s._displayRequests.isEmpty &&
++      s._loadingRelated == null &&
++      s._loadingApprovalHistory == null &&
++      !s.hasMoreRelated &&
++      !s._relatedTruncated &&
++      !s._related.any((record) => record.deferred) &&
++      !(s._approvalHistory?.records.any((record) => record.deferred) ??
++          false) &&
++      !c.preparing &&
++      c.activeTurnId == null &&
++      c.conversationId == s.conversationId &&
++      c.canonicalRevision == c.revision &&
++      !w._disposed &&
++      identical(w.client, s.client) &&
++      !w._selection.isCompleted &&
++      w._conversationId == s.conversationId &&
++      w._status == 'ready' &&
++      w._generation == c.generation &&
++      w._revision == c.revision &&
++      w._changesAfter == c.revision &&
++      w._changesCursor == null &&
++      w._consumedChanges &&
++      w._change == HandrailDisplayWindowOperation.changes &&
++      w._pending == null &&
++      w._queuedLatest == null &&
++      w._readRequest == null &&
++      w._contentRequest == null &&
++      w._loading == null &&
++      w._failedOperation == null &&
++      w._error == null &&
++      !w._hasNewer &&
++      w.followingLatest &&
++      !w._records.any((record) => record.deferred);
++
++  static _PreparedChanges? capture(HandrailConversationSession session,
++      {required int? preparedRevision}) {
++    final control = session._control, window = session._displayWindow;
++    if (control == null ||
++        window == null ||
++        session._refreshing != null ||
++        session._document?.revision != preparedRevision ||
++        !_settled(session, control, window)) return null;
++    return _PreparedChanges._(session, control, window);
++  }
++
++  bool consume(
++      HandrailConversationSession current, HandrailDisplayControl fresh) {
++    if (_used) return false;
++    _used = true;
++    return identical(current, session) &&
++        identical(current._displayWindow, window) &&
++        identical(current._displayActivation, activation) &&
++        identical(current._control, control) &&
++        identical(window._selection, selection) &&
++        current.workspace._selectionGeneration == workspaceSelection &&
++        window._version == windowVersion &&
++        current._document?.revision == documentRevision &&
++        current._preparationGeneration == preparationGeneration + 1 &&
++        current._displayReadGeneration == displayReadGeneration + 1 &&
++        current._observationGeneration == observationGeneration &&
++        window._observationGeneration == windowObservation &&
++        current._relatedEpoch == relatedEpoch &&
++        current._relatedVersion == relatedVersion &&
++        current._approvalHistoryEpoch == approvalEpoch &&
++        _settled(current, control, window) &&
++        !fresh.preparing &&
++        fresh.activeTurnId == null &&
++        fresh.conversationId == control.conversationId &&
++        fresh.generation == control.generation &&
++        fresh.canonicalRevision == control.canonicalRevision &&
++        fresh.revision == control.revision;
++  }
++}
+diff --git a/packages/handrail_ai_client/lib/src/display_window.dart b/packages/handrail_ai_client/lib/src/display_window.dart
+index 86059d0..a4bbde2 100644
+--- a/packages/handrail_ai_client/lib/src/display_window.dart
++++ b/packages/handrail_ai_client/lib/src/display_window.dart
+@@ -57,9 +57,13 @@ class HandrailDisplayWindow {
+       _changesAfter = 0;
+   List<HandrailDisplayRecord> _records = const [];
+   bool _hasOlder = false, _hasNewer = false, _disposed = false;
++  // Includes attempted/no-op navigation and reads, not just changed content.
++  int _observationGeneration = 0;
++  bool _consumedChanges = false;
+   bool _followingLatest = true;
+   bool get followingLatest => _followingLatest;
+   void setFollowingLatest(bool value) {
++    if (_followingLatest != value) _observationGeneration++;
+     _followingLatest = value;
+   }
+ 
+@@ -187,6 +191,8 @@ class HandrailDisplayWindow {
+     _failedOperation = null;
+     _changesCursor = null;
+     _changesAfter = 0;
++    _consumedChanges = false;
++    _observationGeneration++;
+     _change = HandrailDisplayWindowOperation.initial;
+     _version++;
+   }
+@@ -224,6 +230,7 @@ class HandrailDisplayWindow {
+       int offset,
+       Future<void> cancellation,
+       bool recordText) async {
++    _observationGeneration++;
+     final selection = _selection;
+     if (!(recordText ? capability.recordText : capability.messageText) ||
+         !_current(selection) ||
+@@ -290,15 +297,22 @@ class HandrailDisplayWindow {
+   }
+ 
+   Future<void> loadOlder() {
++    _observationGeneration++;
+     _followingLatest = false;
+     return _hasOlder
+         ? _read(HandrailDisplayWindowOperation.older)
+         : Future.value();
+   }
+ 
+-  Future<void> loadNewer() =>
+-      _hasNewer ? _read(HandrailDisplayWindowOperation.newer) : Future.value();
++  Future<void> loadNewer() {
++    _observationGeneration++;
++    return _hasNewer
++        ? _read(HandrailDisplayWindowOperation.newer)
++        : Future.value();
++  }
++
+   Future<void> jumpToLatest() {
++    _observationGeneration++;
+     _followingLatest = true;
+     if (_queuedLatest != null) return _queuedLatest!;
+     if (_pending != null &&
+@@ -339,6 +353,8 @@ class HandrailDisplayWindow {
+           : HandrailDisplayWindowOperation.initial));
+ 
+   Future<void> _read(HandrailDisplayWindowOperation operation) {
++    _observationGeneration++;
++    _consumedChanges = false;
+     if (_disposed)
+       return Future.error(StateError('Display window is disposed.'));
+     if (_pending != null) return _pending!;
+@@ -403,6 +419,11 @@ class HandrailDisplayWindow {
+           _activeTurnId = page.activeTurnId;
+           if (changedContent || trimmed) _version++;
+           _change = operation;
++          // A response ending is insufficient: merging must finish, the cursor
++          // must be exhausted, and no deferred content or trim may remain.
++          _consumedChanges = page.nextCursor == null &&
++              !trimmed &&
++              !page.records.any((record) => record.deferred);
+         } else {
+           final older = operation == HandrailDisplayWindowOperation.older;
+           final replacement =
+diff --git a/packages/handrail_ai_client/lib/src/session.dart b/packages/handrail_ai_client/lib/src/session.dart
+index 4dce354..b896ad1 100644
+--- a/packages/handrail_ai_client/lib/src/session.dart
++++ b/packages/handrail_ai_client/lib/src/session.dart
+@@ -265,6 +265,7 @@ class HandrailConversationSession {
+           ? pollingInterval!
+           : const Duration(seconds: 5);
+   int _observationGeneration = 0;
++  int _preparationGeneration = 0, _displayReadGeneration = 0;
+   bool _disposed = false;
+ 
+   HandrailConversationSession(
+@@ -532,7 +533,12 @@ class HandrailConversationSession {
+     }
+   }
+ 
+-  Future<void> refresh({bool automatic = false}) {
++  Future<void> refresh({bool automatic = false}) =>
++      _refreshWithPreparation(automatic: automatic);
++
++  Future<void> _refreshWithPreparation(
++      {bool automatic = false, _PreparedChanges? preparation}) {
++    _preparationGeneration++;
+     if (_disposed)
+       return Future.error(StateError('Conversation session is disposed'));
+     if ((automatic || _error?.statusCode == 429) &&
+@@ -547,7 +553,7 @@ class HandrailConversationSession {
+             _automaticRefreshInterval) {
+       return _refreshing ?? Future<void>.value();
+     }
+-    return _refreshing ??= _refresh().whenComplete(() {
++    return _refreshing ??= _refresh(preparation: preparation).whenComplete(() {
+       _refreshing = null;
+       if (_displayRefreshRequested) {
+         _displayRefreshRequested = false;
+@@ -556,7 +562,7 @@ class HandrailConversationSession {
+     });
+   }
+ 
+-  Future<void> _refresh() async {
++  Future<void> _refresh({_PreparedChanges? preparation}) async {
+     final activation = _displayActivation;
+     _lastRefreshStarted = DateTime.now();
+     try {
+@@ -566,7 +572,7 @@ class HandrailConversationSession {
+         throw const HandrailGatewayException('synchronization_unavailable',
+             'Saved conversation synchronization is unavailable.');
+       if (_capabilities!.displayHistory?.control == true) {
+-        await _refreshDisplay();
++        await _refreshDisplay(preparation: preparation);
+         if (_disposed || activation.isCompleted) return;
+       } else {
+         var pull = _document == null;
+@@ -738,6 +744,7 @@ class HandrailConversationSession {
+   }
+ 
+   void _scheduleStreamRefresh() {
++    _preparationGeneration++;
+     if (_disposed ||
+         (_error != null && !_error!.retryable) ||
+         _streamRefreshTimer != null) return;
+@@ -809,14 +816,23 @@ class HandrailConversationSession {
+     _publish();
+     var retained = false;
+     try {
++      final preparationGeneration = _preparationGeneration;
++      final preparingAlone = _refreshing == null;
+       final submission = await prepareTurn(
+           operationId: operationId,
+           clientId: clientId,
+           request: _object(preview._start['request']),
+           localDraft: preview.localDraft);
++      final preparation =
++          preparingAlone && _preparationGeneration == preparationGeneration + 1
++              ? _PreparedChanges.capture(this,
++                  preparedRevision:
++                      submission._admission['expectedRevision'] as int?)
++              : null;
+       await pendingStore.retain(submission);
+       retained = true;
+-      await _submitRetained(submission, pendingStore, onAccepted);
++      await _submitRetained(submission, pendingStore, onAccepted,
++          preparation: preparation);
+       return submission;
+     } finally {
+       _preparingSend = false;
+@@ -846,10 +862,13 @@ class HandrailConversationSession {
+       HandrailTurnSubmission submission,
+       HandrailPendingTurnStore pendingStore,
+       void Function(HandrailTurnSubmission)? onAccepted,
+-      {Future<void> Function()? beforeSubmit}) async {
++      {Future<void> Function()? beforeSubmit,
++      _PreparedChanges? preparation}) async {
+     try {
+       await _submit(submission,
+-          onAccepted: onAccepted, beforeSubmit: beforeSubmit);
++          onAccepted: onAccepted,
++          beforeSubmit: beforeSubmit,
++          preparation: preparation);
+     } on _RejectedAdmission {
+       // A definite rejection admits nothing. Keep editable drafts/files while
+       // releasing the exact journal so the user can correct the request.
+@@ -872,7 +891,8 @@ class HandrailConversationSession {
+ 
+   Future<void> _submit(HandrailTurnSubmission submission,
+       {void Function(HandrailTurnSubmission)? onAccepted,
+-      Future<void> Function()? beforeSubmit}) {
++      Future<void> Function()? beforeSubmit,
++      _PreparedChanges? preparation}) {
+     if (_disposed)
+       return Future.error(StateError('Conversation session is disposed'));
+     if (submission.conversationId != conversationId)
+@@ -895,7 +915,7 @@ class HandrailConversationSession {
+     _admissionCallbacks.clear();
+     _registerAdmissionCallback(onAccepted);
+     final submitting = _submitting = _submitTurn(submission,
+-            beforeSubmit: beforeSubmit)
++            beforeSubmit: beforeSubmit, preparation: preparation)
+         .catchError((Object cause) {
+       if (_disposed) throw cause;
+       if (cause is _RejectedAdmission) {
+@@ -951,8 +971,9 @@ class HandrailConversationSession {
+   }
+ 
+   Future<void> _submitTurn(HandrailTurnSubmission submission,
+-      {Future<void> Function()? beforeSubmit}) async {
+-    await refresh();
++      {Future<void> Function()? beforeSubmit,
++      _PreparedChanges? preparation}) async {
++    await _refreshWithPreparation(preparation: preparation);
+     if (beforeSubmit != null) await beforeSubmit();
+     if (_disposed) throw StateError('Conversation session is disposed');
+     final active = _document!.activeTurnId;
