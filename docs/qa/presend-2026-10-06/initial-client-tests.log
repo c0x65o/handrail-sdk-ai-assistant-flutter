@@ -1,0 +1,72 @@
+00:00 +0: loading test/presend_trace_test.dart
+00:00 +0: (setUpAll)
+00:02 +0: normal controller has sequential identical pre-admission read pairs
+00:03 +0 -1: normal controller has sequential identical pre-admission read pairs [E]
+  Expected: 'prepareTurn'
+    Actual: 'other (see stack)'
+     Which: is different.
+            Expected: prepareTur ...
+              Actual: other (see ...
+                      ^
+             Differ at offset 0
+  
+  package:matcher                    expect
+  test/presend_trace_test.dart 44:5  main.<fn>
+  
+00:03 +0 -1: overlapping refresh callers singleflight but submit still reads again
+00:03 +1 -1: remote turn during journal write is caught by second control
+00:03 +1 -2: remote turn during journal write is caught by second control [E]
+  Expected: throws <Instance of 'HandrailGatewayException'> with `code`: 'conversation_busy'
+    Actual: <Instance of 'Future<HandrailTurnSubmission?>'>
+     Which: threw HandrailGatewayException:<HandrailGatewayException(admission_conflict): The conversation changed before this message was sent. Review it before sending again.>
+            stack package:handrail_ai_client/src/session.dart 969:7                HandrailConversationSession._submitTurn
+                  ===== asynchronous gap ===========================
+                  package:handrail_ai_client/src/session.dart 913:21               HandrailConversationSession._submit.<fn>
+                  ===== asynchronous gap ===========================
+                  package:handrail_ai_client/src/session.dart 851:7                HandrailConversationSession._submitRetained
+                  ===== asynchronous gap ===========================
+                  package:handrail_ai_client/src/session.dart 819:7                HandrailConversationSession.sendMessage
+                  ===== asynchronous gap ===========================
+                  package:handrail_ai_client/src/assistant_controller.dart 958:22  HandrailAssistantController.sendMessage
+                  ===== asynchronous gap ===========================
+                  test/presend_trace_test.dart 79:5                                main.<fn>
+                  
+            which has `code` with value 'admission_conflict' which is different.
+                  Expected: conversati ...
+                    Actual: admission_ ...
+                            ^
+                   Differ at offset 0
+  
+  test/presend_trace_test.dart 79:5  main.<fn>
+  
+00:03 +1 -2: canonical change during retain preserves stale CAS
+00:04 +2 -2: canonical change after second read preserves stale CAS
+00:04 +3 -2: auth revoked during retain rejects without start
+00:04 +4 -2: auth revoked at admission rejects without start
+00:04 +5 -2: lost admission acknowledgement retries exact saved operation
+00:04 +5 -3: lost admission acknowledgement retries exact saved operation [E]
+  Expected: <1>
+    Actual: <0>
+  
+  package:matcher                     expect
+  test/presend_trace_test.dart 164:7  main.<fn>
+  
+00:04 +5 -3: lost start acknowledgement retries exact saved operation
+00:05 +5 -4: lost start acknowledgement retries exact saved operation [E]
+  Expected: <1>
+    Actual: <0>
+  
+  package:matcher                     expect
+  test/presend_trace_test.dart 164:7  main.<fn>
+  
+00:05 +5 -4: (tearDownAll)
+00:05 +5 -4: Some tests failed.
+
+Failing tests:
+  test/presend_trace_test.dart: lost admission acknowledgement retries exact saved operation
+  test/presend_trace_test.dart: lost start acknowledgement retries exact saved operation
+  test/presend_trace_test.dart: normal controller has sequential identical pre-admission read pairs
+  test/presend_trace_test.dart: remote turn during journal write is caught by second control
+
+Consider enabling the flag chain-stack-traces to receive more detailed exceptions.
+For example, 'dart test --chain-stack-traces'.

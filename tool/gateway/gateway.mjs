@@ -82,12 +82,37 @@ const assistant = await createHandrailAssistant({ id: 'dart-test', authorize: ()
       executeTool: () => { throw new Error('No tools in this fixture'); } });
   } } });
 const dropped = new Set();
+// Opt-in, synthetic host authorization gate for the pre-send investigation.
+// This process only listens on loopback and owns an isolated test database.
+let traceDenied = false;
 const server = createServer(async (request, response) => {
   let reader;
   try {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
     const body = Buffer.concat(chunks).toString();
+    if (process.env.HANDRAIL_TEST_PRESEND_TRACE === '1') {
+      if (request.url === '/test/trace-clear' && dist) {
+        const { conversationId } = JSON.parse(body);
+        const revision = await bundle.events.getLatestRevision(conversationId);
+        await bundle.events.append({ conversationId, expectedRevision: revision, events: [parseConversationEvent({
+          version: 1, event_id: randomUUID(), conversation_id: conversationId, revision: (revision ?? 0) + 1,
+          occurred_at: new Date().toISOString(), actor: { type: 'system' }, source: { type: 'runtime' },
+          payload: { type: 'conversation.cleared' },
+        })] });
+        response.end('{}'); return;
+      }
+      if (request.url === '/test/trace-auth') {
+        traceDenied = JSON.parse(body).denied === true;
+        response.end('{}'); return;
+      }
+      if (traceDenied && request.url.startsWith('/api/ai/')) {
+        response.writeHead(403, { 'content-type': 'application/json' });
+        response.end(JSON.stringify({ ok: false, error: {
+          code: 'forbidden', message: 'Synthetic authorization revoked.', retryable: false,
+        } })); return;
+      }
+    }
     if (request.url === '/test/stats') {
       response.setHeader('content-type', 'application/json'); response.end(JSON.stringify(stats)); return;
     }

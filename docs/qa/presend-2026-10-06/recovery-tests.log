@@ -1,0 +1,11 @@
+00:00 +0: loading test/submission_gateway_test.dart
+00:00 +0: (setUpAll)
+00:02 +0: headless file receipt recovery uses metadata only after interrupted byte cleanup
+00:02 +1: exact draft cleanup recovers partial device failure through the real gateway
+00:03 +2: admission is atomic, concurrent submit deduplicates, reload resumes and completed retries never restart
+00:03 +3: pending journal is saved before admission and recovered after lost start acknowledgement
+00:04 +4: lost local journal acknowledgement cannot replace the saved request
+00:04 +5: lost admission response reuses persisted intent after session recreation
+00:05 +6: lost start response reuses persisted intent after session recreation
+00:05 +7: (tearDownAll)
+00:05 +7: All tests passed!

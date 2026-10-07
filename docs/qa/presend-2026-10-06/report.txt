@@ -1,0 +1,260 @@
+Flutter pre-send read investigation — 2026-10-06 (America/Chicago)
+
+Scope and verdict
+-----------------
+Source qualification only. Flutter 0.1.40 at
+2065ef8f12950b5a90d2653715de4d21f4876261; JS 0.2.79 at
+7ff3b9f23467ce01e578d7039c3ffa35e2f557b6. Both checkouts were initially clean.
+No SDK runtime/library edits, cadence changes, dependency changes, publication,
+commit, push, consumer access, real provider calls, or Handrail database writes.
+The only existing file edited is the synthetic loopback gateway fixture. New
+files provide opt-in tracing, tests and this evidence. The JS normal build was
+used for the already-supported source qualification override; no SDK install.
+
+An unchanged new conversation produces TWO sequential control/changes pairs
+before append_mutations. Both pairs have identical bodies and identical
+canonical/projection revisions (zero), afterRevision=0, generation=0, and no
+active turn. The first pair completes before the second starts. This is a
+redundant sequential read of unchanged state in this scenario, not overlapping
+singleflight work and not a duplicate startup session. It does not prove that
+both reads can always be removed. The journal-write await is a genuine race
+boundary. A remote active turn or authorization change can be discovered by
+the second control. A changed canonical head still conflicts at admission:
+refreshing does not rewrite the immutable prepared CAS or idempotency identity.
+
+Call graph (line references refer to the unmodified Flutter SHA)
+-------------------------------------------------------------
+Packaged HandrailAssistantWorkspace send button
+ -> composer draft capture/flush + attachment snapshot/upload
+    (composer_drafts.dart:535, captureVersion / _upload / origin)
+ -> UI binding sendWithDraft -> _sendFromUi (assistant_ui.dart:147)
+ -> HandrailAssistantController.sendMessage (assistant_controller.dart:938)
+ -> HandrailConversationSession.sendMessage (session.dart:788)
+ -> prepareTurn (session.dart:759)
+ -> refresh (session.dart:535), explicit automatic=false
+ -> _refresh -> _refreshDisplay (display_session.dart:154)
+ -> control, window.refresh -> changes; related pages only if required
+ -> immutable submission at document canonical revision
+ -> pendingStore.retain (session.dart:817), asynchronous durable local boundary
+ -> _submitRetained -> _submit -> _submitTurn (session.dart:953)
+ -> refresh, explicit automatic=false
+ -> control, window.refresh -> changes; related pages only if required
+ -> check active turn, append_mutations with ORIGINAL expectedRevision
+ -> verify exact accepted/duplicate receipts, reconcile original draft/files
+ -> publish onAccepted, _findTurn(requested turn) CONTROL at admitted revision
+ -> startTurn; journal acknowledgement follows the start acknowledgement.
+
+The third control (requestedTurnId set) is post-admission verification, not the
+candidate duplicate. The UI binding also explicitly refreshes after send/start
+before title/catalog work (assistant_ui.dart:161); that read is outside the
+pre-admission pair and is kept. Startup capabilities, activity/catalog reads,
+related context pages and selected-session identities must remain separately
+attributed. No inference is made about two distinct Preview selected sessions.
+
+How the trace works
+-------------------
+run-presend-trace.mjs copies the current client lib to a disposable .dart_tool
+folder and asserts unique source anchors before adding synchronous marks at
+send, submit and refresh entry. A zone carries actual refresh caller/instance
+through Future.any's cancellation wrapper. Only the temporary compiler package
+map points at this copy; lib, manifests and locks remain unchanged. Instrumented
+refresh still calls and awaits the original implementation; no read is skipped.
+The extra diagnostic wrapper means timings are fixture order/overlap evidence,
+not consumer latency measurements. The singleflight Future identity is tested.
+
+presend_fixture.dart records per-session instance, operation/turn identity,
+caller stack, preparing/submitting state, refresh already in flight, request
+start/end, overlapping HTTP IDs, request bodies and canonical/projection response
+revision, generation, throughRevision, active turn and mutation receipts. Bodies
+are safe ONLY because this fixture owns synthetic data. Its HTTP recorder rejects
+non-loopback destinations. Never deploy this recorder into a consumer. HTTP
+stream headers are distinguished from whole-stream completion.
+
+Session polling is disabled in the fixture to isolate explicit preparation and
+admission; packaged UI catalog activity is still separately recorded. This does
+not reproduce Preview scheduling or its aggregate request window. Draft/file
+races are covered by the existing focused controller/store/composer tests, not
+by a new device-level file-upload replay.
+
+The Node gateway uses the exact local JS build with actual Postgres persistence
+adapters and a fresh in-memory PGlite PostgreSQL engine. It has an explicitly
+synthetic provider, no tools, no credentials, no external provider URLs. A
+fixture-only opt-in /test/trace-auth switch simulates the HOST authorization
+boundary returning 403 on protected requests. It does not qualify any consumer
+identity service, token refresh, RLS, external PostgreSQL server or multi-process
+locking. Concurrent cases are deterministically interleaved real HTTP requests.
+
+Safety conclusions and review candidate
+--------------------------------------
+* Keep the first preparation refresh: a remote canonical change since selection
+  must influence the newly frozen expectedRevision, and busy/preparing/error
+  states must prevent preparation. A cached document is not a freshness proof.
+* Singleflight already joins overlap within one session; it cannot remove the
+  observed sequential pair after the earlier Future has completed. No lifetime
+  coalescing, TTL extension, slower cadence, raised limits, or 429 bypass.
+* Keep direct prepare/submit and restored exact-retry refresh semantics. The
+  prepare/retain gap can be arbitrarily long. Preserve operation, message, turn,
+  mutation and start identities; never regenerate or rebase on an uncertain ack.
+* Server current authorization, canonical CAS and duplicate receipts remain the
+  authority even after a successful read. The last read cannot close a race
+  immediately before append; remote changes after it must still fail safely.
+* New draft edits (including returning to identical text), newly selected files,
+  scope changes and disposal must survive an older admission callback. Only the
+  captured text version/file IDs can be reconciled. Device origin never goes on
+  the wire; cleanup failure retains recoverability.
+* Generation reset, preparing/error status, page cursors, pending navigation and
+  related context/approval pages are separate from a complete delta watermark.
+  Window revision alone is insufficient: _changesAfter advances only after the
+  changes cursor is exhausted (display_window.dart:400).
+
+Smallest review candidate: for the immediate fresh-send path only, keep the
+second authorized control and investigate omitting JUST its repeated display
+changes request when a one-use preparation witness proves the same session,
+account, conversation, generation, canonical AND projection heads, with a fully
+consumed changes watermark and no pending navigation/reset/error. Expire the
+witness for direct submit, restored retry, invalidation or differing heads;
+retain all related/context reads that are required. This would save ONE request
+in the demonstrated unchanged case. No such optimization is implemented or
+qualified here. Removing the entire second refresh is not supported as a
+behavior-preserving change by the concurrent-turn/auth counterexamples. A later
+candidate needs its own equivalence tests/review, including navigation and
+partial changes pagination, before any publication.
+
+Preview handoff (no Preview paths accessed)
+-----------------------------------------
+The prompt's WRbaa3dbf3 timings, 362->336 total, 126/120 first window and six 429s
+are supplied evidence, not independently verified here. The two candidate read
+pairs (75/76 then 77/78; later 97/98 then 99/100) cannot be mapped conclusively to
+these stacks without the consumer response revisions. The final necessary React
+context-history read on explicit return +39.259 remains untouched. Mills ship
+hold is unchanged; Avery is outside scope. Capabilities 1/3 and lifetime savings
+of 1–2 are not the focus and have no bearing on this proof.
+
+Preview owner, after parent reviews this source proof, should instrument its
+own authorized synthetic run around public composer/controller/session entry,
+prepare begin/end, journal retain begin/end, submit begin/end, refresh join/start/
+end and actual HTTP dispatch/response. Record pseudonymous session instance and
+conversation IDs, operation/turn IDs, explicit-vs-automatic caller/reason,
+in-flight refresh/submit ID, canonical + projection revision, generation,
+throughRevision/cursor exhaustion, status and request/response monotonic times.
+For body equality use scoped fingerprints; never log prompts, files, tokens,
+cookies or headers. Correlate the supplied admission row IDs to these fields,
+and separate post-admission requested-turn verification and post-action UI reads.
+
+Use the SAME driver SHA256
+59ce35e604506920f9e385c4f4968dad57c710979eb8151883aad7efd57bcca7
+and the same versions/PG/cadence before a correction, then a separately reviewed
+candidate with unchanged driver. Preserve all 26 continuity obligations,
+first-window admission/429 accounting, distinct React-existing/New-Flutter
+sessions and necessary explicit-return context history. This fixture cannot
+claim a request-budget cure or acceptance of any consumer rollout. No access to
+docs/observation-cadence-20261006/next-step.txt or final-budget files was attempted.
+
+Contracts read
+--------------
+Handrail current_context confirmed this SDK-only request and authentication
+snapshot 08346f8bc724; no linked projects/capabilities/deploy targets. Read JS
+AGENTS.md, both package/repo READMEs, platform-contracts.md, display-history-api.md,
+canonical-admission-pagination.md, current submission/display source, and KB
+handrail-ai-sdk-implementation-contract. The KB's pre-extraction Flutter path is
+stale; current repo AGENTS/README and explicit request establish the sibling
+Flutter repository. Authentication defaults were not changed by test auth
+simulation. No owner decisions were needed.
+
+Reproduction and checks
+-----------------------
+Prerequisites are the existing prepared package configs/dependencies and Flutter
+SDK. No install is required in this workspace. From JS repository, run the
+normal `npm run build` (passed here, TypeScript build/compile). From Flutter root:
+
+  export HANDRAIL_TEST_JS_SDK_DIST="$PWD/../handrail-sdk-ai-assistant-js/dist"
+  export FLUTTER_ROOT=/opt/handrail/.handrail/flutter-sdk
+  timeout -k 5s 240s node tool/run-presend-trace.mjs "$FLUTTER_ROOT" client
+  FLUTTER_ALREADY_LOCKED=true timeout -k 5s 240s node tool/run-presend-trace.mjs "$FLUTTER_ROOT" composer
+  timeout -k 5s 240s node tool/run-presend-trace.mjs "$FLUTTER_ROOT" analyze
+
+The runner executes one test worker and force-bounds each child to 230 seconds;
+outer timeout bounds the complete batch. Run modes sequentially. The prepared
+read-only Flutter cache needs FLUTTER_ALREADY_LOCKED=true; it still emits two
+nonfatal stamp-write warnings. No cache permission/config changes were made.
+The commands regenerate scenario JSONs under this directory. These opt-in tests
+live in tool/, so ordinary package tests do not acquire a new environment need.
+
+Additional focused checks, also sequential and bounded to 240 seconds:
+- From packages/handrail_ai_client, with the same JS dist override:
+  "$FLUTTER_ROOT/bin/cache/dart-sdk/bin/dart" test --concurrency=1 test/submission_gateway_test.dart --name 'headless file receipt|exact draft cleanup|admission is atomic|lost .* response reuses|pending journal is saved|lost local journal' --reporter expanded
+- From Flutter root:
+  FLUTTER_ALREADY_LOCKED=true node tool/check-shared-widgets.mjs "$FLUTTER_ROOT" packages/handrail_ai_widgets/test/draft_controller_test.dart packages/handrail_ai_widgets/test/composer_drafts_test.dart packages/handrail_ai_widgets/test/assistant_workspace_test.dart
+- node --check for gateway.mjs and run-presend-trace.mjs, Dart format check on
+  the three new Dart files, and git diff --check all passed.
+
+Results: 11 new controller trace tests passed (client-tests.log); one public
+composer widget test passed, including compilation against the instrumented
+local client + local widgets (composer-tests.log); seven existing real-gateway
+recovery tests passed (recovery-tests.log); 61 existing draft/file/workspace tests
+passed (draft-file-tests.log). Scoped analyzer covers the disposable instrumented
+client library and new client fixture/tests: no issues (analyze.log). This is
+80 passing tests, not a full SDK suite or consumer/device acceptance run.
+
+Initial failed checks remain findings, not acceptance evidence:
+- initial-client-tests.log: raw async stacks lost the preparation caller and the
+  first synthetic request omitted required wire fields; fixed by temporary
+  source/zone attribution and the complete public request shape. Provider-once
+  assertions pass after that fixture repair. An extra test assertion initially
+  looked for operationId at the wrong serialization level; fixed to start's
+  idempotencyKey. Runtime behavior was not changed.
+- initial-clear-test.log: the fixture's catalog does not advertise public clear
+  (unavailable). The final reset case explicitly appends a synthetic canonical
+  conversation.cleared event through the PG event store instead. This proves
+  client generation/CAS behavior, NOT availability of the host's clear route.
+- Composer setup needed a combined temporary package map, explicit client
+  extension import, real loopback HTTP instead of Flutter's automatic 400 mock,
+  and alternating UI/socket progress. Its first assertion-passing run failed
+  pending-timer cleanup and was interrupted during teardown. Explicit disposal
+  before the test invariant now passes. No consumer lifecycle fix was applied.
+- Initial scoped analysis found one unused test import; removed, then passed.
+
+Remaining work belongs to review: assess the narrow candidate and its untested
+navigation/pagination/account invalidation cases; obtain the Preview-owner
+instrumentation above with the unchanged driver; only then consider a separately
+authorized runtime patch and consumer measurement. Real-provider behavior,
+external PG concurrency, arbitrary host edit APIs, browser/native device timing,
+and Preview's first-window budget are unverified by this investigation.
+
+Concrete trace counts and revisions
+-----------------------------------
+normal-controller: 4 pre-admission control/changes reads, 0 refresh joins.
+  HTTP 7: prepareTurn -> control; canonical/projection=0/0, generation=0; 220985..230362 us.
+  HTTP 8: prepareTurn -> changes; canonical/projection=0/0, generation=0; 231875..244917 us.
+  HTTP 9: _submitTurn -> control; canonical/projection=0/0, generation=0; 250790..258596 us.
+  HTTP 10: _submitTurn -> changes; canonical/projection=0/0, generation=0; 259349..272240 us.
+  Gap between first changes END and second control START: 5873 us.
+  Admission HTTP 11: expectedRevision=null, accepted canonical revisions 1 and 2.
+normal-composer: 4 pre-admission control/changes reads, 0 refresh joins.
+  HTTP 8: prepareTurn -> control; canonical/projection=0/0, generation=0; 1005513..1130977 us.
+  HTTP 10: prepareTurn -> changes; canonical/projection=0/0, generation=0; 1134151..1204855 us.
+  HTTP 12: _submitTurn -> control; canonical/projection=0/0, generation=0; 1219183..1284574 us.
+  HTTP 13: _submitTurn -> changes; canonical/projection=0/0, generation=0; 1286581..1362475 us.
+  Gap between first changes END and second control START: 14328 us.
+  Admission HTTP 14: expectedRevision=null, accepted canonical revisions 1 and 2.
+The normal controller has no overlapping HTTP during these four reads. The
+composer has independent catalog reads in flight; its two session refreshes
+still do not overlap. Catalog requests are not evidence of session duplication.
+
+Case                         Preparation -> submission head       Outcome
+changed-before-prepare       cached null -> 1 -> 1                 CAS 1 accepted (receipts 2,3)
+overlap                      0 -> 0                               2 joiners; still 2 sequential pairs
+remote-turn during retain    0 -> active remote turn (head 5)      busy; only remote admission/start
+remote-history during retain 0 -> 1                               conflict; original CAS null retained
+remote-clear during retain   0/gen0 -> 1/gen1                      new page selection, then CAS conflict
+stale-cas at append boundary  0 -> 0, then server 1                conflict + refresh to 1
+auth during retain           0 -> 403 control                     no append/start; journal retained
+auth at append boundary      0 -> 0, then 403 append              no start; journal retained
+lost admission ack           0 -> 0, append receipt lost           exact retry duplicate revisions 1,2
+lost start ack               0 -> 0, start receipt lost            exact retry duplicate revisions 1,2
+
+Both lost-ack cases invoked the synthetic provider exactly once. Full HTTP
+counts (including additional necessary context/approval pages), caller/session
+identities, response revisions and request bodies are in the scenario JSONs;
+summary.json strips payloads/stacks for review. Revision/timing values above
+are this fixture run, not Preview row IDs or production response latency.
