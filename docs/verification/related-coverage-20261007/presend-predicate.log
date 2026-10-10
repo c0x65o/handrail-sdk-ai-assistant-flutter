@@ -1,0 +1,97 @@
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/presend_predicate_test.dart
+00:00 +0: partial response is not consumption proof
+00:00 +1: deferred response is not consumption proof
+00:00 +2: null prepared revision is never coerced to zero
+00:00 +3: consumed witness succeeds once at canonical head 0
+00:00 +4: consumed witness succeeds once at canonical head 100
+00:00 +5: one-use predicate rejects closed activation
+00:00 +6: one-use predicate rejects disposed
+00:00 +7: one-use predicate rejects inactive
+00:00 +8: one-use predicate rejects document missing
+00:00 +9: one-use predicate rejects document revision
+00:00 +10: one-use predicate rejects error
+00:00 +11: one-use predicate rejects refresh error
+00:00 +12: one-use predicate rejects scheduled refresh
+00:00 +13: one-use predicate rejects stream refresh
+00:00 +14: one-use predicate rejects display loading
+00:00 +15: one-use predicate rejects related loading
+00:00 +16: one-use predicate rejects approval loading
+00:00 +17: one-use predicate rejects related pagination
+00:00 +18: one-use predicate rejects related trim
+00:00 +19: one-use predicate rejects window disposed
+00:00 +20: one-use predicate rejects window selection
+00:00 +21: one-use predicate rejects window conversation
+00:00 +22: one-use predicate rejects window preparing
+00:00 +23: one-use predicate rejects window generation
+00:00 +24: one-use predicate rejects window revision
+00:00 +25: one-use predicate rejects watermark
+00:00 +26: one-use predicate rejects cursor
+00:00 +27: one-use predicate rejects unconsumed
+00:00 +28: one-use predicate rejects initial page
+00:00 +29: one-use predicate rejects pending
+00:00 +30: one-use predicate rejects queued latest
+00:00 +31: one-use predicate rejects read request
+00:00 +32: one-use predicate rejects content request
+00:00 +33: one-use predicate rejects loading
+00:00 +34: one-use predicate rejects failed
+00:00 +35: one-use predicate rejects window error
+00:00 +36: one-use predicate rejects newer
+00:00 +37: one-use predicate rejects scrolled
+00:00 +38: one-use predicate rejects deferred
+00:00 +39: one-use predicate rejects reuse
+00:00 +40: one-use predicate rejects session
+00:00 +41: one-use predicate rejects client
+00:00 +42: one-use predicate rejects activation
+00:00 +43: one-use predicate rejects refresh
+00:00 +44: one-use predicate rejects observation
+00:00 +45: one-use predicate rejects display read
+00:00 +46: one-use predicate rejects related epoch
+00:00 +47: one-use predicate rejects related version
+00:00 +48: one-use predicate rejects approval epoch
+00:00 +49: one-use predicate rejects prepared revision
+00:00 +50: one-use predicate rejects window observation
+00:00 +51: one-use predicate rejects window replaced
+00:00 +52: one-use predicate rejects control replaced
+00:00 +53: one-use predicate rejects window version
+00:00 +54: one-use predicate rejects workspace selection
+00:00 +55: one-use predicate rejects fresh conversation
+00:00 +56: one-use predicate rejects fresh generation
+00:00 +57: one-use predicate rejects fresh canonical
+00:00 +58: one-use predicate rejects fresh projection
+00:00 +59: one-use predicate rejects fresh preparing
+00:00 +60: one-use predicate rejects fresh active
+00:00 +61: capture rejects closed activation
+00:00 +62: capture rejects disposed
+00:00 +63: capture rejects inactive
+00:00 +64: capture rejects document missing
+00:00 +65: capture rejects document revision
+00:00 +66: capture rejects error
+00:00 +67: capture rejects refresh error
+00:00 +68: capture rejects scheduled refresh
+00:00 +69: capture rejects stream refresh
+00:00 +70: capture rejects display loading
+00:00 +71: capture rejects related loading
+00:00 +72: capture rejects approval loading
+00:00 +73: capture rejects related pagination
+00:00 +74: capture rejects related trim
+00:00 +75: capture rejects window disposed
+00:00 +76: capture rejects window selection
+00:00 +77: capture rejects window conversation
+00:00 +78: capture rejects window preparing
+00:00 +79: capture rejects window generation
+00:00 +80: capture rejects window revision
+00:00 +81: capture rejects watermark
+00:00 +82: capture rejects cursor
+00:00 +83: capture rejects unconsumed
+00:00 +84: capture rejects initial page
+00:00 +85: capture rejects pending
+00:00 +86: capture rejects queued latest
+00:00 +87: capture rejects read request
+00:00 +88: capture rejects content request
+00:00 +89: capture rejects loading
+00:00 +90: capture rejects failed
+00:00 +91: capture rejects window error
+00:00 +92: capture rejects newer
+00:00 +93: capture rejects scrolled
+00:00 +94: capture rejects deferred
+00:00 +95: All tests passed!

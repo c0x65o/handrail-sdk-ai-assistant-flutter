@@ -1,0 +1,16 @@
+00:00 +0: loading test/related_coverage_test.dart
+00:00 +0 -1: loading test/related_coverage_test.dart [E]
+  Failed to load "test/related_coverage_test.dart":
+  lib/src/display_session.dart:409:41: Error: A value must be explicitly returned from a non-void async function.
+      if (group >= _relatedGroups.length) return;
+                                          ^
+  lib/src/display_session.dart:420:74: Error: A value must be explicitly returned from a non-void async function.
+        if (_disposed || activation.isCompleted || epoch != _relatedEpoch) return;
+                                                                           ^
+  lib/src/display_session.dart:430:45: Error: A value must be explicitly returned from a non-void async function.
+          _control?.generation != generation) return;
+                                              ^
+00:00 +0 -1: Some tests failed.
+
+Failing tests:
+  test/related_coverage_test.dart: loading test/related_coverage_test.dart

@@ -1,0 +1,29 @@
+{
+  "work_request": "040a8512-9052-4f3f-ad56-aea9944c4b99",
+  "original_preview_outcome": "8642ecb2-5f53-44fa-9c54-f6137240a158",
+  "flutter_base_git": "1a71d7ee4247cb572b07b397c12fc8cbd2684f15",
+  "js_source_git": "7ff3b9f23467ce01e578d7039c3ffa35e2f557b6",
+  "client_source_sha256": "bb2686d2ca7ae699966589dfcbdb77007f8c1ec34eb88fa9b93236f9e00c7a8b",
+  "client_source_hash_definition": "sha256 of sorted tracked client lib paths, each UTF-8 path + NUL + lowercase content sha256 + newline",
+  "files": {
+    "packages/handrail_ai_client/lib/src/display_session.dart": {
+      "sha256": "6bcdb025bee16956a66539c9430753cce566d39f30229210374a39f44ce58af2",
+      "git_blob": "e3da20846c5e2074135d8fea08ba91634e6e75a4"
+    },
+    "packages/handrail_ai_client/lib/src/session.dart": {
+      "sha256": "5ae1734aa57e0d8f58f295938b9f60232bdef4ac80272c4be84328a6dbcfc357",
+      "git_blob": "a977396750884c793187f7ba4f978b1c0eacd32d"
+    },
+    "packages/handrail_ai_client/test/related_coverage_test.dart": {
+      "sha256": "35296f23b064ce03a1913f9d1eb3222433f9ff7365faa88421b0f10de4e15298",
+      "git_blob": "cb45071da1f60e6287e5fcf73fb3ffec882fe6ee"
+    },
+    "tool/related_coverage_gateway_test.dart": {
+      "sha256": "0ffc57dce176889c4d7e9caf92f4737a21e982306353d52976b2765b35a65e8e",
+      "git_blob": "697def0ada5d335448fc16d9fa2f208d14be0c5b"
+    }
+  },
+  "published_candidate_sha": null,
+  "dependency_changes": false,
+  "js_tracked_changes": ""
+}

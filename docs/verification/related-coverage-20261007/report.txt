@@ -1,0 +1,176 @@
+Workspace source candidate for Preview outcome 8642ecb2-5f53-44fa-9c54-f6137240a158
+Work request: 040a8512-9052-4f3f-ad56-aea9944c4b99
+Diagnosis referenced by owner: 911080c7-05d9-4960-92a5-18960f52b048
+
+Verdict: bounded context repair implemented and source-qualified; capability
+sharing remains INELIGIBLE. This is not consumer-contract or budget acceptance.
+Nothing was committed, pushed, published, deployed, or adopted by another repo.
+Preview staging/Guardian holds, dependency pins and queue/database state remain
+unchanged. No Chat Link keyboard implementation was touched.
+
+Inspection and missing evidence
+-------------------------------
+Read the JS AGENTS.md boundary guidance and Flutter README, Makefile, client
+README, existing pre-send diagnostic tooling, display/session/controller source,
+and HTTP/gateway test fixtures. Both SDK checkouts were clean at entry and still
+have the frozen HEADs:
+  Flutter 0.1.42: 1a71d7ee4247cb572b07b397c12fc8cbd2684f15
+  JS 0.2.79:     7ff3b9f23467ce01e578d7039c3ffa35e2f557b6
+handrail_current_context confirmed this running SDK work request.
+list_work_requests(status=running, include_dev_chats=false) returned only this
+request; no other non-chat SDK request appeared in the scoped native reader.
+
+The required Preview directory is NOT mounted in this worker:
+  /opt/handrail/repos/handrail/handrail-preview/handrail-preview-server/docs/paired-reads-20261007/
+The filesystem returned "No such file or directory". All five required files
+(report.txt, sdk-owner-contract.txt, source-index.json, state-proof.json,
+probe-settled.json) therefore remain UNREAD. An authorized read_source_files
+attempt returned "Repo 'handrail-preview-server' not found" and listed only
+the two SDK repos. get_work_request for the completed diagnosis returned
+"Work request not found". No cross-project access was fabricated, no external
+repository was changed, and no owner question was raised for a worker access
+failure. The supplied description was used to build a narrower independently
+reproduced candidate; full compliance with the unavailable contract is UNVERIFIED.
+
+Source change
+-------------
+packages/handrail_ai_client/lib/src/display_session.dart and src/session.dart:
+* Preserve the initiating control revision separately from a successful context
+  page's coverage. Mint an internal one-use receipt only for a fully merged,
+  single-group, unpaged, non-deferred, untrimmed page ahead of that control.
+* Consume it on the next refresh only after fresh authorized control AND a fresh,
+  empty, fully consumed changes response at exactly the covered revision. No
+  JSON-equality shortcut, revision floor, cached authorization, timer, scheduler,
+  global cache, or TTL was added.
+* Bind the receipt to the session/client, activation, generation, exact window
+  and selection, workspace selection generation, window version, turn membership,
+  related/approval epochs and observation/read counters. Pending display reads,
+  navigation attempts, changed membership, partial changes, failures, deferred
+  content and truncation disqualify it. Even fully loaded multi-group views are
+  deliberately ineligible; a single group's head cannot certify all groups.
+* Spend the receipt before awaiting control, including failures. Clear it on
+  deactivation/disposal and further related reads. Host account/client lifecycle
+  disposal remains required; this adds no authentication/policy lifetime API.
+* Do not stamp an initiating head as hydrated when its related read was discarded.
+  Reject late success/failure after a same-revision window replacement as well
+  as the existing generation/activation checks. A discarded load-more success
+  no longer clears a newer revocation error.
+* Fresh control, changes, append CAS, exact-turn admission/start, reconciliation,
+  authorization and Retry-After paths are retained.
+
+Why capability sharing was not enabled
+-------------------------------------
+The controller's activity negotiation and each new session independently read
+capabilities. The new counterexample test reproduces three reads across activity
+and two created sessions, followed by two fresh direct public reads.
+The existing host contract documents controller disposal on logout/account
+change. HandrailAiClient has a mutable protectedHeaders callback / supplied HTTP
+transport, but no SDK-observable realm or policy generation/invalidation signal.
+Fixed object identity and baseUri do not enforce the requested general policy
+lifetime. Sharing a successful result across more sessions would widen its use
+without that proof. Adding a new host lifetime API is beyond this bounded repair;
+the owner's explicit ineligible fallback was taken. Direct public capabilities,
+standalone sessions and existing failure/retry behavior are unchanged. No
+capability saving is credited to this candidate.
+
+Reproduction and verification
+-----------------------------
+All expensive checks ran sequentially, with one test worker and a 240-second
+outer limit per invocation (the existing pre-send runner also has a 230-second
+inner limit). No long paired workload was rerun and no timing/cadence was tuned.
+Dart: 3.11.5. Node: 22.23.1. Exact commands and evidence files are below.
+
+baseline.log: FAIL, intentionally retained. On frozen Flutter source the new
+control2/message-page7/context7 -> fresh control7/empty-changes test observed TWO
+context reads where one was expected. initial-compile-failure.log retains an
+initial candidate's nullable async-return compile error; fixed before passing
+checks. focused-final.log contains the earlier 28-case pass. The final full client
+suite includes the additional late-load-more/revocation test (29 focused cases).
+
+client-analyze-final.log: PASS, full client analysis with --fatal-infos.
+client-source-suite-final.log: PASS, 304 client tests, no skips, final source
+against freshly compiled frozen JS source. Includes the three source-only tests
+which the earlier installed-dependency run skipped.
+client-suite.log: earlier default installed-dependency suite PASS, 300 tests,
+3 explicitly skipped because HANDRAIL_TEST_JS_SDK_DIST was unset. This predates
+the final late-load-more guard; it is retained as intermediate evidence.
+source-postgres.log: PASS, all 3 previously skipped tests with real indexed
+history, compact approval receipts and bounded large-message reads.
+widgets-analyze.log: PASS, full Flutter widgets analysis with --fatal-infos.
+widgets-suite.log: PASS, 275 widget tests with the existing resolver.
+shared-flutter-final.log: PASS, 8 shared lifecycle tests compiling the actual local
+client and widget source with a disposable compiler map. No lockfile changes.
+presend-predicate-final.log: PASS, 95 existing private source-negative predicate
+tests, including pending reads, selection, consumption, cursor, generation and
+disposal guards on the existing pre-send optimization.
+presend-gateway-final.log: PASS, 24 existing real gateway/PGlite regressions for
+CAS, fresh control, revocation, account replacement, exact start and uncertain
+admission/start reconciliation. Synthetic deterministic provider only.
+gateway-final.log: PASS, new real HTTP gateway/PGlite reproduction, without
+altering responses. It appends 2 synthetic messages, then 5 more before the
+message page. Control2/page7/context7 is followed by control7 and empty changes
+ONLY, with seven visible messages and one total context read. Revocation still
+returns 403 and clears the document. This probe records zero admissions, starts,
+resumes and provider invocations. See gateway-final/related-coverage.json.
+js-source-compile.log: PASS, frozen JS TypeScript compiled into a new ignored
+test-output directory, preserving existing dist and installed dependencies.
+git diff --check and unchanged dependency manifest/lock diffs: PASS.
+
+The PostgreSQL harness is the repository-supported disposable in-process PGlite
+engine using real SDK migrations, stores, SQL and gateway, not a fake repository
+or SQLite. No network PostgreSQL service or production database was used. An
+external PostgreSQL daemon/dialect-environment check was not run.
+Flutter commands emitted nonfatal read-only SDK stamp warnings for
+libimobiledevice/libusbmuxd; analysis and compile/test completed successfully.
+No iOS/Android release builds, device/store checks, deployment checks, consumer
+contract replay or published-pair acceptance were run. They are not claimed.
+
+Reproducible commands (from Flutter repository unless C=client or W=widgets)
+-------------------------------------------------------------------------
+F=/opt/handrail/.handrail/flutter-sdk
+D=$F/bin/cache/dart-sdk/bin/dart
+C=packages/handrail_ai_client
+W=packages/handrail_ai_widgets
+J=../handrail-sdk-ai-assistant-js/node_modules/.cache/related-coverage-source/dist
+
+(in JS repo, after mkdir/copy of package.json into the new ignored output root)
+timeout 240 node --max-old-space-size=4096 node_modules/typescript/bin/tsc -p tsconfig.build.json --outDir node_modules/.cache/related-coverage-source/dist
+
+(C) timeout 240 "$D" analyze --fatal-infos
+(C, default intermediate) timeout 240 "$D" test --concurrency=1 --reporter expanded
+(C, final) HANDRAIL_TEST_JS_SDK_DIST=<absolute J> timeout 240 "$D" test --concurrency=1 --reporter expanded
+(C) HANDRAIL_TEST_JS_SDK_DIST=<absolute J> timeout 240 "$D" test --concurrency=1 test/submission_gateway_test.dart --name 'real indexed history|oversized review uses compact|large message reader' --reporter expanded
+(W) FLUTTER_ALREADY_LOCKED=true timeout 240 "$D" "$F/bin/cache/flutter_tools.snapshot" --no-version-check analyze --no-pub --fatal-infos
+(W) FLUTTER_ALREADY_LOCKED=true timeout 240 "$D" "$F/bin/cache/flutter_tools.snapshot" --no-version-check test --no-pub --concurrency=1 --reporter expanded
+
+final-checks.json records final gateway, predicate, pre-send and shared Flutter
+commands, working directories, timeouts, exit codes and candidate source digest.
+For gateway tests it uses HANDRAIL_TEST_JS_SDK_DIST=<absolute J> and local evidence
+directories. These explicit compiler/source overrides are test qualification,
+not SDK installation, consumption, pin upgrades or published-pair evidence.
+
+Exact delivery and remaining work
+--------------------------------
+source-index.json contains base Git IDs, changed source/test SHA-256 and Git blob
+hashes, and a deterministic digest of all tracked client library files. There is
+no candidate commit or published SHA. receipt-index.json hashes retained logs
+and traces; initial failed checks remain visible, not relabeled as passing.
+
+Original outcome follow-up, within the same Preview recovery:
+1. The owning workflow must make the five existing read-only consumer evidence
+   files available to this SDK worker/reviewer, then reconcile this candidate
+   against the full sdk-owner-contract and its exact caller/probe receipts. This
+   is an execution access dependency, not a request for new owner product input.
+2. Independently review the conservative eligibility predicate and the lifecycle
+   assumptions. Keep capability sharing ineligible unless the supported existing
+   account/client/transport/realm/policy lifetime can actually be enforced.
+3. Retain the request-budget failure. The owner-supplied observation is 125/120
+   requests and 5 x 429. The candidate's conditional saving is AT MOST ONE context
+   request, not a measured workload saving; even that bound gives 124/120, at least
+   four requests over cap. The originally proposed combined maximum of three
+   savings would still give 122/120. No full-budget pass is established.
+4. Identify the remaining redundant owning reads using the preserved original
+   workload/evidence. Any eventual authorized published-pair adoption must use
+   exact full public Git SHAs and matching locks, followed by independent paired
+   acceptance under the unchanged cap/workload and existing staging/Guardian
+   holds. This run performs none of those release/consumer actions.

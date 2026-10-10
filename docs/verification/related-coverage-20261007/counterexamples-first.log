@@ -1,0 +1,27 @@
+00:00 +0: loading test/related_coverage_test.dart
+00:00 +0: merged context7 covers the next fresh control7 and empty changes
+00:00 +1: partial context still hydrates context
+00:00 +2: multiple groups still hydrates context
+00:00 +3: all groups loaded still hydrates context
+00:00 +4: deferred context still hydrates context
+00:00 +5: partial changes still hydrates context
+00:00 +6: nonempty identical changes still hydrates context
+00:00 +7: same-revision window replacement still hydrates context
+00:00 +8: workspace selection round trip still hydrates context
+00:00 +9: navigation attempt still hydrates context
+00:00 +10: generation still hydrates context
+00:00 +11: turn membership still hydrates context
+00:00 +12: control 401 spends coverage and retains error behavior
+00:00 +13: control 403 spends coverage and retains error behavior
+00:00 +14: control 429 spends coverage and retains error behavior
+00:00 +15: control 500 spends coverage and retains error behavior
+00:00 +16: control protocol spends coverage and retains error behavior
+00:00 +17: changes 401 spends coverage and retains error behavior
+00:00 +18: changes 403 spends coverage and retains error behavior
+00:00 +19: changes 429 spends coverage and retains error behavior
+00:00 +20: changes 500 spends coverage and retains error behavior
+00:00 +21: changes protocol spends coverage and retains error behavior
+00:00 +22: late context for a replaced same-revision window is not merged
+00:00 +23: late context success after disposal cannot publish or seed another session
+00:00 +24: capability sharing stays ineligible without a policy lifetime
+00:00 +25: All tests passed!

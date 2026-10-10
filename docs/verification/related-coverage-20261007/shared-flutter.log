@@ -1,0 +1,13 @@
+The new artifact "libimobiledevice" was downloaded, but Flutter failed to update its stamp file, receiving the error "FileSystemException: Cannot open file, path = '/opt/handrail/.handrail/flutter-sdk/bin/cache/libimobiledevice.stamp' (OS Error: Read-only file system, errno = 30)". Flutter can continue, but the artifact may be re-downloaded on subsequent invocations until the problem is resolved.
+The new artifact "libusbmuxd" was downloaded, but Flutter failed to update its stamp file, receiving the error "FileSystemException: Cannot open file, path = '/opt/handrail/.handrail/flutter-sdk/bin/cache/libusbmuxd.stamp' (OS Error: Read-only file system, errno = 30)". Flutter can continue, but the artifact may be re-downloaded on subsequent invocations until the problem is resolved.
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart
+00:00 +0: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: latest completion preserves a 50.0 pixel pause (queued: false)
+00:01 +1: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: latest completion preserves a 700.0 pixel pause (queued: false)
+00:01 +2: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: latest completion preserves a 50.0 pixel pause (queued: true)
+00:01 +3: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: latest completion preserves a 700.0 pixel pause (queued: true)
+00:01 +4: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: Jump stays enabled during session refresh and serializes navigation
+00:02 +5: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/display_polling_test.dart: Jump stays enabled during widget polling and serializes navigation
+00:02 +6: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/reentrant_assistant_test.dart
+00:03 +6: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/reentrant_assistant_test.dart: rapid controller/monitor updates retain the mobile send lifecycle
+00:07 +7: /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/reentrant_assistant_test.dart: failed preflight retains last good history and makes no admission
+00:08 +8: All tests passed!

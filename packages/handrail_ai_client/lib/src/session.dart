@@ -228,6 +228,8 @@ class HandrailConversationSession {
   int _relatedGroup = 0;
   String? _relatedTurnId, _relatedCursor;
   int? _relatedRevision;
+  _RelatedCoverage? _relatedCoverage;
+  bool _relatedChangesEmpty = false;
   int? _relatedWindowVersion;
   int _relatedEpoch = 0;
   List<String> _relatedMessageIds = const [];
@@ -311,6 +313,7 @@ class HandrailConversationSession {
   void _setDisplayActive(bool active) {
     if (_disposed || active == _displayActive) return;
     _displayActive = active;
+    _relatedCoverage = null;
     _displayActivation.complete();
     for (final request in _displayRequests) {
       if (!request.isCompleted) request.complete();
@@ -436,8 +439,8 @@ class HandrailConversationSession {
     if (_disposed)
       return Future.error(StateError('Conversation session is disposed'));
     if (!hasMoreRelated) return Future.value();
-    return _loadingRelated ??= _readRelated().then((_) {
-      if (!_disposed) {
+    return _loadingRelated ??= _readRelated().then((page) {
+      if (!_disposed && page != null) {
         _error = null;
         _publishDisplay();
         _publish();
@@ -1225,6 +1228,7 @@ class HandrailConversationSession {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    _relatedCoverage = null;
     if (!_lifetime.isCompleted) _lifetime.complete();
     if (!_displayActivation.isCompleted) _displayActivation.complete();
     for (final request in _displayRequests) {

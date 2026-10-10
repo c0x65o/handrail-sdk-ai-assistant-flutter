@@ -1,0 +1,16 @@
+00:00 +0: loading test/related_coverage_test.dart
+00:00 +0: merged context7 covers the next fresh control7 and empty changes
+00:00 +0 -1: merged context7 covers the next fresh control7 and empty changes [E]
+  Expected: <1>
+    Actual: <2>
+  
+  package:matcher                       expect
+  test/related_coverage_test.dart 45:5  main.<fn>
+  
+00:00 +0 -1: Some tests failed.
+
+Failing tests:
+  test/related_coverage_test.dart: merged context7 covers the next fresh control7 and empty changes
+
+Consider enabling the flag chain-stack-traces to receive more detailed exceptions.
+For example, 'dart test --chain-stack-traces'.

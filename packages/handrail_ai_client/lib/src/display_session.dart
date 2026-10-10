@@ -153,6 +153,12 @@ extension _HandrailBoundedSession on HandrailConversationSession {
   }
 
   Future<void> _refreshDisplay({_PreparedChanges? preparation}) async {
+    // Spend the previous merge receipt even if control/changes fail. A receipt
+    // never replaces either authorized read or survives an uncertain refresh.
+    final coverage = _relatedCoverage;
+    _relatedCoverage = null;
+    _relatedChangesEmpty = false;
+    HandrailDisplayPage? mergedRelated;
     final capability = _capabilities!.displayHistory!;
     final activation = _displayActivation;
     late HandrailDisplayControl control;
@@ -205,7 +211,10 @@ extension _HandrailBoundedSession on HandrailConversationSession {
       window = _displayWindow = HandrailDisplayWindow(
           client: client,
           capability: capability,
-          onChanges: (page) => _mergeRelated(page.records, 'changes'));
+          onChanges: (page) {
+            _relatedChangesEmpty = page.records.isEmpty;
+            _mergeRelated(page.records, 'changes');
+          });
       _displaySubscription = window.changes.listen((_) {
         if (_disposed) return;
         _publishDisplay();
@@ -245,12 +254,15 @@ extension _HandrailBoundedSession on HandrailConversationSession {
       if (_disposed || activation.isCompleted) return;
     }
     final turn = control.activeTurn ?? control.latestTurn;
+    if (coverage?.consume(this, control) == true) {
+      _relatedRevision = control.revision;
+    }
     if (turn?.turnId != _relatedTurnId ||
         control.revision != _relatedRevision ||
         _relatedWindowVersion != window.state.version ||
         previous?.generation != control.generation) {
       _relatedTurnId = turn?.turnId;
-      _relatedRevision = control.revision;
+      _relatedRevision = null;
       _relatedWindowVersion = window.state.version;
       _relatedEpoch++;
       _relatedMessageIds = window.state.records.map((r) => r.id).toList();
@@ -268,15 +280,21 @@ extension _HandrailBoundedSession on HandrailConversationSession {
       _relatedViewKey = viewKey;
       if (turn != null || _relatedMessageIds.isNotEmpty) {
         try {
-          await _readRelated(latest: true);
+          mergedRelated = await _readRelated(latest: true);
+          if (mergedRelated != null) _relatedRevision = control.revision;
         } catch (_) {
           _relatedRevision = null;
           rethrow;
         }
+      } else {
+        _relatedRevision = control.revision;
       }
     }
     if (_disposed || activation.isCompleted) return;
     _publishDisplay();
+    if (mergedRelated != null) {
+      _relatedCoverage = _RelatedCoverage.capture(this, mergedRelated);
+    }
   }
 
   void _publishDisplay() {
@@ -380,15 +398,18 @@ extension _HandrailBoundedSession on HandrailConversationSession {
     }
   }
 
-  Future<void> _readRelated({bool latest = false}) async {
+  Future<HandrailDisplayPage?> _readRelated({bool latest = false}) async {
+    _relatedCoverage = null;
     final generation = _control?.generation, epoch = _relatedEpoch;
+    final window = _displayWindow;
+    final selection = window?._selection, version = window?._version;
     final windowRevision = _displayWindow?.state.revision;
     final group = latest
         ? 0
         : _relatedCursor != null
             ? _relatedGroup
             : _relatedGroup + 1;
-    if (group >= _relatedGroups.length) return;
+    if (group >= _relatedGroups.length) return null;
     final activation = _displayActivation;
     late HandrailDisplayPage page;
     try {
@@ -399,14 +420,24 @@ extension _HandrailBoundedSession on HandrailConversationSession {
           cursor: latest ? null : _relatedCursor,
           cancellation: cancellation));
     } catch (_) {
-      if (_disposed || activation.isCompleted || epoch != _relatedEpoch) return;
+      if (_disposed ||
+          activation.isCompleted ||
+          epoch != _relatedEpoch ||
+          !identical(_displayWindow, window) ||
+          !identical(window?._selection, selection) ||
+          window?._version != version ||
+          _displayWindow?.state.revision != windowRevision ||
+          _control?.generation != generation) return null;
       rethrow;
     }
     if (_disposed ||
         activation.isCompleted ||
         epoch != _relatedEpoch ||
+        !identical(_displayWindow, window) ||
+        !identical(window?._selection, selection) ||
+        window?._version != version ||
         _displayWindow?.state.revision != windowRevision ||
-        _control?.generation != generation) return;
+        _control?.generation != generation) return null;
     if (page.preparing || page.generation != generation) {
       _relatedRevision = null;
       throw const HandrailGatewayException(
@@ -425,6 +456,122 @@ extension _HandrailBoundedSession on HandrailConversationSession {
       _relatedCursor = page.nextCursor;
       _relatedGroup = group;
     }
+    return page;
+  }
+}
+
+// Coverage of one fully merged context view, separate from the control head
+// which initiated it. Multi-group, paged, deferred and trimmed views deliberately
+// remain ineligible: one group's revision cannot certify the other groups.
+class _RelatedCoverage {
+  final HandrailConversationSession session;
+  final HandrailDisplayWindow window;
+  final Completer<void> activation, selection;
+  final int revision, generation, workspaceSelection, windowVersion;
+  final int windowObservation, displayReads, preparation, observation;
+  final int relatedEpoch, relatedVersion, approvalEpoch;
+  final String? turnId;
+  bool _used = false;
+
+  _RelatedCoverage._(this.session, this.window, HandrailDisplayPage page)
+      : revision = page.revision,
+        generation = page.generation,
+        activation = session._displayActivation,
+        selection = window._selection,
+        workspaceSelection = session.workspace._selectionGeneration,
+        windowVersion = window._version,
+        windowObservation = window._observationGeneration,
+        displayReads = session._displayReadGeneration,
+        preparation = session._preparationGeneration,
+        observation = session._observationGeneration,
+        relatedEpoch = session._relatedEpoch,
+        relatedVersion = session._relatedVersion,
+        approvalEpoch = session._approvalHistoryEpoch,
+        turnId = session._relatedTurnId;
+
+  static bool _settled(HandrailConversationSession s, HandrailDisplayWindow w) =>
+      !s._disposed &&
+      s._displayActive &&
+      !s._displayActivation.isCompleted &&
+      !s.workspace._changes.isClosed &&
+      s.workspace._selectedConversationId == s.conversationId &&
+      s._error == null &&
+      s._refreshError == null &&
+      s._streamRefreshTimer == null &&
+      s._displayRequests.isEmpty &&
+      s._loadingRelated == null &&
+      s._loadingApprovalHistory == null &&
+      !(s._approvalHistory?.records.any((r) => r.deferred) ?? false) &&
+      s._relatedInitialized &&
+      s._relatedGroups.length == 1 &&
+      !s.hasMoreRelated &&
+      !s._relatedTruncated &&
+      !s._related.any((r) => r.deferred) &&
+      !w._disposed &&
+      identical(w.client, s.client) &&
+      !w._selection.isCompleted &&
+      w._conversationId == s.conversationId &&
+      w._status == 'ready' &&
+      w._generation == s._control?.generation &&
+      w._pending == null &&
+      w._queuedLatest == null &&
+      w._readRequest == null &&
+      w._contentRequest == null &&
+      w._loading == null &&
+      w._failedOperation == null &&
+      w._error == null &&
+      !w._hasNewer &&
+      w.followingLatest &&
+      !w._records.any((r) => r.deferred);
+
+  static _RelatedCoverage? capture(
+      HandrailConversationSession s, HandrailDisplayPage page) {
+    final w = s._displayWindow, c = s._control;
+    if (w == null ||
+        c == null ||
+        !_settled(s, w) ||
+        page.preparing ||
+        page.nextCursor != null ||
+        page.records.any((r) => r.deferred) ||
+        s._related.any((r) => r.revision > page.revision) ||
+        w._changesCursor != null ||
+        page.generation != c.generation ||
+        page.activeTurnId != c.activeTurnId ||
+        page.revision <= c.revision ||
+        page.revision < w._revision) return null;
+    return _RelatedCoverage._(s, w, page);
+  }
+
+  bool consume(HandrailConversationSession s, HandrailDisplayControl fresh) {
+    if (_used) return false;
+    _used = true;
+    return identical(s, session) &&
+        identical(s._displayWindow, window) &&
+        identical(s._displayActivation, activation) &&
+        identical(window._selection, selection) &&
+        s.workspace._selectionGeneration == workspaceSelection &&
+        window._version == windowVersion &&
+        window._observationGeneration == windowObservation + 1 &&
+        s._displayReadGeneration == displayReads + 1 &&
+        s._preparationGeneration == preparation + 1 &&
+        s._observationGeneration == observation &&
+        s._relatedEpoch == relatedEpoch &&
+        s._relatedVersion == relatedVersion &&
+        s._approvalHistoryEpoch == approvalEpoch &&
+        !s._displayRefreshRequested &&
+        _settled(s, window) &&
+        s._relatedChangesEmpty &&
+        window._change == HandrailDisplayWindowOperation.changes &&
+        window._consumedChanges &&
+        window._changesCursor == null &&
+        window._changesAfter == revision &&
+        window._revision == revision &&
+        !fresh.preparing &&
+        fresh.conversationId == s.conversationId &&
+        fresh.generation == generation &&
+        fresh.revision == revision &&
+        fresh.canonicalRevision == revision &&
+        (fresh.activeTurn ?? fresh.latestTurn)?.turnId == turnId;
   }
 }
 

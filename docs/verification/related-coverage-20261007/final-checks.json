@@ -1,0 +1,85 @@
+[
+  {
+    "name": "gateway-final",
+    "cwd": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/packages/handrail_ai_client",
+    "command": [
+      "/opt/handrail/.handrail/flutter-sdk/bin/cache/dart-sdk/bin/dart",
+      "test",
+      "--concurrency=1",
+      "../../tool/related_coverage_gateway_test.dart",
+      "--reporter",
+      "expanded"
+    ],
+    "timeout_seconds": 240,
+    "exit_code": 0,
+    "elapsed_seconds": 3.97,
+    "candidate_source_sha256": "bb2686d2ca7ae699966589dfcbdb77007f8c1ec34eb88fa9b93236f9e00c7a8b",
+    "environment_overrides": {
+      "FLUTTER_ALREADY_LOCKED": "true",
+      "HANDRAIL_TEST_JS_SDK_DIST": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-js/node_modules/.cache/related-coverage-source/dist",
+      "HANDRAIL_RELATED_EVIDENCE": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/docs/verification/related-coverage-20261007/gateway-final",
+      "HANDRAIL_PRESEND_EVIDENCE": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/docs/verification/related-coverage-20261007/presend-final"
+    }
+  },
+  {
+    "name": "presend-predicate-final",
+    "cwd": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter",
+    "command": [
+      "node",
+      "tool/run-presend-trace.mjs",
+      "/opt/handrail/.handrail/flutter-sdk",
+      "predicate"
+    ],
+    "timeout_seconds": 240,
+    "exit_code": 0,
+    "elapsed_seconds": 11.54,
+    "candidate_source_sha256": "bb2686d2ca7ae699966589dfcbdb77007f8c1ec34eb88fa9b93236f9e00c7a8b",
+    "environment_overrides": {
+      "FLUTTER_ALREADY_LOCKED": "true",
+      "HANDRAIL_TEST_JS_SDK_DIST": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-js/node_modules/.cache/related-coverage-source/dist",
+      "HANDRAIL_RELATED_EVIDENCE": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/docs/verification/related-coverage-20261007/gateway-final",
+      "HANDRAIL_PRESEND_EVIDENCE": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/docs/verification/related-coverage-20261007/presend-final"
+    }
+  },
+  {
+    "name": "presend-gateway-final",
+    "cwd": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter",
+    "command": [
+      "node",
+      "tool/run-presend-trace.mjs",
+      "/opt/handrail/.handrail/flutter-sdk",
+      "client"
+    ],
+    "timeout_seconds": 240,
+    "exit_code": 0,
+    "elapsed_seconds": 18.81,
+    "candidate_source_sha256": "bb2686d2ca7ae699966589dfcbdb77007f8c1ec34eb88fa9b93236f9e00c7a8b",
+    "environment_overrides": {
+      "FLUTTER_ALREADY_LOCKED": "true",
+      "HANDRAIL_TEST_JS_SDK_DIST": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-js/node_modules/.cache/related-coverage-source/dist",
+      "HANDRAIL_RELATED_EVIDENCE": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/docs/verification/related-coverage-20261007/gateway-final",
+      "HANDRAIL_PRESEND_EVIDENCE": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/docs/verification/related-coverage-20261007/presend-final"
+    }
+  },
+  {
+    "name": "shared-flutter-final",
+    "cwd": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter",
+    "command": [
+      "node",
+      "tool/check-shared-widgets.mjs",
+      "/opt/handrail/.handrail/flutter-sdk",
+      "tool/display_polling_test.dart",
+      "tool/reentrant_assistant_test.dart"
+    ],
+    "timeout_seconds": 240,
+    "exit_code": 0,
+    "elapsed_seconds": 9.44,
+    "candidate_source_sha256": "bb2686d2ca7ae699966589dfcbdb77007f8c1ec34eb88fa9b93236f9e00c7a8b",
+    "environment_overrides": {
+      "FLUTTER_ALREADY_LOCKED": "true",
+      "HANDRAIL_TEST_JS_SDK_DIST": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-js/node_modules/.cache/related-coverage-source/dist",
+      "HANDRAIL_RELATED_EVIDENCE": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/docs/verification/related-coverage-20261007/gateway-final",
+      "HANDRAIL_PRESEND_EVIDENCE": "/opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/docs/verification/related-coverage-20261007/presend-final"
+    }
+  }
+]
