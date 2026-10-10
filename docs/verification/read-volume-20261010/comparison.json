@@ -1,0 +1,1333 @@
+{
+  "contract": "All /api/ai HTTP dispatches use one unchanged 120 requests/rolling 60s bucket, including capabilities and turn start. /test fixture orchestration is diagnostic and outside the application API. This partition is stricter than the supplied Preview evidence and not directly comparable to its totals.",
+  "comparisons": [
+    {
+      "width": 390,
+      "legacy": {
+        "completed_phases": [
+          "new",
+          "ordinary-70-delta",
+          "ordinary-second",
+          "navigation-return",
+          "reload-one",
+          "lost-start-ack",
+          "reload-retained-intent",
+          "exact-once-retry",
+          "reload-two",
+          "held-stop"
+        ],
+        "http_dispatches": 133,
+        "ordinary_http": 121,
+        "diagnostic_http": 12,
+        "shared_http": 121,
+        "diagnostic_shared_http": 0,
+        "history_http": 82,
+        "history_http_operations": {
+          "control": 30,
+          "page": 36,
+          "changes": 16
+        },
+        "history_constituent_reads": {
+          "control": 30,
+          "page": 10,
+          "page:approval_history": 13,
+          "changes": 16,
+          "page:context": 13
+        },
+        "last_shared_dispatch_ms": 18363,
+        "statuses": {
+          "200": 120,
+          "diagnostic_not_recorded": 12,
+          "429": 1
+        },
+        "maximum_rolling_60s_shared": 121,
+        "maximum_history_concurrency": 1,
+        "per_action": {
+          "new": {
+            "http_dispatches": 8,
+            "ordinary_http": 8,
+            "diagnostic_http": 0,
+            "shared_http": 8,
+            "diagnostic_shared_http": 0,
+            "history_http": 3,
+            "history_http_operations": {
+              "control": 1,
+              "page": 2
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1
+            },
+            "last_shared_dispatch_ms": 219,
+            "statuses": {
+              "200": 8
+            }
+          },
+          "ordinary-70-delta": {
+            "http_dispatches": 20,
+            "ordinary_http": 20,
+            "diagnostic_http": 0,
+            "shared_http": 20,
+            "diagnostic_shared_http": 0,
+            "history_http": 13,
+            "history_http_operations": {
+              "control": 5,
+              "changes": 3,
+              "page": 5
+            },
+            "history_constituent_reads": {
+              "control": 5,
+              "changes": 3,
+              "page": 1,
+              "page:approval_history": 2,
+              "page:context": 2
+            },
+            "last_shared_dispatch_ms": 8792,
+            "statuses": {
+              "200": 20
+            }
+          },
+          "diagnostic": {
+            "http_dispatches": 12,
+            "ordinary_http": 0,
+            "diagnostic_http": 12,
+            "shared_http": 0,
+            "diagnostic_shared_http": 0,
+            "history_http": 0,
+            "history_http_operations": {},
+            "history_constituent_reads": {},
+            "last_shared_dispatch_ms": 0,
+            "statuses": {
+              "diagnostic_not_recorded": 12
+            }
+          },
+          "ordinary-second": {
+            "http_dispatches": 16,
+            "ordinary_http": 16,
+            "diagnostic_http": 0,
+            "shared_http": 16,
+            "diagnostic_shared_http": 0,
+            "history_http": 14,
+            "history_http_operations": {
+              "control": 5,
+              "changes": 4,
+              "page": 5
+            },
+            "history_constituent_reads": {
+              "control": 5,
+              "changes": 4,
+              "page": 1,
+              "page:approval_history": 2,
+              "page:context": 2
+            },
+            "last_shared_dispatch_ms": 10183,
+            "statuses": {
+              "200": 16
+            }
+          },
+          "navigation-return": {
+            "http_dispatches": 5,
+            "ordinary_http": 5,
+            "diagnostic_http": 0,
+            "shared_http": 5,
+            "diagnostic_shared_http": 0,
+            "history_http": 4,
+            "history_http_operations": {
+              "control": 1,
+              "page": 3
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 10442,
+            "statuses": {
+              "200": 5
+            }
+          },
+          "reload-one": {
+            "http_dispatches": 7,
+            "ordinary_http": 7,
+            "diagnostic_http": 0,
+            "shared_http": 7,
+            "diagnostic_shared_http": 0,
+            "history_http": 4,
+            "history_http_operations": {
+              "control": 1,
+              "page": 3
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 10989,
+            "statuses": {
+              "200": 7
+            }
+          },
+          "lost-start-ack": {
+            "http_dispatches": 6,
+            "ordinary_http": 6,
+            "diagnostic_http": 0,
+            "shared_http": 6,
+            "diagnostic_shared_http": 0,
+            "history_http": 4,
+            "history_http_operations": {
+              "control": 3,
+              "changes": 1
+            },
+            "history_constituent_reads": {
+              "control": 3,
+              "changes": 1
+            },
+            "last_shared_dispatch_ms": 10905,
+            "statuses": {
+              "200": 6
+            }
+          },
+          "reload-retained-intent": {
+            "http_dispatches": 8,
+            "ordinary_http": 8,
+            "diagnostic_http": 0,
+            "shared_http": 8,
+            "diagnostic_shared_http": 0,
+            "history_http": 5,
+            "history_http_operations": {
+              "control": 2,
+              "page": 3
+            },
+            "history_constituent_reads": {
+              "control": 2,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 11194,
+            "statuses": {
+              "200": 8
+            }
+          },
+          "exact-once-retry": {
+            "http_dispatches": 15,
+            "ordinary_http": 15,
+            "diagnostic_http": 0,
+            "shared_http": 15,
+            "diagnostic_shared_http": 0,
+            "history_http": 11,
+            "history_http_operations": {
+              "control": 4,
+              "changes": 3,
+              "page": 4
+            },
+            "history_constituent_reads": {
+              "control": 4,
+              "changes": 3,
+              "page": 1,
+              "page:context": 2,
+              "page:approval_history": 1
+            },
+            "last_shared_dispatch_ms": 11642,
+            "statuses": {
+              "200": 15
+            }
+          },
+          "reload-two": {
+            "http_dispatches": 7,
+            "ordinary_http": 7,
+            "diagnostic_http": 0,
+            "shared_http": 7,
+            "diagnostic_shared_http": 0,
+            "history_http": 4,
+            "history_http_operations": {
+              "control": 1,
+              "page": 3
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 12024,
+            "statuses": {
+              "200": 7
+            }
+          },
+          "held-stop": {
+            "http_dispatches": 22,
+            "ordinary_http": 22,
+            "diagnostic_http": 0,
+            "shared_http": 22,
+            "diagnostic_shared_http": 0,
+            "history_http": 17,
+            "history_http_operations": {
+              "control": 6,
+              "changes": 5,
+              "page": 6
+            },
+            "history_constituent_reads": {
+              "control": 6,
+              "changes": 5,
+              "page": 1,
+              "page:approval_history": 2,
+              "page:context": 3
+            },
+            "last_shared_dispatch_ms": 18262,
+            "statuses": {
+              "200": 22
+            }
+          },
+          "new-one-admission": {
+            "http_dispatches": 7,
+            "ordinary_http": 7,
+            "diagnostic_http": 0,
+            "shared_http": 7,
+            "diagnostic_shared_http": 0,
+            "history_http": 3,
+            "history_http_operations": {
+              "control": 1,
+              "page": 2
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1
+            },
+            "last_shared_dispatch_ms": 18363,
+            "statuses": {
+              "200": 6,
+              "429": 1
+            }
+          }
+        }
+      },
+      "bundle": {
+        "completed_phases": [
+          "new",
+          "ordinary-70-delta",
+          "ordinary-second",
+          "navigation-return",
+          "reload-one",
+          "lost-start-ack",
+          "reload-retained-intent",
+          "exact-once-retry",
+          "reload-two",
+          "held-stop",
+          "new-one-admission",
+          "reload-three-reopen-both",
+          "diagnostic-lists"
+        ],
+        "http_dispatches": 130,
+        "ordinary_http": 111,
+        "diagnostic_http": 19,
+        "shared_http": 114,
+        "diagnostic_shared_http": 3,
+        "history_http": 56,
+        "history_http_operations": {
+          "bundle": 33,
+          "control": 11,
+          "changes": 4,
+          "page": 8
+        },
+        "history_constituent_reads": {
+          "control": 44,
+          "page": 20,
+          "page:approval_history": 36,
+          "changes": 24,
+          "page:context": 30
+        },
+        "last_shared_dispatch_ms": 19164,
+        "statuses": {
+          "200": 114,
+          "diagnostic_not_recorded": 16
+        },
+        "maximum_rolling_60s_shared": 114,
+        "maximum_history_concurrency": 1,
+        "per_action": {
+          "new": {
+            "http_dispatches": 6,
+            "ordinary_http": 6,
+            "diagnostic_http": 0,
+            "shared_http": 6,
+            "diagnostic_shared_http": 0,
+            "history_http": 1,
+            "history_http_operations": {
+              "bundle": 1
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1
+            },
+            "last_shared_dispatch_ms": 192,
+            "statuses": {
+              "200": 6
+            }
+          },
+          "ordinary-70-delta": {
+            "http_dispatches": 17,
+            "ordinary_http": 17,
+            "diagnostic_http": 0,
+            "shared_http": 17,
+            "diagnostic_shared_http": 0,
+            "history_http": 10,
+            "history_http_operations": {
+              "bundle": 4,
+              "control": 2,
+              "changes": 1,
+              "page": 3
+            },
+            "history_constituent_reads": {
+              "control": 6,
+              "changes": 4,
+              "page:approval_history": 5,
+              "page": 3,
+              "page:context": 3
+            },
+            "last_shared_dispatch_ms": 9013,
+            "statuses": {
+              "200": 17
+            }
+          },
+          "diagnostic": {
+            "http_dispatches": 16,
+            "ordinary_http": 0,
+            "diagnostic_http": 16,
+            "shared_http": 0,
+            "diagnostic_shared_http": 0,
+            "history_http": 0,
+            "history_http_operations": {},
+            "history_constituent_reads": {},
+            "last_shared_dispatch_ms": 0,
+            "statuses": {
+              "diagnostic_not_recorded": 16
+            }
+          },
+          "ordinary-second": {
+            "http_dispatches": 12,
+            "ordinary_http": 12,
+            "diagnostic_http": 0,
+            "shared_http": 12,
+            "diagnostic_shared_http": 0,
+            "history_http": 10,
+            "history_http_operations": {
+              "bundle": 4,
+              "control": 2,
+              "changes": 1,
+              "page": 3
+            },
+            "history_constituent_reads": {
+              "control": 6,
+              "changes": 5,
+              "page:approval_history": 5,
+              "page:context": 5,
+              "page": 3
+            },
+            "last_shared_dispatch_ms": 10103,
+            "statuses": {
+              "200": 12
+            }
+          },
+          "navigation-return": {
+            "http_dispatches": 2,
+            "ordinary_http": 2,
+            "diagnostic_http": 0,
+            "shared_http": 2,
+            "diagnostic_shared_http": 0,
+            "history_http": 1,
+            "history_http_operations": {
+              "bundle": 1
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 10273,
+            "statuses": {
+              "200": 2
+            }
+          },
+          "reload-one": {
+            "http_dispatches": 4,
+            "ordinary_http": 4,
+            "diagnostic_http": 0,
+            "shared_http": 4,
+            "diagnostic_shared_http": 0,
+            "history_http": 1,
+            "history_http_operations": {
+              "bundle": 1
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 10807,
+            "statuses": {
+              "200": 4
+            }
+          },
+          "lost-start-ack": {
+            "http_dispatches": 5,
+            "ordinary_http": 5,
+            "diagnostic_http": 0,
+            "shared_http": 5,
+            "diagnostic_shared_http": 0,
+            "history_http": 3,
+            "history_http_operations": {
+              "bundle": 2,
+              "control": 1
+            },
+            "history_constituent_reads": {
+              "control": 3,
+              "changes": 1,
+              "page:approval_history": 2,
+              "page:context": 2
+            },
+            "last_shared_dispatch_ms": 10734,
+            "statuses": {
+              "200": 5
+            }
+          },
+          "reload-retained-intent": {
+            "http_dispatches": 5,
+            "ordinary_http": 5,
+            "diagnostic_http": 0,
+            "shared_http": 5,
+            "diagnostic_shared_http": 0,
+            "history_http": 2,
+            "history_http_operations": {
+              "bundle": 1,
+              "control": 1
+            },
+            "history_constituent_reads": {
+              "control": 2,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 10966,
+            "statuses": {
+              "200": 5
+            }
+          },
+          "exact-once-retry": {
+            "http_dispatches": 14,
+            "ordinary_http": 14,
+            "diagnostic_http": 0,
+            "shared_http": 14,
+            "diagnostic_shared_http": 0,
+            "history_http": 10,
+            "history_http_operations": {
+              "bundle": 3,
+              "control": 3,
+              "changes": 2,
+              "page": 2
+            },
+            "history_constituent_reads": {
+              "control": 6,
+              "changes": 5,
+              "page:approval_history": 4,
+              "page": 1,
+              "page:context": 4
+            },
+            "last_shared_dispatch_ms": 11482,
+            "statuses": {
+              "200": 14
+            }
+          },
+          "reload-two": {
+            "http_dispatches": 4,
+            "ordinary_http": 4,
+            "diagnostic_http": 0,
+            "shared_http": 4,
+            "diagnostic_shared_http": 0,
+            "history_http": 1,
+            "history_http_operations": {
+              "bundle": 1
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 11845,
+            "statuses": {
+              "200": 4
+            }
+          },
+          "held-stop": {
+            "http_dispatches": 13,
+            "ordinary_http": 13,
+            "diagnostic_http": 0,
+            "shared_http": 13,
+            "diagnostic_shared_http": 0,
+            "history_http": 8,
+            "history_http_operations": {
+              "bundle": 7,
+              "control": 1
+            },
+            "history_constituent_reads": {
+              "control": 8,
+              "changes": 6,
+              "page:approval_history": 7,
+              "page:context": 7,
+              "page": 2
+            },
+            "last_shared_dispatch_ms": 17701,
+            "statuses": {
+              "200": 13
+            }
+          },
+          "new-one-admission": {
+            "http_dispatches": 18,
+            "ordinary_http": 18,
+            "diagnostic_http": 0,
+            "shared_http": 18,
+            "diagnostic_shared_http": 0,
+            "history_http": 6,
+            "history_http_operations": {
+              "bundle": 5,
+              "control": 1
+            },
+            "history_constituent_reads": {
+              "control": 6,
+              "page": 3,
+              "page:approval_history": 5,
+              "changes": 3,
+              "page:context": 2
+            },
+            "last_shared_dispatch_ms": 18633,
+            "statuses": {
+              "200": 18
+            }
+          },
+          "reload-three-reopen-both": {
+            "http_dispatches": 9,
+            "ordinary_http": 9,
+            "diagnostic_http": 0,
+            "shared_http": 9,
+            "diagnostic_shared_http": 0,
+            "history_http": 3,
+            "history_http_operations": {
+              "bundle": 3
+            },
+            "history_constituent_reads": {
+              "control": 3,
+              "page": 3,
+              "page:approval_history": 3,
+              "page:context": 3
+            },
+            "last_shared_dispatch_ms": 18994,
+            "statuses": {
+              "200": 9
+            }
+          },
+          "diagnostic-lists": {
+            "http_dispatches": 5,
+            "ordinary_http": 2,
+            "diagnostic_http": 3,
+            "shared_http": 5,
+            "diagnostic_shared_http": 3,
+            "history_http": 0,
+            "history_http_operations": {},
+            "history_constituent_reads": {},
+            "last_shared_dispatch_ms": 19164,
+            "statuses": {
+              "200": 5
+            }
+          }
+        }
+      },
+      "identical_completed_phases": {
+        "phases": [
+          "new",
+          "ordinary-70-delta",
+          "ordinary-second",
+          "navigation-return",
+          "reload-one",
+          "lost-start-ack",
+          "reload-retained-intent",
+          "exact-once-retry",
+          "reload-two",
+          "held-stop"
+        ],
+        "legacy_shared": 114,
+        "bundle_shared": 82
+      }
+    },
+    {
+      "width": 1440,
+      "legacy": {
+        "completed_phases": [
+          "new",
+          "ordinary-70-delta",
+          "ordinary-second",
+          "navigation-return",
+          "reload-one",
+          "lost-start-ack",
+          "reload-retained-intent",
+          "exact-once-retry",
+          "reload-two",
+          "held-stop"
+        ],
+        "http_dispatches": 133,
+        "ordinary_http": 121,
+        "diagnostic_http": 12,
+        "shared_http": 121,
+        "diagnostic_shared_http": 0,
+        "history_http": 82,
+        "history_http_operations": {
+          "control": 30,
+          "page": 36,
+          "changes": 16
+        },
+        "history_constituent_reads": {
+          "control": 30,
+          "page": 10,
+          "page:approval_history": 13,
+          "changes": 16,
+          "page:context": 13
+        },
+        "last_shared_dispatch_ms": 17636,
+        "statuses": {
+          "200": 120,
+          "diagnostic_not_recorded": 12,
+          "429": 1
+        },
+        "maximum_rolling_60s_shared": 121,
+        "maximum_history_concurrency": 1,
+        "per_action": {
+          "new": {
+            "http_dispatches": 8,
+            "ordinary_http": 8,
+            "diagnostic_http": 0,
+            "shared_http": 8,
+            "diagnostic_shared_http": 0,
+            "history_http": 3,
+            "history_http_operations": {
+              "control": 1,
+              "page": 2
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1
+            },
+            "last_shared_dispatch_ms": 165,
+            "statuses": {
+              "200": 8
+            }
+          },
+          "ordinary-70-delta": {
+            "http_dispatches": 20,
+            "ordinary_http": 20,
+            "diagnostic_http": 0,
+            "shared_http": 20,
+            "diagnostic_shared_http": 0,
+            "history_http": 13,
+            "history_http_operations": {
+              "control": 5,
+              "changes": 3,
+              "page": 5
+            },
+            "history_constituent_reads": {
+              "control": 5,
+              "changes": 3,
+              "page": 1,
+              "page:approval_history": 2,
+              "page:context": 2
+            },
+            "last_shared_dispatch_ms": 8000,
+            "statuses": {
+              "200": 20
+            }
+          },
+          "diagnostic": {
+            "http_dispatches": 12,
+            "ordinary_http": 0,
+            "diagnostic_http": 12,
+            "shared_http": 0,
+            "diagnostic_shared_http": 0,
+            "history_http": 0,
+            "history_http_operations": {},
+            "history_constituent_reads": {},
+            "last_shared_dispatch_ms": 0,
+            "statuses": {
+              "diagnostic_not_recorded": 12
+            }
+          },
+          "ordinary-second": {
+            "http_dispatches": 16,
+            "ordinary_http": 16,
+            "diagnostic_http": 0,
+            "shared_http": 16,
+            "diagnostic_shared_http": 0,
+            "history_http": 14,
+            "history_http_operations": {
+              "control": 5,
+              "changes": 4,
+              "page": 5
+            },
+            "history_constituent_reads": {
+              "control": 5,
+              "changes": 4,
+              "page": 1,
+              "page:approval_history": 2,
+              "page:context": 2
+            },
+            "last_shared_dispatch_ms": 9292,
+            "statuses": {
+              "200": 16
+            }
+          },
+          "navigation-return": {
+            "http_dispatches": 5,
+            "ordinary_http": 5,
+            "diagnostic_http": 0,
+            "shared_http": 5,
+            "diagnostic_shared_http": 0,
+            "history_http": 4,
+            "history_http_operations": {
+              "control": 1,
+              "page": 3
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 9505,
+            "statuses": {
+              "200": 5
+            }
+          },
+          "reload-one": {
+            "http_dispatches": 7,
+            "ordinary_http": 7,
+            "diagnostic_http": 0,
+            "shared_http": 7,
+            "diagnostic_shared_http": 0,
+            "history_http": 4,
+            "history_http_operations": {
+              "control": 1,
+              "page": 3
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 10097,
+            "statuses": {
+              "200": 7
+            }
+          },
+          "lost-start-ack": {
+            "http_dispatches": 6,
+            "ordinary_http": 6,
+            "diagnostic_http": 0,
+            "shared_http": 6,
+            "diagnostic_shared_http": 0,
+            "history_http": 4,
+            "history_http_operations": {
+              "control": 3,
+              "changes": 1
+            },
+            "history_constituent_reads": {
+              "control": 3,
+              "changes": 1
+            },
+            "last_shared_dispatch_ms": 9966,
+            "statuses": {
+              "200": 6
+            }
+          },
+          "reload-retained-intent": {
+            "http_dispatches": 8,
+            "ordinary_http": 8,
+            "diagnostic_http": 0,
+            "shared_http": 8,
+            "diagnostic_shared_http": 0,
+            "history_http": 5,
+            "history_http_operations": {
+              "control": 2,
+              "page": 3
+            },
+            "history_constituent_reads": {
+              "control": 2,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 10348,
+            "statuses": {
+              "200": 8
+            }
+          },
+          "exact-once-retry": {
+            "http_dispatches": 15,
+            "ordinary_http": 15,
+            "diagnostic_http": 0,
+            "shared_http": 15,
+            "diagnostic_shared_http": 0,
+            "history_http": 11,
+            "history_http_operations": {
+              "control": 4,
+              "changes": 3,
+              "page": 4
+            },
+            "history_constituent_reads": {
+              "control": 4,
+              "changes": 3,
+              "page": 1,
+              "page:context": 2,
+              "page:approval_history": 1
+            },
+            "last_shared_dispatch_ms": 10871,
+            "statuses": {
+              "200": 15
+            }
+          },
+          "reload-two": {
+            "http_dispatches": 7,
+            "ordinary_http": 7,
+            "diagnostic_http": 0,
+            "shared_http": 7,
+            "diagnostic_shared_http": 0,
+            "history_http": 4,
+            "history_http_operations": {
+              "control": 1,
+              "page": 3
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 11283,
+            "statuses": {
+              "200": 7
+            }
+          },
+          "held-stop": {
+            "http_dispatches": 22,
+            "ordinary_http": 22,
+            "diagnostic_http": 0,
+            "shared_http": 22,
+            "diagnostic_shared_http": 0,
+            "history_http": 17,
+            "history_http_operations": {
+              "control": 6,
+              "changes": 5,
+              "page": 6
+            },
+            "history_constituent_reads": {
+              "control": 6,
+              "changes": 5,
+              "page": 1,
+              "page:approval_history": 2,
+              "page:context": 3
+            },
+            "last_shared_dispatch_ms": 17507,
+            "statuses": {
+              "200": 22
+            }
+          },
+          "new-one-admission": {
+            "http_dispatches": 7,
+            "ordinary_http": 7,
+            "diagnostic_http": 0,
+            "shared_http": 7,
+            "diagnostic_shared_http": 0,
+            "history_http": 3,
+            "history_http_operations": {
+              "control": 1,
+              "page": 2
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1
+            },
+            "last_shared_dispatch_ms": 17636,
+            "statuses": {
+              "200": 6,
+              "429": 1
+            }
+          }
+        }
+      },
+      "bundle": {
+        "completed_phases": [
+          "new",
+          "ordinary-70-delta",
+          "ordinary-second",
+          "navigation-return",
+          "reload-one",
+          "lost-start-ack",
+          "reload-retained-intent",
+          "exact-once-retry",
+          "reload-two",
+          "held-stop",
+          "new-one-admission",
+          "reload-three-reopen-both",
+          "diagnostic-lists"
+        ],
+        "http_dispatches": 130,
+        "ordinary_http": 111,
+        "diagnostic_http": 19,
+        "shared_http": 114,
+        "diagnostic_shared_http": 3,
+        "history_http": 56,
+        "history_http_operations": {
+          "bundle": 33,
+          "control": 11,
+          "changes": 4,
+          "page": 8
+        },
+        "history_constituent_reads": {
+          "control": 44,
+          "page": 20,
+          "page:approval_history": 36,
+          "changes": 24,
+          "page:context": 30
+        },
+        "last_shared_dispatch_ms": 17954,
+        "statuses": {
+          "200": 114,
+          "diagnostic_not_recorded": 16
+        },
+        "maximum_rolling_60s_shared": 114,
+        "maximum_history_concurrency": 1,
+        "per_action": {
+          "new": {
+            "http_dispatches": 6,
+            "ordinary_http": 6,
+            "diagnostic_http": 0,
+            "shared_http": 6,
+            "diagnostic_shared_http": 0,
+            "history_http": 1,
+            "history_http_operations": {
+              "bundle": 1
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1
+            },
+            "last_shared_dispatch_ms": 146,
+            "statuses": {
+              "200": 6
+            }
+          },
+          "ordinary-70-delta": {
+            "http_dispatches": 17,
+            "ordinary_http": 17,
+            "diagnostic_http": 0,
+            "shared_http": 17,
+            "diagnostic_shared_http": 0,
+            "history_http": 10,
+            "history_http_operations": {
+              "bundle": 4,
+              "control": 2,
+              "changes": 1,
+              "page": 3
+            },
+            "history_constituent_reads": {
+              "control": 6,
+              "changes": 4,
+              "page:approval_history": 5,
+              "page": 3,
+              "page:context": 3
+            },
+            "last_shared_dispatch_ms": 8114,
+            "statuses": {
+              "200": 17
+            }
+          },
+          "diagnostic": {
+            "http_dispatches": 16,
+            "ordinary_http": 0,
+            "diagnostic_http": 16,
+            "shared_http": 0,
+            "diagnostic_shared_http": 0,
+            "history_http": 0,
+            "history_http_operations": {},
+            "history_constituent_reads": {},
+            "last_shared_dispatch_ms": 0,
+            "statuses": {
+              "diagnostic_not_recorded": 16
+            }
+          },
+          "ordinary-second": {
+            "http_dispatches": 12,
+            "ordinary_http": 12,
+            "diagnostic_http": 0,
+            "shared_http": 12,
+            "diagnostic_shared_http": 0,
+            "history_http": 10,
+            "history_http_operations": {
+              "bundle": 4,
+              "control": 2,
+              "changes": 1,
+              "page": 3
+            },
+            "history_constituent_reads": {
+              "control": 6,
+              "changes": 5,
+              "page:approval_history": 5,
+              "page:context": 5,
+              "page": 3
+            },
+            "last_shared_dispatch_ms": 9093,
+            "statuses": {
+              "200": 12
+            }
+          },
+          "navigation-return": {
+            "http_dispatches": 2,
+            "ordinary_http": 2,
+            "diagnostic_http": 0,
+            "shared_http": 2,
+            "diagnostic_shared_http": 0,
+            "history_http": 1,
+            "history_http_operations": {
+              "bundle": 1
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 9216,
+            "statuses": {
+              "200": 2
+            }
+          },
+          "reload-one": {
+            "http_dispatches": 4,
+            "ordinary_http": 4,
+            "diagnostic_http": 0,
+            "shared_http": 4,
+            "diagnostic_shared_http": 0,
+            "history_http": 1,
+            "history_http_operations": {
+              "bundle": 1
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 9758,
+            "statuses": {
+              "200": 4
+            }
+          },
+          "lost-start-ack": {
+            "http_dispatches": 5,
+            "ordinary_http": 5,
+            "diagnostic_http": 0,
+            "shared_http": 5,
+            "diagnostic_shared_http": 0,
+            "history_http": 3,
+            "history_http_operations": {
+              "bundle": 2,
+              "control": 1
+            },
+            "history_constituent_reads": {
+              "control": 3,
+              "changes": 1,
+              "page:approval_history": 2,
+              "page:context": 2
+            },
+            "last_shared_dispatch_ms": 9680,
+            "statuses": {
+              "200": 5
+            }
+          },
+          "reload-retained-intent": {
+            "http_dispatches": 5,
+            "ordinary_http": 5,
+            "diagnostic_http": 0,
+            "shared_http": 5,
+            "diagnostic_shared_http": 0,
+            "history_http": 2,
+            "history_http_operations": {
+              "bundle": 1,
+              "control": 1
+            },
+            "history_constituent_reads": {
+              "control": 2,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 9914,
+            "statuses": {
+              "200": 5
+            }
+          },
+          "exact-once-retry": {
+            "http_dispatches": 14,
+            "ordinary_http": 14,
+            "diagnostic_http": 0,
+            "shared_http": 14,
+            "diagnostic_shared_http": 0,
+            "history_http": 10,
+            "history_http_operations": {
+              "bundle": 3,
+              "control": 3,
+              "changes": 2,
+              "page": 2
+            },
+            "history_constituent_reads": {
+              "control": 6,
+              "changes": 5,
+              "page:approval_history": 4,
+              "page": 1,
+              "page:context": 4
+            },
+            "last_shared_dispatch_ms": 10455,
+            "statuses": {
+              "200": 14
+            }
+          },
+          "reload-two": {
+            "http_dispatches": 4,
+            "ordinary_http": 4,
+            "diagnostic_http": 0,
+            "shared_http": 4,
+            "diagnostic_shared_http": 0,
+            "history_http": 1,
+            "history_http_operations": {
+              "bundle": 1
+            },
+            "history_constituent_reads": {
+              "control": 1,
+              "page": 1,
+              "page:approval_history": 1,
+              "page:context": 1
+            },
+            "last_shared_dispatch_ms": 10831,
+            "statuses": {
+              "200": 4
+            }
+          },
+          "held-stop": {
+            "http_dispatches": 13,
+            "ordinary_http": 13,
+            "diagnostic_http": 0,
+            "shared_http": 13,
+            "diagnostic_shared_http": 0,
+            "history_http": 8,
+            "history_http_operations": {
+              "bundle": 7,
+              "control": 1
+            },
+            "history_constituent_reads": {
+              "control": 8,
+              "changes": 6,
+              "page:approval_history": 7,
+              "page:context": 7,
+              "page": 2
+            },
+            "last_shared_dispatch_ms": 16636,
+            "statuses": {
+              "200": 13
+            }
+          },
+          "new-one-admission": {
+            "http_dispatches": 18,
+            "ordinary_http": 18,
+            "diagnostic_http": 0,
+            "shared_http": 18,
+            "diagnostic_shared_http": 0,
+            "history_http": 6,
+            "history_http_operations": {
+              "bundle": 5,
+              "control": 1
+            },
+            "history_constituent_reads": {
+              "control": 6,
+              "page": 3,
+              "page:approval_history": 5,
+              "changes": 3,
+              "page:context": 2
+            },
+            "last_shared_dispatch_ms": 17447,
+            "statuses": {
+              "200": 18
+            }
+          },
+          "reload-three-reopen-both": {
+            "http_dispatches": 9,
+            "ordinary_http": 9,
+            "diagnostic_http": 0,
+            "shared_http": 9,
+            "diagnostic_shared_http": 0,
+            "history_http": 3,
+            "history_http_operations": {
+              "bundle": 3
+            },
+            "history_constituent_reads": {
+              "control": 3,
+              "page": 3,
+              "page:approval_history": 3,
+              "page:context": 3
+            },
+            "last_shared_dispatch_ms": 17783,
+            "statuses": {
+              "200": 9
+            }
+          },
+          "diagnostic-lists": {
+            "http_dispatches": 5,
+            "ordinary_http": 2,
+            "diagnostic_http": 3,
+            "shared_http": 5,
+            "diagnostic_shared_http": 3,
+            "history_http": 0,
+            "history_http_operations": {},
+            "history_constituent_reads": {},
+            "last_shared_dispatch_ms": 17954,
+            "statuses": {
+              "200": 5
+            }
+          }
+        }
+      },
+      "identical_completed_phases": {
+        "phases": [
+          "new",
+          "ordinary-70-delta",
+          "ordinary-second",
+          "navigation-return",
+          "reload-one",
+          "lost-start-ack",
+          "reload-retained-intent",
+          "exact-once-retry",
+          "reload-two",
+          "held-stop"
+        ],
+        "legacy_shared": 114,
+        "bundle_shared": 82
+      }
+    }
+  ]
+}

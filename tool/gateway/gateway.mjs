@@ -66,14 +66,33 @@ const adapter = { metadata: { provider_id: 'test', model_id: 'test', capabilitie
     stats.invocations++;
     const frame = (sequence, payload) => ({ protocol_version: 'handrail.ai-runtime.v1',
       request_id: input.context.request_id, trace_id: input.context.trace_id, sequence, ...payload });
-    const wait = new Promise((resolve) => release.set(input.context.request_id, resolve));
+    let unblock;
+    const wait = new Promise((resolve) => { unblock = resolve; release.set(input.context.request_id, resolve); });
+    if (process.env.HANDRAIL_TEST_READ_VOLUME === '1') {
+      if (input.signal.aborted) unblock();
+      else input.signal.addEventListener('abort', () => { stats.providerAborts = (stats.providerAborts ?? 0) + 1; unblock(); }, { once: true });
+    }
     yield frame(0, { type: 'response.started', attribution });
-    yield frame(1, { type: 'response.text.delta', delta: 'Finished once' });
+    const deltas = process.env.HANDRAIL_TEST_READ_VOLUME === '1' && stats.invocations === 1 ? 70 : 1;
+    for (let i = 0; i < deltas; i++) {
+      yield frame(i + 1, { type: 'response.text.delta', delta: deltas === 70 ? `delta${i} ` : 'Finished once' });
+      // Simulated provider cadence, not a rate-window delay.
+      if (deltas === 70) await new Promise(resolve => setTimeout(resolve, 100));
+    }
     await wait;
+    input.signal.removeEventListener('abort', unblock);
+    if (input.signal.aborted) return { status: 'cancelled', reason: 'explicit_stop', usage: null };
     return { status: 'completed', outcome: 'stop', usage: { input_tokens: 0, cached_input_tokens: 0,
       output_tokens: 0, reasoning_tokens: 0, total_tokens: 0, provider_cost: { known: false } } };
   } };
 const assistant = await createHandrailAssistant({ id: 'dart-test', authorize: () => context,
+  ...(process.env.HANDRAIL_TEST_READ_VOLUME === '1' ? { diagnostics(event) {
+    if (event.phase === 'failed') {
+      stats.failures ??= [];
+      if (stats.failures.length < 50) stats.failures.push({ operation: event.operation, code: event.code,
+        cause: event.cause instanceof Error ? event.cause.message : event.cause });
+    }
+  } } : {}),
   attachmentUpload: false,
   persistence,
   provider: { metadata: adapter.metadata, createTransport(input) {
@@ -82,15 +101,62 @@ const assistant = await createHandrailAssistant({ id: 'dart-test', authorize: ()
       executeTool: () => { throw new Error('No tools in this fixture'); } });
   } } });
 const dropped = new Set();
+const volume = { startedAt: Date.now(), dispatches: [], maximumRolling60s: 0, historyConcurrency: 0, maximumHistoryConcurrency: 0 };
+const sharedRequests = [];
+
 // Opt-in, synthetic host authorization gate for the pre-send investigation.
 // This process only listens on loopback and owns an isolated test database.
 let traceDenied = false;
 const server = createServer(async (request, response) => {
-  let reader;
+  let reader, volumeRow;
   try {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
     const body = Buffer.concat(chunks).toString();
+    if (process.env.HANDRAIL_TEST_READ_VOLUME === '1') {
+      const now = Date.now(), shared = request.url.startsWith('/api/ai/'), diagnostic = !shared || request.headers['x-test-diagnostic'] === '1';
+      volumeRow = { ms: now - volume.startedAt, path: request.url, phase: request.headers['x-test-phase'] ?? 'diagnostic',
+        diagnostic, shared, operation: body ? JSON.parse(body).operation : undefined };
+      volume.dispatches.push(volumeRow);
+      if (shared) {
+        while (sharedRequests.length && sharedRequests[0] <= now - 60000) sharedRequests.shift();
+        sharedRequests.push(now); volumeRow.rolling60s = sharedRequests.length;
+        volume.maximumRolling60s = Math.max(volume.maximumRolling60s, sharedRequests.length);
+        if (sharedRequests.length > 120) {
+          volumeRow.status = 429;
+          response.writeHead(429, { 'content-type': 'application/json', 'retry-after': '60' });
+          response.end(JSON.stringify({ ok: false, error: { code: 'rate_limited', message: '120/60s fixture limit', retryable: true } })); return;
+        }
+        if (request.url.endsWith('/conversations/history')) {
+          volume.historyConcurrency++;
+          volume.maximumHistoryConcurrency = Math.max(volume.maximumHistoryConcurrency, volume.historyConcurrency);
+          const historyRequest = JSON.parse(body);
+          const reads = historyRequest.operation === 'bundle' ? historyRequest.input.reads : [historyRequest];
+          volumeRow.reads = reads.map(read => ({ operation: read.operation,
+            view: read.input.view?.type, exactTurn: typeof read.input.turnId === 'string' }));
+        }
+      }
+      if (request.url === '/test/volume') {
+        response.end(JSON.stringify(volume)); return;
+      }
+      if (request.url === '/test/inspect-turn') {
+        const { conversationId, turnId } = JSON.parse(body);
+        const events = await bundle.events.read({ conversationId, limit: 1000 });
+        const turn = await bundle.durableTurns.load(conversationId, turnId);
+        response.end(JSON.stringify({ stats, turn, events: events.entries.map(e => e.event.payload) })); return;
+      }
+      if (request.url === '/test/settled') {
+        const { conversationId, turnId, status = 'completed' } = JSON.parse(body);
+        const deadline = Date.now() + 15000;
+        for (;;) {
+          const events = await bundle.events.read({ conversationId, limit: 1000 });
+          if (events.entries.some(({ event }) => event.payload.turn_id === turnId && event.payload.type === `turn.${status}`)) break;
+          if (Date.now() >= deadline) throw new Error(`Fixture turn did not settle: ${status}`);
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        response.end('{}'); return;
+      }
+    }
     if (process.env.HANDRAIL_TEST_PRESEND_TRACE === '1') {
       if (request.url === '/test/trace-clear' && dist) {
         const { conversationId } = JSON.parse(body);
@@ -180,11 +246,22 @@ const server = createServer(async (request, response) => {
     if (request.url.endsWith('/conversations/permanent-delete')) stats.deletions++;
     const admission = request.url.endsWith('/synchronization') && JSON.parse(body).operation === 'append_mutations';
     if (admission) stats.admissions++;
-    const result = await assistant.handle(new Request(`http://127.0.0.1${request.url}`, {
+    let result = await assistant.handle(new Request(`http://127.0.0.1${request.url}`, {
       method: request.method, headers: request.headers, ...(body ? { body } : {}) }));
+    if (process.env.HANDRAIL_TEST_READ_VOLUME === '1' && request.headers['x-test-legacy-history'] === '1' && request.url.endsWith('/capabilities')) {
+      const value = await result.json(); delete value.value.displayHistory.readBundle;
+      result = Response.json(value, { status: result.status, headers: result.headers });
+    }
+    if (volumeRow) volumeRow.status = result.status;
     if (request.url.endsWith('/conversations/history')) {
-      const bytes = (await result.clone().arrayBuffer()).byteLength;
+      const data = await result.clone().arrayBuffer(), bytes = data.byteLength;
       stats.displayBytes += bytes; stats.maximumDisplayBytes = Math.max(stats.maximumDisplayBytes, bytes);
+      if (volumeRow?.operation === 'bundle' && result.ok) {
+        const envelope = JSON.parse(new TextDecoder().decode(data)).value;
+        for (const entry of [envelope.tail, envelope.related]) if (entry) {
+          volumeRow.reads.push({ operation: 'page', view: entry.input.view?.type, derived: true });
+        }
+      }
     }
     if (request.url.endsWith('/approvals/transition-display')) stats.maximumDecisionBytes = Math.max(stats.maximumDecisionBytes, (await result.clone().arrayBuffer()).byteLength);
     const loss = request.headers['x-test-lose-response'];
@@ -194,8 +271,10 @@ const server = createServer(async (request, response) => {
       ? request.url.endsWith('/conversations/permanent-delete')
       : stage === 'start' && request.url.endsWith('/turns/start');
     if (matches && !dropped.has(loss)) {
-      dropped.add(loss); await result.body?.cancel(); response.destroy(); return;
+      dropped.add(loss); if (volumeRow) volumeRow.lostAcknowledgement = true;
+      await result.body?.cancel(); response.destroy(); return;
     }
+    if (volumeRow) volumeRow.status = result.status;
     response.writeHead(result.status, Object.fromEntries(result.headers));
     reader = result.body?.getReader();
     response.on('close', () => { reader?.cancel().catch(() => {}); });
@@ -208,7 +287,13 @@ const server = createServer(async (request, response) => {
   } catch (error) {
     process.stderr.write(`${error.stack}\n`);
     response.writeHead(500); response.end('{}');
-  } finally { reader?.releaseLock(); }
+  } finally {
+    reader?.releaseLock();
+    if (volumeRow) {
+      volumeRow.endMs = Date.now() - volume.startedAt;
+      if (request.url.endsWith('/conversations/history') && volumeRow.status !== 429) volume.historyConcurrency--;
+    }
+  }
 });
 server.listen(0, '127.0.0.1', () => process.stdout.write(`http://127.0.0.1:${server.address().port}\n`));
 process.once('SIGTERM', async () => {

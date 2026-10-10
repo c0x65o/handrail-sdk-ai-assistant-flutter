@@ -1,0 +1,238 @@
+The new artifact "libimobiledevice" was downloaded, but Flutter failed to update its stamp file, receiving the error "FileSystemException: Cannot open file, path = '/opt/handrail/.handrail/flutter-sdk/bin/cache/libimobiledevice.stamp' (OS Error: Read-only file system, errno = 30)". Flutter can continue, but the artifact may be re-downloaded on subsequent invocations until the problem is resolved.
+The new artifact "libusbmuxd" was downloaded, but Flutter failed to update its stamp file, receiving the error "FileSystemException: Cannot open file, path = '/opt/handrail/.handrail/flutter-sdk/bin/cache/libusbmuxd.stamp' (OS Error: Read-only file system, errno = 30)". Flutter can continue, but the artifact may be re-downloaded on subsequent invocations until the problem is resolved.
+00:00 +0: loading /opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/read_volume_journey_test.dart
+00:00 +0: complete request budget journey at 390.0
+read-volume gateway http://127.0.0.1:34857
+read-volume 390 new
+read-volume 390 completed new
+read-volume 390 ordinary-70-delta
+read-volume 390 completed ordinary-70-delta
+read-volume 390 ordinary-second
+read-volume 390 completed ordinary-second
+read-volume 390 navigation-return
+read-volume 390 completed navigation-return
+read-volume 390 reload-one
+read-volume 390 completed reload-one
+read-volume 390 reload-retained-intent
+read-volume 390 completed reload-retained-intent
+read-volume 390 exact-once-retry
+read-volume 390 completed exact-once-retry
+read-volume 390 reload-two
+read-volume 390 completed reload-two
+read-volume 390 held-stop
+read-volume 390 completed held-stop
+read-volume 390 new-one-admission
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following HandrailGatewayException was thrown while running async test code:
+HandrailGatewayException(rate_limited): Requests are temporarily rate limited. Please wait before
+retrying.
+
+When the exception was thrown, this was the stack:
+#0      HandrailAiClient._checkRateLimit (package:handrail_ai_client/handrail_ai_client.dart:1040:7)
+#1      HandrailAiClient._success (package:handrail_ai_client/handrail_ai_client.dart:1053:5)
+#2      HandrailAiClient._post (package:handrail_ai_client/handrail_ai_client.dart:829:21)
+<asynchronous suspension>
+#3      HandrailAssistantController.refreshHistory.<anonymous closure> (package:handrail_ai_client/src/assistant_controller.dart:602:26)
+<asynchronous suspension>
+#4      HandrailAssistantController.newConversation.<anonymous closure> (package:handrail_ai_client/src/assistant_controller.dart:917:11)
+<asynchronous suspension>
+<asynchronous suspension>
+#6      main.<anonymous closure>.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/read_volume_journey_test.dart:314:11)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 2 frames from dart:async)
+
+The exception was caught asynchronously.
+════════════════════════════════════════════════════════════════════════════════════════════════════
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following StateError was thrown running a test:
+Bad state: Unchanged 120/60s gateway budget exhausted
+
+When the exception was thrown, this was the stack:
+#4      BudgetRecordingClient.send (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/read_volume_journey_test.dart:21:17)
+#6      BudgetRecordingClient.send (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/read_volume_journey_test.dart:19:22)
+#7      BaseClient._sendUnstreamed (package:http/src/base_client.dart:93:38)
+#8      BaseClient.post (package:http/src/base_client.dart:32:7)
+#9      HandrailAiClient._post (package:handrail_ai_client/handrail_ai_client.dart:824:36)
+#11     HandrailAiClient._post (package:handrail_ai_client/handrail_ai_client.dart:826:18)
+#12     HandrailAiClient.listConversations (package:handrail_ai_client/handrail_ai_client.dart:685:7)
+#13     HandrailAssistantController.refreshHistory.<anonymous closure> (package:handrail_ai_client/src/assistant_controller.dart:602:39)
+#14     HandrailAssistantController.refreshHistory (package:handrail_ai_client/src/assistant_controller.dart:664:7)
+#15     HandrailAssistantController.newConversation.<anonymous closure> (package:handrail_ai_client/src/assistant_controller.dart:917:17)
+#17     HandrailAssistantController.newConversation.<anonymous closure> (package:handrail_ai_client/src/assistant_controller.dart:904:26)
+#37     HandrailAssistantController.newConversation (package:handrail_ai_client/src/assistant_controller.dart:899:17)
+#38     AutomatedTestWidgetsFlutterBinding.runAsync.<anonymous closure> (package:flutter_test/src/binding.dart:2007:17)
+#41     AutomatedTestWidgetsFlutterBinding.runAsync (package:flutter_test/src/binding.dart:2003:26)
+#42     WidgetTester.runAsync (package:flutter_test/src/widget_tester.dart:838:17)
+#43     main.<anonymous closure>.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/read_volume_journey_test.dart:314:24)
+#44     main.<anonymous closure>.action (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/read_volume_journey_test.dart:130:32)
+#45     main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/read_volume_journey_test.dart:313:15)
+#47     main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/read_volume_journey_test.dart:47:9)
+#48     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:29)
+#50     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:189:25)
+#51     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1682:19)
+#53     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1671:5)
+#56     TestWidgetsFlutterBinding._runTest (package:flutter_test/src/binding.dart:1656:10)
+#57     AutomatedTestWidgetsFlutterBinding.runTest.<anonymous closure> (package:flutter_test/src/binding.dart:2189:24)
+#58     FakeAsync.run.<anonymous closure>.<anonymous closure> (package:fake_async/fake_async.dart:182:47)
+#63     withClock (package:clock/src/default.dart:52:10)
+#64     FakeAsync.run.<anonymous closure> (package:fake_async/fake_async.dart:182:15)
+#69     FakeAsync.run (package:fake_async/fake_async.dart:181:52)
+#70     AutomatedTestWidgetsFlutterBinding.runTest (package:flutter_test/src/binding.dart:2186:15)
+#71     testWidgets.<anonymous closure> (package:flutter_test/src/widget_tester.dart:184:24)
+#72     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+#74     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:15)
+#79     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#80     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#85     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#86     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+#88     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:455:15)
+#93     Invoker._onRun.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:445:11)
+#94     Invoker._guardIfGuarded (package:test_api/src/backend/invoker.dart:500:15)
+#95     Invoker._onRun.<anonymous closure> (package:test_api/src/backend/invoker.dart:444:9)
+#102    Invoker._onRun (package:test_api/src/backend/invoker.dart:442:11)
+#103    LiveTestController.run (package:test_api/src/backend/live_test_controller.dart:161:11)
+#104    RemoteListener._runLiveTest.<anonymous closure> (package:test_api/src/backend/remote_listener.dart:323:16)
+#109    RemoteListener._runLiveTest (package:test_api/src/backend/remote_listener.dart:322:5)
+#110    RemoteListener._serializeTest.<anonymous closure> (package:test_api/src/backend/remote_listener.dart:263:7)
+#128    _GuaranteeSink.add (package:stream_channel/src/guarantee_channel.dart:125:12)
+#129    new _MultiChannel.<anonymous closure> (package:stream_channel/src/multi_channel.dart:159:31)
+#131    CastStreamSubscription._onData (dart:_internal/async_cast.dart:95:11)
+#157    new _WebSocketImpl._fromSocket.<anonymous closure> (dart:_http/websocket_impl.dart:1252:27)
+#163    _WebSocketProtocolTransformer._messageFrameEnd (dart:_http/websocket_impl.dart:348:23)
+#164    _WebSocketProtocolTransformer.add (dart:_http/websocket_impl.dart:238:46)
+#172    _Socket._onData (dart:io-patch/socket_patch.dart:2874:41)
+#179    new _RawSocket.<anonymous closure> (dart:io-patch/socket_patch.dart:2312:31)
+#180    _NativeSocket.issueReadEvent.issue (dart:io-patch/socket_patch.dart:1647:14)
+(elided 127 frames from dart:async and package:stack_trace)
+
+The test description was:
+  complete request budget journey at 390.0
+════════════════════════════════════════════════════════════════════════════════════════════════════
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following message was thrown:
+Multiple exceptions (2) were detected during the running of the current test, and at least one was
+unexpected.
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:21 +0 -1: complete request budget journey at 390.0 [E]
+  Test failed. See exception logs above.
+  The test description was: complete request budget journey at 390.0
+  
+00:41 +0 -1: complete request budget journey at 1440.0
+read-volume gateway http://127.0.0.1:38605
+read-volume 1440 new
+read-volume 1440 completed new
+read-volume 1440 ordinary-70-delta
+read-volume 1440 completed ordinary-70-delta
+read-volume 1440 ordinary-second
+read-volume 1440 completed ordinary-second
+read-volume 1440 navigation-return
+read-volume 1440 completed navigation-return
+read-volume 1440 reload-one
+read-volume 1440 completed reload-one
+read-volume 1440 reload-retained-intent
+read-volume 1440 completed reload-retained-intent
+read-volume 1440 exact-once-retry
+read-volume 1440 completed exact-once-retry
+read-volume 1440 reload-two
+read-volume 1440 completed reload-two
+read-volume 1440 held-stop
+read-volume 1440 completed held-stop
+read-volume 1440 new-one-admission
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following HandrailGatewayException was thrown while running async test code:
+HandrailGatewayException(rate_limited): Requests are temporarily rate limited. Please wait before
+retrying.
+
+When the exception was thrown, this was the stack:
+#0      HandrailAiClient._checkRateLimit (package:handrail_ai_client/handrail_ai_client.dart:1040:7)
+#1      HandrailAiClient._success (package:handrail_ai_client/handrail_ai_client.dart:1053:5)
+#2      HandrailAiClient._post (package:handrail_ai_client/handrail_ai_client.dart:829:21)
+<asynchronous suspension>
+#3      HandrailAssistantController.refreshHistory.<anonymous closure> (package:handrail_ai_client/src/assistant_controller.dart:602:26)
+<asynchronous suspension>
+#4      HandrailAssistantController.newConversation.<anonymous closure> (package:handrail_ai_client/src/assistant_controller.dart:917:11)
+<asynchronous suspension>
+<asynchronous suspension>
+#6      main.<anonymous closure>.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/read_volume_journey_test.dart:314:11)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 2 frames from dart:async)
+
+The exception was caught asynchronously.
+════════════════════════════════════════════════════════════════════════════════════════════════════
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following StateError was thrown running a test:
+Bad state: Unchanged 120/60s gateway budget exhausted
+
+When the exception was thrown, this was the stack:
+#4      BudgetRecordingClient.send (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/read_volume_journey_test.dart:21:17)
+#6      BudgetRecordingClient.send (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/read_volume_journey_test.dart:19:22)
+#7      BaseClient._sendUnstreamed (package:http/src/base_client.dart:93:38)
+#8      BaseClient.post (package:http/src/base_client.dart:32:7)
+#9      HandrailAiClient._post (package:handrail_ai_client/handrail_ai_client.dart:824:36)
+#11     HandrailAiClient._post (package:handrail_ai_client/handrail_ai_client.dart:826:18)
+#12     HandrailAiClient.listConversations (package:handrail_ai_client/handrail_ai_client.dart:685:7)
+#13     HandrailAssistantController.refreshHistory.<anonymous closure> (package:handrail_ai_client/src/assistant_controller.dart:602:39)
+#14     HandrailAssistantController.refreshHistory (package:handrail_ai_client/src/assistant_controller.dart:664:7)
+#15     HandrailAssistantController.newConversation.<anonymous closure> (package:handrail_ai_client/src/assistant_controller.dart:917:17)
+#17     HandrailAssistantController.newConversation.<anonymous closure> (package:handrail_ai_client/src/assistant_controller.dart:904:26)
+#37     HandrailAssistantController.newConversation (package:handrail_ai_client/src/assistant_controller.dart:899:17)
+#38     AutomatedTestWidgetsFlutterBinding.runAsync.<anonymous closure> (package:flutter_test/src/binding.dart:2007:17)
+#41     AutomatedTestWidgetsFlutterBinding.runAsync (package:flutter_test/src/binding.dart:2003:26)
+#42     WidgetTester.runAsync (package:flutter_test/src/widget_tester.dart:838:17)
+#43     main.<anonymous closure>.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/read_volume_journey_test.dart:314:24)
+#44     main.<anonymous closure>.action (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/read_volume_journey_test.dart:130:32)
+#45     main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/read_volume_journey_test.dart:313:15)
+#47     main.<anonymous closure> (file:///opt/handrail/repos/handrail/handrail-ai-assistant-sdk/handrail-sdk-ai-assistant-flutter/tool/read_volume_journey_test.dart:47:9)
+#48     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:29)
+#50     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:189:25)
+#51     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1682:19)
+#53     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1671:5)
+#56     TestWidgetsFlutterBinding._runTest (package:flutter_test/src/binding.dart:1656:10)
+#57     AutomatedTestWidgetsFlutterBinding.runTest.<anonymous closure> (package:flutter_test/src/binding.dart:2189:24)
+#58     FakeAsync.run.<anonymous closure>.<anonymous closure> (package:fake_async/fake_async.dart:182:47)
+#63     withClock (package:clock/src/default.dart:52:10)
+#64     FakeAsync.run.<anonymous closure> (package:fake_async/fake_async.dart:182:15)
+#69     FakeAsync.run (package:fake_async/fake_async.dart:181:52)
+#70     AutomatedTestWidgetsFlutterBinding.runTest (package:flutter_test/src/binding.dart:2186:15)
+#71     testWidgets.<anonymous closure> (package:flutter_test/src/widget_tester.dart:184:24)
+#72     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:253:25)
+#74     Declarer.test.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/declarer.dart:252:15)
+#79     Declarer.test.<anonymous closure> (package:test_api/src/backend/declarer.dart:250:17)
+#80     Invoker._waitForOutstandingCallbacks.<anonymous closure> (package:test_api/src/backend/invoker.dart:318:17)
+#85     Invoker._waitForOutstandingCallbacks (package:test_api/src/backend/invoker.dart:314:5)
+#86     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:457:21)
+#88     Invoker._onRun.<anonymous closure>.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:455:15)
+#93     Invoker._onRun.<anonymous closure>.<anonymous closure> (package:test_api/src/backend/invoker.dart:445:11)
+#94     Invoker._guardIfGuarded (package:test_api/src/backend/invoker.dart:500:15)
+#95     Invoker._onRun.<anonymous closure> (package:test_api/src/backend/invoker.dart:444:9)
+#102    Invoker._onRun (package:test_api/src/backend/invoker.dart:442:11)
+#103    LiveTestController.run (package:test_api/src/backend/live_test_controller.dart:161:11)
+#104    RemoteListener._runLiveTest.<anonymous closure> (package:test_api/src/backend/remote_listener.dart:323:16)
+#109    RemoteListener._runLiveTest (package:test_api/src/backend/remote_listener.dart:322:5)
+#110    RemoteListener._serializeTest.<anonymous closure> (package:test_api/src/backend/remote_listener.dart:263:7)
+#128    _GuaranteeSink.add (package:stream_channel/src/guarantee_channel.dart:125:12)
+#129    new _MultiChannel.<anonymous closure> (package:stream_channel/src/multi_channel.dart:159:31)
+#131    CastStreamSubscription._onData (dart:_internal/async_cast.dart:95:11)
+#157    new _WebSocketImpl._fromSocket.<anonymous closure> (dart:_http/websocket_impl.dart:1252:27)
+#163    _WebSocketProtocolTransformer._messageFrameEnd (dart:_http/websocket_impl.dart:348:23)
+#164    _WebSocketProtocolTransformer.add (dart:_http/websocket_impl.dart:238:46)
+#172    _Socket._onData (dart:io-patch/socket_patch.dart:2874:41)
+#179    new _RawSocket.<anonymous closure> (dart:io-patch/socket_patch.dart:2312:31)
+#180    _NativeSocket.issueReadEvent.issue (dart:io-patch/socket_patch.dart:1647:14)
+(elided 127 frames from dart:async and package:stack_trace)
+
+The test description was:
+  complete request budget journey at 1440.0
+════════════════════════════════════════════════════════════════════════════════════════════════════
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following message was thrown:
+Multiple exceptions (2) were detected during the running of the current test, and at least one was
+unexpected.
+════════════════════════════════════════════════════════════════════════════════════════════════════
+01:01 +0 -2: complete request budget journey at 1440.0 [E]
+  Test failed. See exception logs above.
+  The test description was: complete request budget journey at 1440.0
+  
+01:22 +0 -2: Some tests failed.

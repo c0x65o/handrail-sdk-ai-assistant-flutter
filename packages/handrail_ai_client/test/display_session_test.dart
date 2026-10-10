@@ -394,6 +394,14 @@ void main() {
     expect(f.requests.length, baseline,
         reason:
             'SSE notifications must coalesce within the five-second read budget');
+    // A manual read moves the deadline after the burst already armed a wake.
+    // The early wake must rearm, not discard the outstanding stream demand.
+    await session.refresh();
+    final afterManual = f.requests.length;
+    await Future<void>.delayed(const Duration(milliseconds: 4200));
+    expect(f.requests.length, afterManual);
+    await Future<void>.delayed(const Duration(milliseconds: 1100));
+    expect(f.requests.length, greaterThan(afterManual));
     await session.requestCancellation(
         mutationId: 'stop',
         idempotencyKey: 'stop',

@@ -1,0 +1,2158 @@
+{
+  "phases": [
+    "new",
+    "ordinary-70-delta",
+    "ordinary-second",
+    "navigation-return",
+    "reload-one",
+    "lost-start-ack",
+    "reload-retained-intent",
+    "exact-once-retry",
+    "reload-two",
+    "held-stop",
+    "new-one-admission",
+    "reload-three-reopen-both",
+    "diagnostic-lists"
+  ],
+  "width": 390.0,
+  "legacy": false,
+  "volume": {
+    "startedAt": 1791641937595,
+    "dispatches": [
+      {
+        "ms": 53,
+        "path": "/api/ai/conversations/create",
+        "phase": "new",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 1,
+        "status": 200,
+        "endMs": 74
+      },
+      {
+        "ms": 90,
+        "path": "/api/ai/conversations/get",
+        "phase": "new",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 2,
+        "status": 200,
+        "endMs": 95
+      },
+      {
+        "ms": 103,
+        "path": "/api/ai/capabilities",
+        "phase": "new",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 3,
+        "status": 200,
+        "endMs": 105
+      },
+      {
+        "ms": 113,
+        "path": "/api/ai/conversations/history",
+        "phase": "new",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 4,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 149
+      },
+      {
+        "ms": 177,
+        "path": "/api/ai/conversations/list",
+        "phase": "new",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 5,
+        "status": 200,
+        "endMs": 181
+      },
+      {
+        "ms": 192,
+        "path": "/api/ai/activity",
+        "phase": "new",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "list",
+        "rolling60s": 6,
+        "status": 200,
+        "endMs": 194
+      },
+      {
+        "ms": 1072,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 7,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 1099
+      },
+      {
+        "ms": 1180,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 8,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 1206
+      },
+      {
+        "ms": 1234,
+        "path": "/api/ai/synchronization",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "append_mutations",
+        "rolling60s": 9,
+        "status": 200,
+        "endMs": 1278
+      },
+      {
+        "ms": 1345,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "control",
+        "rolling60s": 10,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": true
+          }
+        ],
+        "status": 200,
+        "endMs": 1357
+      },
+      {
+        "ms": 1394,
+        "path": "/api/ai/turns/start",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 11,
+        "status": 200,
+        "endMs": 8736
+      },
+      {
+        "ms": 1541,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 12,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "derived": true
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 1594
+      },
+      {
+        "ms": 1675,
+        "path": "/api/ai/conversations/get",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 13,
+        "status": 200,
+        "endMs": 1677
+      },
+      {
+        "ms": 1704,
+        "path": "/api/ai/titles/generate",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 14,
+        "status": 200,
+        "endMs": 1717
+      },
+      {
+        "ms": 1735,
+        "path": "/api/ai/conversations/get",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 15,
+        "status": 200,
+        "endMs": 1737
+      },
+      {
+        "ms": 1777,
+        "path": "/api/ai/conversations/list",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 16,
+        "status": 200,
+        "endMs": 1779
+      },
+      {
+        "ms": 1801,
+        "path": "/api/ai/activity",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "list",
+        "rolling60s": 17,
+        "status": 200,
+        "endMs": 1803
+      },
+      {
+        "ms": 1879,
+        "path": "/test/finish",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false,
+        "endMs": 1879
+      },
+      {
+        "ms": 1887,
+        "path": "/test/settled",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false,
+        "endMs": 8585
+      },
+      {
+        "ms": 8627,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 18,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "derived": true
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 8668
+      },
+      {
+        "ms": 8686,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "control",
+        "rolling60s": 19,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 8691
+      },
+      {
+        "ms": 8723,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "changes",
+        "rolling60s": 20,
+        "reads": [
+          {
+            "operation": "changes",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 8734
+      },
+      {
+        "ms": 8791,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "page",
+        "rolling60s": 21,
+        "reads": [
+          {
+            "operation": "page",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 8807
+      },
+      {
+        "ms": 8956,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "page",
+        "rolling60s": 22,
+        "reads": [
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 8972
+      },
+      {
+        "ms": 9013,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-70-delta",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "page",
+        "rolling60s": 23,
+        "reads": [
+          {
+            "operation": "page",
+            "view": "context",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 9027
+      },
+      {
+        "ms": 9190,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-second",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 24,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 9234
+      },
+      {
+        "ms": 9275,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-second",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 25,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 9322
+      },
+      {
+        "ms": 9361,
+        "path": "/api/ai/synchronization",
+        "phase": "ordinary-second",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "append_mutations",
+        "rolling60s": 26,
+        "status": 200,
+        "endMs": 9419
+      },
+      {
+        "ms": 9482,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-second",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "control",
+        "rolling60s": 27,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": true
+          }
+        ],
+        "status": 200,
+        "endMs": 9491
+      },
+      {
+        "ms": 9528,
+        "path": "/api/ai/turns/start",
+        "phase": "ordinary-second",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 28,
+        "status": 200,
+        "endMs": 9818
+      },
+      {
+        "ms": 9643,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-second",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 29,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "derived": true
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 9686
+      },
+      {
+        "ms": 9771,
+        "path": "/test/finish",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false,
+        "endMs": 9771
+      },
+      {
+        "ms": 9819,
+        "path": "/test/settled",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false,
+        "endMs": 9823
+      },
+      {
+        "ms": 9840,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-second",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 30,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "derived": true
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 9879
+      },
+      {
+        "ms": 9898,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-second",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "control",
+        "rolling60s": 31,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 9903
+      },
+      {
+        "ms": 9935,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-second",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "changes",
+        "rolling60s": 32,
+        "reads": [
+          {
+            "operation": "changes",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 9949
+      },
+      {
+        "ms": 9996,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-second",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "page",
+        "rolling60s": 33,
+        "reads": [
+          {
+            "operation": "page",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 10007
+      },
+      {
+        "ms": 10057,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-second",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "page",
+        "rolling60s": 34,
+        "reads": [
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 10068
+      },
+      {
+        "ms": 10103,
+        "path": "/api/ai/conversations/history",
+        "phase": "ordinary-second",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "page",
+        "rolling60s": 35,
+        "reads": [
+          {
+            "operation": "page",
+            "view": "context",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 10115
+      },
+      {
+        "ms": 10268,
+        "path": "/api/ai/conversations/get",
+        "phase": "navigation-return",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 36,
+        "status": 200,
+        "endMs": 10271
+      },
+      {
+        "ms": 10273,
+        "path": "/api/ai/conversations/history",
+        "phase": "navigation-return",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 37,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 10306
+      },
+      {
+        "ms": 10445,
+        "path": "/api/ai/conversations/get",
+        "phase": "reload-one",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 38,
+        "status": 200,
+        "endMs": 10447
+      },
+      {
+        "ms": 10449,
+        "path": "/api/ai/capabilities",
+        "phase": "reload-one",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 39,
+        "status": 200,
+        "endMs": 10449
+      },
+      {
+        "ms": 10451,
+        "path": "/api/ai/conversations/history",
+        "phase": "reload-one",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 40,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 10496
+      },
+      {
+        "ms": 10594,
+        "path": "/api/ai/conversations/history",
+        "phase": "lost-start-ack",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 41,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 10626
+      },
+      {
+        "ms": 10633,
+        "path": "/api/ai/conversations/history",
+        "phase": "lost-start-ack",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 42,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 10664
+      },
+      {
+        "ms": 10668,
+        "path": "/api/ai/synchronization",
+        "phase": "lost-start-ack",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "append_mutations",
+        "rolling60s": 43,
+        "status": 200,
+        "endMs": 10723
+      },
+      {
+        "ms": 10726,
+        "path": "/api/ai/conversations/history",
+        "phase": "lost-start-ack",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "control",
+        "rolling60s": 44,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": true
+          }
+        ],
+        "status": 200,
+        "endMs": 10731
+      },
+      {
+        "ms": 10734,
+        "path": "/api/ai/turns/start",
+        "phase": "lost-start-ack",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 45,
+        "status": 200,
+        "lostAcknowledgement": true,
+        "endMs": 10746
+      },
+      {
+        "ms": 10807,
+        "path": "/api/ai/conversations/list",
+        "phase": "reload-one",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 46,
+        "status": 200,
+        "endMs": 10809
+      },
+      {
+        "ms": 10829,
+        "path": "/api/ai/conversations/get",
+        "phase": "reload-retained-intent",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 47,
+        "status": 200,
+        "endMs": 10831
+      },
+      {
+        "ms": 10836,
+        "path": "/api/ai/capabilities",
+        "phase": "reload-retained-intent",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 48,
+        "status": 200,
+        "endMs": 10836
+      },
+      {
+        "ms": 10838,
+        "path": "/api/ai/conversations/history",
+        "phase": "reload-retained-intent",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 49,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 10870
+      },
+      {
+        "ms": 10877,
+        "path": "/api/ai/conversations/history",
+        "phase": "reload-retained-intent",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "control",
+        "rolling60s": 50,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": true
+          }
+        ],
+        "status": 200,
+        "endMs": 10882
+      },
+      {
+        "ms": 10966,
+        "path": "/api/ai/conversations/list",
+        "phase": "reload-retained-intent",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 51,
+        "status": 200,
+        "endMs": 10969
+      },
+      {
+        "ms": 11004,
+        "path": "/test/stats",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false,
+        "endMs": 11004
+      },
+      {
+        "ms": 11012,
+        "path": "/api/ai/conversations/history",
+        "phase": "exact-once-retry",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 52,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "derived": true
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 11054
+      },
+      {
+        "ms": 11067,
+        "path": "/api/ai/synchronization",
+        "phase": "exact-once-retry",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "append_mutations",
+        "rolling60s": 53,
+        "status": 200,
+        "endMs": 11092
+      },
+      {
+        "ms": 11096,
+        "path": "/api/ai/conversations/history",
+        "phase": "exact-once-retry",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "control",
+        "rolling60s": 54,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": true
+          }
+        ],
+        "status": 200,
+        "endMs": 11102
+      },
+      {
+        "ms": 11105,
+        "path": "/api/ai/turns/start",
+        "phase": "exact-once-retry",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 55,
+        "status": 200,
+        "endMs": 11361
+      },
+      {
+        "ms": 11115,
+        "path": "/api/ai/conversations/history",
+        "phase": "exact-once-retry",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 56,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 11149
+      },
+      {
+        "ms": 11151,
+        "path": "/api/ai/conversations/history",
+        "phase": "exact-once-retry",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "control",
+        "rolling60s": 57,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 11156
+      },
+      {
+        "ms": 11159,
+        "path": "/api/ai/conversations/history",
+        "phase": "exact-once-retry",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "changes",
+        "rolling60s": 58,
+        "reads": [
+          {
+            "operation": "changes",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 11167
+      },
+      {
+        "ms": 11172,
+        "path": "/test/stats",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false,
+        "endMs": 11172
+      },
+      {
+        "ms": 11173,
+        "path": "/api/ai/activity",
+        "phase": "exact-once-retry",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "list",
+        "rolling60s": 59,
+        "status": 200,
+        "endMs": 11174
+      },
+      {
+        "ms": 11175,
+        "path": "/test/finish",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false,
+        "endMs": 11175
+      },
+      {
+        "ms": 11223,
+        "path": "/test/settled",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false,
+        "endMs": 11227
+      },
+      {
+        "ms": 11229,
+        "path": "/api/ai/conversations/get",
+        "phase": "exact-once-retry",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 60,
+        "status": 200,
+        "endMs": 11231
+      },
+      {
+        "ms": 11267,
+        "path": "/api/ai/conversations/history",
+        "phase": "exact-once-retry",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 61,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 11298
+      },
+      {
+        "ms": 11320,
+        "path": "/api/ai/conversations/history",
+        "phase": "exact-once-retry",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "control",
+        "rolling60s": 62,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 11325
+      },
+      {
+        "ms": 11370,
+        "path": "/api/ai/conversations/history",
+        "phase": "exact-once-retry",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "changes",
+        "rolling60s": 63,
+        "reads": [
+          {
+            "operation": "changes",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 11380
+      },
+      {
+        "ms": 11436,
+        "path": "/api/ai/conversations/history",
+        "phase": "exact-once-retry",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "page",
+        "rolling60s": 64,
+        "reads": [
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 11445
+      },
+      {
+        "ms": 11482,
+        "path": "/api/ai/conversations/history",
+        "phase": "exact-once-retry",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "page",
+        "rolling60s": 65,
+        "reads": [
+          {
+            "operation": "page",
+            "view": "context",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 11494
+      },
+      {
+        "ms": 11605,
+        "path": "/api/ai/conversations/get",
+        "phase": "reload-two",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 66,
+        "status": 200,
+        "endMs": 11607
+      },
+      {
+        "ms": 11609,
+        "path": "/api/ai/capabilities",
+        "phase": "reload-two",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 67,
+        "status": 200,
+        "endMs": 11609
+      },
+      {
+        "ms": 11611,
+        "path": "/api/ai/conversations/history",
+        "phase": "reload-two",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 68,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 11641
+      },
+      {
+        "ms": 11845,
+        "path": "/api/ai/conversations/list",
+        "phase": "reload-two",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 69,
+        "status": 200,
+        "endMs": 11847
+      },
+      {
+        "ms": 11916,
+        "path": "/api/ai/conversations/history",
+        "phase": "held-stop",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 70,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 11948
+      },
+      {
+        "ms": 11948,
+        "path": "/api/ai/activity",
+        "phase": "held-stop",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "list",
+        "rolling60s": 71,
+        "status": 200,
+        "endMs": 11950
+      },
+      {
+        "ms": 12011,
+        "path": "/api/ai/conversations/get",
+        "phase": "held-stop",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 72,
+        "status": 200,
+        "endMs": 12014
+      },
+      {
+        "ms": 12014,
+        "path": "/api/ai/conversations/history",
+        "phase": "held-stop",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 73,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 12046
+      },
+      {
+        "ms": 12082,
+        "path": "/api/ai/synchronization",
+        "phase": "held-stop",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "append_mutations",
+        "rolling60s": 74,
+        "status": 200,
+        "endMs": 12127
+      },
+      {
+        "ms": 12127,
+        "path": "/api/ai/conversations/history",
+        "phase": "held-stop",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 75,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "derived": true
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 12168
+      },
+      {
+        "ms": 12252,
+        "path": "/api/ai/conversations/history",
+        "phase": "held-stop",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "control",
+        "rolling60s": 76,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": true
+          }
+        ],
+        "status": 200,
+        "endMs": 12258
+      },
+      {
+        "ms": 12305,
+        "path": "/api/ai/turns/start",
+        "phase": "held-stop",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 77,
+        "status": 200,
+        "endMs": 12823
+      },
+      {
+        "ms": 12408,
+        "path": "/api/ai/conversations/history",
+        "phase": "held-stop",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 78,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 12441
+      },
+      {
+        "ms": 12513,
+        "path": "/api/ai/turns/cancel",
+        "phase": "held-stop",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 79,
+        "status": 200,
+        "endMs": 12520
+      },
+      {
+        "ms": 12522,
+        "path": "/api/ai/conversations/history",
+        "phase": "held-stop",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 80,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "derived": true
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 12571
+      },
+      {
+        "ms": 17539,
+        "path": "/api/ai/conversations/history",
+        "phase": "held-stop",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 81,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 17588
+      },
+      {
+        "ms": 17659,
+        "path": "/test/settled",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false,
+        "endMs": 17665
+      },
+      {
+        "ms": 17701,
+        "path": "/api/ai/conversations/history",
+        "phase": "held-stop",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 82,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 17751
+      },
+      {
+        "ms": 17820,
+        "path": "/test/finish",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false,
+        "endMs": 17820
+      },
+      {
+        "ms": 17823,
+        "path": "/api/ai/conversations/create",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 83,
+        "status": 200,
+        "endMs": 17830
+      },
+      {
+        "ms": 17834,
+        "path": "/api/ai/conversations/get",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 84,
+        "status": 200,
+        "endMs": 17836
+      },
+      {
+        "ms": 17837,
+        "path": "/api/ai/capabilities",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 85,
+        "status": 200,
+        "endMs": 17838
+      },
+      {
+        "ms": 17840,
+        "path": "/api/ai/conversations/history",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 86,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 17862
+      },
+      {
+        "ms": 17867,
+        "path": "/api/ai/conversations/list",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 87,
+        "status": 200,
+        "endMs": 17869
+      },
+      {
+        "ms": 17919,
+        "path": "/api/ai/activity",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "list",
+        "rolling60s": 88,
+        "status": 200,
+        "endMs": 17920
+      },
+      {
+        "ms": 17945,
+        "path": "/test/stats",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false,
+        "endMs": 17946
+      },
+      {
+        "ms": 18025,
+        "path": "/api/ai/conversations/history",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 89,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 18046
+      },
+      {
+        "ms": 18080,
+        "path": "/api/ai/conversations/history",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 90,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          }
+        ],
+        "status": 200,
+        "endMs": 18093
+      },
+      {
+        "ms": 18122,
+        "path": "/api/ai/synchronization",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "append_mutations",
+        "rolling60s": 91,
+        "status": 200,
+        "endMs": 18139
+      },
+      {
+        "ms": 18186,
+        "path": "/api/ai/conversations/history",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "control",
+        "rolling60s": 92,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": true
+          }
+        ],
+        "status": 200,
+        "endMs": 18192
+      },
+      {
+        "ms": 18224,
+        "path": "/api/ai/turns/start",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 93,
+        "status": 200,
+        "endMs": 18736
+      },
+      {
+        "ms": 18299,
+        "path": "/api/ai/conversations/history",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 94,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "derived": true
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 18348
+      },
+      {
+        "ms": 18388,
+        "path": "/api/ai/conversations/get",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 95,
+        "status": 200,
+        "endMs": 18392
+      },
+      {
+        "ms": 18428,
+        "path": "/api/ai/titles/generate",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 96,
+        "status": 200,
+        "endMs": 18436
+      },
+      {
+        "ms": 18455,
+        "path": "/api/ai/conversations/get",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 97,
+        "status": 200,
+        "endMs": 18457
+      },
+      {
+        "ms": 18493,
+        "path": "/api/ai/conversations/list",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 98,
+        "status": 200,
+        "endMs": 18495
+      },
+      {
+        "ms": 18535,
+        "path": "/api/ai/activity",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "list",
+        "rolling60s": 99,
+        "status": 200,
+        "endMs": 18536
+      },
+      {
+        "ms": 18581,
+        "path": "/test/finish",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false,
+        "endMs": 18581
+      },
+      {
+        "ms": 18616,
+        "path": "/test/settled",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false,
+        "endMs": 18617
+      },
+      {
+        "ms": 18633,
+        "path": "/api/ai/conversations/history",
+        "phase": "new-one-admission",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 100,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "changes",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "derived": true
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 18672
+      },
+      {
+        "ms": 18728,
+        "path": "/test/stats",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false,
+        "endMs": 18728
+      },
+      {
+        "ms": 18784,
+        "path": "/api/ai/conversations/get",
+        "phase": "reload-three-reopen-both",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 101,
+        "status": 200,
+        "endMs": 18786
+      },
+      {
+        "ms": 18788,
+        "path": "/api/ai/capabilities",
+        "phase": "reload-three-reopen-both",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 102,
+        "status": 200,
+        "endMs": 18789
+      },
+      {
+        "ms": 18793,
+        "path": "/api/ai/conversations/history",
+        "phase": "reload-three-reopen-both",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 103,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 18824
+      },
+      {
+        "ms": 18905,
+        "path": "/api/ai/conversations/get",
+        "phase": "reload-three-reopen-both",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 104,
+        "status": 200,
+        "endMs": 18907
+      },
+      {
+        "ms": 18909,
+        "path": "/api/ai/capabilities",
+        "phase": "reload-three-reopen-both",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 105,
+        "status": 200,
+        "endMs": 18909
+      },
+      {
+        "ms": 18911,
+        "path": "/api/ai/conversations/history",
+        "phase": "reload-three-reopen-both",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 106,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 18942
+      },
+      {
+        "ms": 18948,
+        "path": "/api/ai/conversations/list",
+        "phase": "reload-three-reopen-both",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 107,
+        "status": 200,
+        "endMs": 18951
+      },
+      {
+        "ms": 18951,
+        "path": "/api/ai/conversations/get",
+        "phase": "reload-three-reopen-both",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 108,
+        "status": 200,
+        "endMs": 18952
+      },
+      {
+        "ms": 18994,
+        "path": "/api/ai/conversations/history",
+        "phase": "reload-three-reopen-both",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "bundle",
+        "rolling60s": 109,
+        "reads": [
+          {
+            "operation": "control",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "approval_history",
+            "exactTurn": false
+          },
+          {
+            "operation": "page",
+            "view": "context",
+            "derived": true
+          }
+        ],
+        "status": 200,
+        "endMs": 19024
+      },
+      {
+        "ms": 19032,
+        "path": "/api/ai/conversations/list",
+        "phase": "diagnostic-lists",
+        "diagnostic": true,
+        "shared": true,
+        "rolling60s": 110,
+        "status": 200,
+        "endMs": 19034
+      },
+      {
+        "ms": 19075,
+        "path": "/api/ai/activity",
+        "phase": "diagnostic-lists",
+        "diagnostic": false,
+        "shared": true,
+        "operation": "list",
+        "rolling60s": 111,
+        "status": 200,
+        "endMs": 19077
+      },
+      {
+        "ms": 19077,
+        "path": "/api/ai/conversations/list",
+        "phase": "diagnostic-lists",
+        "diagnostic": true,
+        "shared": true,
+        "rolling60s": 112,
+        "status": 200,
+        "endMs": 19078
+      },
+      {
+        "ms": 19121,
+        "path": "/api/ai/conversations/list",
+        "phase": "diagnostic-lists",
+        "diagnostic": true,
+        "shared": true,
+        "rolling60s": 113,
+        "status": 200,
+        "endMs": 19123
+      },
+      {
+        "ms": 19164,
+        "path": "/api/ai/conversations/get",
+        "phase": "diagnostic-lists",
+        "diagnostic": false,
+        "shared": true,
+        "rolling60s": 114,
+        "status": 200,
+        "endMs": 19166
+      },
+      {
+        "ms": 19179,
+        "path": "/test/volume",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false,
+        "endMs": 19180
+      },
+      {
+        "ms": 19192,
+        "path": "/test/volume",
+        "phase": "diagnostic",
+        "diagnostic": true,
+        "shared": false
+      }
+    ],
+    "maximumRolling60s": 114,
+    "historyConcurrency": 0,
+    "maximumHistoryConcurrency": 1
+  }
+}

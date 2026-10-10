@@ -35,7 +35,9 @@ class HandrailDisplayTurnControl {
                 .contains(status)) {
       throw const FormatException('Invalid display turn controls.');
     }
-    if (cancellationReason != null && !const {'user', 'timeout', 'superseded', 'runtime_shutdown'}.contains(cancellationReason)) {
+    if (cancellationReason != null &&
+        !const {'user', 'timeout', 'superseded', 'runtime_shutdown'}
+            .contains(cancellationReason)) {
       throw const FormatException('Unsupported cancellation reason');
     }
     Map<String, Object?>? failure;
@@ -54,8 +56,8 @@ class HandrailDisplayTurnControl {
           key: error[key]
       });
     }
-    return HandrailDisplayTurnControl._(
-        id as String, status as String, revision, remote, failure, cancellationReason as String?);
+    return HandrailDisplayTurnControl._(id as String, status as String,
+        revision, remote, failure, cancellationReason as String?);
   }
 }
 
@@ -89,7 +91,8 @@ class HandrailDisplayControl {
     final active = parse(json['activeTurn']),
         latest = parse(json['latestTurn']),
         requested = parse(json['requestedTurn']);
-    if (json['hasPendingApprovals'] != null && json['hasPendingApprovals'] is! bool ||
+    if (json['hasPendingApprovals'] != null &&
+            json['hasPendingApprovals'] is! bool ||
         header.preparing && json['hasPendingApprovals'] == true ||
         [active, latest, requested]
             .any((turn) => turn != null && turn.revision > header.revision) ||
@@ -109,17 +112,32 @@ class HandrailDisplayControl {
         header.activeTurnId,
         active,
         latest,
-        requested, json['hasPendingApprovals'] as bool?);
+        requested,
+        json['hasPendingApprovals'] as bool?);
   }
 }
 
 extension HandrailClientDisplayControl on HandrailAiClient {
   Future<HandrailDisplayControl> displayHistoryControl(
+          {required String conversationId,
+          required HandrailDisplayHistoryCapability capability,
+          String? turnId,
+          Future<void>? cancellation,
+          Duration timeout = const Duration(seconds: 30)}) =>
+      _displayHistoryControl(
+          conversationId: conversationId,
+          capability: capability,
+          turnId: turnId,
+          cancellation: cancellation,
+          timeout: timeout);
+
+  Future<HandrailDisplayControl> _displayHistoryControl(
       {required String conversationId,
       required HandrailDisplayHistoryCapability capability,
       String? turnId,
       Future<void>? cancellation,
-      Duration timeout = const Duration(seconds: 30)}) async {
+      Duration timeout = const Duration(seconds: 30),
+      _DisplayReadBundle? bundle}) async {
     if (!capability.control)
       throw const HandrailGatewayException('display_control_unavailable',
           'This server does not support bounded turn controls.');
@@ -134,7 +152,8 @@ extension HandrailClientDisplayControl on HandrailAiClient {
         },
         32768 + 1024,
         cancellation,
-        timeout));
+        timeout,
+        bundle));
     if (control.conversationId != conversationId ||
         control.requestedTurn != null &&
             control.requestedTurn!.turnId != turnId) {

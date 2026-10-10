@@ -139,9 +139,10 @@ extension _HandrailBoundedSession on HandrailConversationSession {
     }
   }
 
-  Future<T> _displayRead<T>(Future<T> Function(Future<void>) read) async {
+  Future<T> _displayRead<T>(Future<T> Function(Future<void>) read,
+      {bool count = true}) async {
     if (_disposed) throw StateError('Conversation session is disposed');
-    _displayReadGeneration++;
+    if (count) _displayReadGeneration++;
     final request = Completer<void>();
     _displayRequests.add(request);
     try {
@@ -153,6 +154,183 @@ extension _HandrailBoundedSession on HandrailConversationSession {
   }
 
   Future<void> _refreshDisplay({_PreparedChanges? preparation}) async {
+    final capability = _capabilities!.displayHistory!;
+    if (!capability.readBundle)
+      return _refreshDisplayReads(preparation: preparation);
+    final activation = _displayActivation, intent = _preparationGeneration;
+    final window = _displayWindow;
+    final windowIntent = window?._observationGeneration;
+    final tailFromChanges = _displayActive &&
+        preparation == null &&
+        window != null &&
+        window._pending == null &&
+        window.state.status == 'ready' &&
+        window.followingLatest &&
+        window._changesCursor == null &&
+        window.maximumMessages == 90 &&
+        utf8
+                .encode(
+                    jsonEncode(window.state.records.map((r) => r.id).toList()))
+                .length <=
+            4096;
+    final reads = <Map<String, Object?>>[
+      {
+        'operation': 'control',
+        'input': {'conversationId': conversationId}
+      },
+      if (_displayActive && (window == null || window._pending == null))
+        if (window == null || window.state.conversationId == null)
+          {
+            'operation': 'page',
+            'input': {
+              'conversationId': conversationId,
+              'limit': 30,
+              'maximumBytes': 65536
+            }
+          }
+        else if (window.state.status == 'ready' && preparation == null)
+          {
+            'operation': 'changes',
+            'input': {
+              'conversationId': conversationId,
+              'generation': window._generation,
+              'afterRevision': window._changesAfter,
+              'limit': window.pageSize,
+              'maximumBytes': window.pageBytes,
+              if (window._changesCursor != null) 'cursor': window._changesCursor
+            }
+          },
+      if (_displayActive && supportsApprovalHistory)
+        {
+          'operation': 'page',
+          'input': {
+            'conversationId': conversationId,
+            'limit': 30,
+            'maximumBytes': 65536,
+            'view': {'type': 'approval_history'},
+            if (_approvalHistoryCursor != null) 'cursor': _approvalHistoryCursor
+          }
+        },
+      if (_displayActive && _relatedGroups.isNotEmpty && !tailFromChanges)
+        {
+          'operation': 'page',
+          'input': {
+            'conversationId': conversationId,
+            'limit': 30,
+            'maximumBytes': 65536,
+            'view': _relatedGroups.first
+          }
+        },
+    ];
+    final contextFromPage = reads.length <= 3 &&
+        reads.length > 1 &&
+        reads[1]['operation'] == 'page' &&
+        (_object(reads[1]['input']))['view'] == null;
+    final response = await _displayRead(
+        (cancel) => client._displayRequest(
+            'bundle',
+            {
+              'conversationId': conversationId,
+              'reads': reads,
+              if (contextFromPage) 'contextFromPage': 1,
+              if (tailFromChanges)
+                'tailFromChanges':
+                    window.state.records.map((r) => r.id).toList()
+            },
+            5 * (capability.maximumPageBytes + 1024),
+            cancel,
+            const Duration(seconds: 30)),
+        count: false);
+    if (_disposed || activation.isCompleted) return;
+    final raw = response['results'];
+    if (raw is! List || raw.length != reads.length) {
+      throw const FormatException('Invalid history bundle response.');
+    }
+    final values = raw.map((value) => _object(value)).toList();
+    final head = values.first;
+    HandrailDisplayPage? tail;
+    if (response['tail'] != null) {
+      if (!tailFromChanges)
+        throw const FormatException('Unexpected bundled tail.');
+      final entry = _object(response['tail']);
+      final expected = {
+        'conversationId': conversationId,
+        'limit': window.pageSize,
+        'maximumBytes': window.pageBytes
+      };
+      if (_bundleKey(entry['input']) != _bundleKey(expected))
+        throw const FormatException('Invalid bundled tail request.');
+      tail = HandrailDisplayPage.fromJson(_object(entry['value']));
+      reads.add({'operation': 'page', 'input': expected});
+      values.add(_object(entry['value']));
+    }
+    if (response['related'] != null) {
+      if (!contextFromPage && !tailFromChanges)
+        throw const FormatException('Unexpected bundled context.');
+      final control = HandrailDisplayControl.fromJson(head);
+      final page = tail ??
+          (contextFromPage ? HandrailDisplayPage.fromJson(values[1]) : null);
+      final removed = tailFromChanges
+          ? HandrailDisplayChanges.fromJson(values[1])
+              .page
+              .records
+              .where((r) => r.kind == 'message' && r.deleted)
+              .map((r) => r.id)
+              .toSet()
+          : <String>{};
+      final ids = page?.records.map((r) => r.id).toList() ??
+          window!.state.records
+              .where((r) => !removed.contains(r.id))
+              .map((r) => r.id)
+              .toList();
+      final groups = _relatedViews(
+          ids, (control.activeTurn ?? control.latestTurn)?.turnId);
+      final related = _object(response['related']);
+      final expected = {
+        'conversationId': conversationId,
+        'limit': 30,
+        'maximumBytes': 65536,
+        if (groups.isNotEmpty) 'view': groups.first
+      };
+      if (groups.isEmpty ||
+          _bundleKey(related['input']) != _bundleKey(expected)) {
+        throw const FormatException(
+            'Bundled context does not cover the requested messages.');
+      }
+      reads.add({'operation': 'page', 'input': expected});
+      values.add(_object(related['value']));
+    }
+    // Independent store reads can straddle a write. Such a bundle is not a
+    // coherent witness; fall back to ordinary reads, preserving all guards.
+    final coherent = identical(window, _displayWindow) &&
+        windowIntent == window?._observationGeneration &&
+        values.every((value) =>
+            value['status'] == 'ready' &&
+            value['conversationId'] == conversationId &&
+            value['generation'] == head['generation'] &&
+            value['revision'] == head['revision']);
+    final bundle = _DisplayReadBundle(
+        client,
+        reads,
+        values.map<Map<String, Object?>?>((v) => coherent ? v : null).toList(),
+        () =>
+            !_disposed &&
+            !activation.isCompleted &&
+            intent == _preparationGeneration &&
+            (_control == null ||
+                (_control!.generation == head['generation'] &&
+                    _control!.revision <= (head['revision'] as int))) &&
+            (_displayWindow == null ||
+                _displayWindow!.state.revision <= (head['revision'] as int)));
+    try {
+      await _refreshDisplayReads(preparation: preparation, bundle: bundle);
+    } finally {
+      bundle.open = false;
+    }
+  }
+
+  Future<void> _refreshDisplayReads(
+      {_PreparedChanges? preparation, _DisplayReadBundle? bundle}) async {
     // Spend the previous merge receipt even if control/changes fail. A receipt
     // never replaces either authorized read or survives an uncertain refresh.
     final coverage = _relatedCoverage;
@@ -164,7 +342,8 @@ extension _HandrailBoundedSession on HandrailConversationSession {
     late HandrailDisplayControl control;
     try {
       control = await _displayRead((cancellation) =>
-          client.displayHistoryControl(
+          client._displayHistoryControl(
+              bundle: bundle,
               conversationId: conversationId,
               capability: capability,
               cancellation: cancellation));
@@ -215,6 +394,9 @@ extension _HandrailBoundedSession on HandrailConversationSession {
             _relatedChangesEmpty = page.records.isEmpty;
             _mergeRelated(page.records, 'changes');
           });
+      window._onExternalRead = () {
+        _preparationGeneration++;
+      };
       _displaySubscription = window.changes.listen((_) {
         if (_disposed) return;
         _publishDisplay();
@@ -224,9 +406,9 @@ extension _HandrailBoundedSession on HandrailConversationSession {
     }
     if (window.state.conversationId == null ||
         previous?.generation != control.generation) {
-      await window.select(conversationId);
+      await window._select(conversationId, bundle: bundle);
     } else if (!reuseChanges) {
-      await window.refresh();
+      await window._refresh(bundle: bundle);
     }
     await window._settleSelection(conversationId);
     if (_disposed || activation.isCompleted) return;
@@ -235,7 +417,7 @@ extension _HandrailBoundedSession on HandrailConversationSession {
     if (window.state.hasNewer &&
         window.followingLatest &&
         window.state.error == null) {
-      await window.jumpToLatest();
+      await window._jumpToLatest(bundle: bundle);
       await window._settleSelection(conversationId);
     }
     if (_disposed || activation.isCompleted) return;
@@ -250,7 +432,7 @@ extension _HandrailBoundedSession on HandrailConversationSession {
     }
     if (supportsApprovalHistory &&
         _approvalHistory?.revision != control.revision) {
-      await _readApprovalHistory(_approvalHistoryCursor);
+      await _readApprovalHistory(_approvalHistoryCursor, bundle: bundle);
       if (_disposed || activation.isCompleted) return;
     }
     final turn = control.activeTurn ?? control.latestTurn;
@@ -280,7 +462,7 @@ extension _HandrailBoundedSession on HandrailConversationSession {
       _relatedViewKey = viewKey;
       if (turn != null || _relatedMessageIds.isNotEmpty) {
         try {
-          mergedRelated = await _readRelated(latest: true);
+          mergedRelated = await _readRelated(latest: true, bundle: bundle);
           if (mergedRelated != null) _relatedRevision = control.revision;
         } catch (_) {
           _relatedRevision = null;
@@ -398,7 +580,8 @@ extension _HandrailBoundedSession on HandrailConversationSession {
     }
   }
 
-  Future<HandrailDisplayPage?> _readRelated({bool latest = false}) async {
+  Future<HandrailDisplayPage?> _readRelated(
+      {bool latest = false, _DisplayReadBundle? bundle}) async {
     _relatedCoverage = null;
     final generation = _control?.generation, epoch = _relatedEpoch;
     final window = _displayWindow;
@@ -413,7 +596,8 @@ extension _HandrailBoundedSession on HandrailConversationSession {
     final activation = _displayActivation;
     late HandrailDisplayPage page;
     try {
-      page = await _displayRead((cancellation) => client.displayHistoryPage(
+      page = await _displayRead((cancellation) => client._displayHistoryPage(
+          bundle: bundle,
           conversationId: conversationId,
           capability: _capabilities!.displayHistory!,
           view: _relatedGroups[group],
@@ -489,7 +673,8 @@ class _RelatedCoverage {
         approvalEpoch = session._approvalHistoryEpoch,
         turnId = session._relatedTurnId;
 
-  static bool _settled(HandrailConversationSession s, HandrailDisplayWindow w) =>
+  static bool _settled(
+          HandrailConversationSession s, HandrailDisplayWindow w) =>
       !s._disposed &&
       s._displayActive &&
       !s._displayActivation.isCompleted &&

@@ -1,0 +1,25 @@
+00:00 +0: loading test/submission_gateway_test.dart
+00:00 +0: (setUpAll)
+00:02 +0: headless file receipt recovery uses metadata only after interrupted byte cleanup
+00:03 +1: exact draft cleanup recovers partial device failure through the real gateway
+00:03 +2: deletion replays a lost real-gateway receipt after controller restart
+00:04 +3: approval lost reply recovers exact decision after execution advances through the real JS gateway
+00:04 +4: shared assistant controller creates, sends, archives and restores through the real gateway
+00:04 +5: real indexed history pages stay bounded and do not replace canonical context
+00:05 +6: oversized review uses compact durable receipts through the real JS gateway
+00:05 +7: large message reader uses bounded plaintext HTTP and rejects content after deletion
+00:06 +8: Stop queued before admission targets its original chat; failed cancel=false
+00:06 +9: Stop queued before admission targets its original chat; failed cancel=true
+00:07 +10: cancelling a completion wait leaves the server turn running and reusable
+00:07 +11: closing the account settles terminal observers without cancelling server work
+00:07 +12: file-only draft admits durable attachment metadata without an empty content violation
+00:07 +13: admission is atomic, concurrent submit deduplicates, reload resumes and completed retries never restart
+00:08 +14: independent threads finish unread after disconnect and read acknowledgement survives reload
+00:09 +15: attachment references are admitted with their message before execution
+00:09 +16: pending journal is saved before admission and recovered after lost start acknowledgement
+00:09 +17: lost local journal acknowledgement cannot replace the saved request
+00:10 +18: lost admission response reuses persisted intent after session recreation
+00:10 +19: lost start response reuses persisted intent after session recreation
+00:10 +20: changed payload under a reused identity is refused before a second execution
+00:11 +21: (tearDownAll)
+00:11 +21: All tests passed!

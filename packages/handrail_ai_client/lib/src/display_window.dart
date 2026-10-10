@@ -39,6 +39,7 @@ class HandrailDisplayWindow {
   final HandrailDisplayHistoryCapability capability;
   final int pageSize, pageBytes, maximumMessages, maximumBytes;
   final void Function(HandrailDisplayPage)? onChanges;
+  void Function()? _onExternalRead;
   final _changes =
       StreamController<HandrailDisplayWindowState>.broadcast(sync: true);
   HandrailDisplayWindowState _state = const HandrailDisplayWindowState._();
@@ -63,7 +64,10 @@ class HandrailDisplayWindow {
   bool _followingLatest = true;
   bool get followingLatest => _followingLatest;
   void setFollowingLatest(bool value) {
-    if (_followingLatest != value) _observationGeneration++;
+    if (_followingLatest != value) {
+      _observationGeneration++;
+      _onExternalRead?.call();
+    }
     _followingLatest = value;
   }
 
@@ -230,6 +234,7 @@ class HandrailDisplayWindow {
       int offset,
       Future<void> cancellation,
       bool recordText) async {
+    _onExternalRead?.call();
     _observationGeneration++;
     final selection = _selection;
     if (!(recordText ? capability.recordText : capability.messageText) ||
@@ -274,6 +279,12 @@ class HandrailDisplayWindow {
   }
 
   Future<void> select(String? conversationId, {HandrailDisplayAnchor? anchor}) {
+    _onExternalRead?.call();
+    return _select(conversationId, anchor: anchor);
+  }
+
+  Future<void> _select(String? conversationId,
+      {HandrailDisplayAnchor? anchor, _DisplayReadBundle? bundle}) {
     if (_disposed)
       return Future.error(StateError('Display window is disposed.'));
     if (conversationId != null && !_historyId(conversationId))
@@ -293,10 +304,11 @@ class HandrailDisplayWindow {
     _publish();
     return conversationId == null
         ? Future.value()
-        : _read(HandrailDisplayWindowOperation.initial);
+        : _read(HandrailDisplayWindowOperation.initial, bundle: bundle);
   }
 
   Future<void> loadOlder() {
+    _onExternalRead?.call();
     _observationGeneration++;
     _followingLatest = false;
     return _hasOlder
@@ -305,6 +317,7 @@ class HandrailDisplayWindow {
   }
 
   Future<void> loadNewer() {
+    _onExternalRead?.call();
     _observationGeneration++;
     return _hasNewer
         ? _read(HandrailDisplayWindowOperation.newer)
@@ -312,6 +325,11 @@ class HandrailDisplayWindow {
   }
 
   Future<void> jumpToLatest() {
+    _onExternalRead?.call();
+    return _jumpToLatest();
+  }
+
+  Future<void> _jumpToLatest({_DisplayReadBundle? bundle}) {
     _observationGeneration++;
     _followingLatest = true;
     if (_queuedLatest != null) return _queuedLatest!;
@@ -323,19 +341,26 @@ class HandrailDisplayWindow {
       late final Future<void> work;
       work = _pending!.then((_) async {
         if (_current(selection) && _status == 'ready' && _error == null) {
-          await _read(HandrailDisplayWindowOperation.latest);
+          await _read(HandrailDisplayWindowOperation.latest, bundle: bundle);
         }
       }).whenComplete(() {
         if (identical(_queuedLatest, work)) _queuedLatest = null;
       });
       return _queuedLatest = work;
     }
-    return _read(HandrailDisplayWindowOperation.latest);
+    return _read(HandrailDisplayWindowOperation.latest, bundle: bundle);
   }
 
-  Future<void> refresh() => _read(_status == 'ready'
-      ? HandrailDisplayWindowOperation.changes
-      : HandrailDisplayWindowOperation.initial);
+  Future<void> refresh() {
+    _onExternalRead?.call();
+    return _refresh();
+  }
+
+  Future<void> _refresh({_DisplayReadBundle? bundle}) => _read(
+      _status == 'ready'
+          ? HandrailDisplayWindowOperation.changes
+          : HandrailDisplayWindowOperation.initial,
+      bundle: bundle);
 
   // A saved-position selection can replace the read awaited by its session.
   // Join the replacement before interpreting readiness; cancellation completing
@@ -347,12 +372,16 @@ class HandrailDisplayWindow {
     }
   }
 
-  Future<void> retry() => _read(_failedOperation ??
-      (_status == 'ready'
-          ? HandrailDisplayWindowOperation.changes
-          : HandrailDisplayWindowOperation.initial));
+  Future<void> retry() {
+    _onExternalRead?.call();
+    return _read(_failedOperation ??
+        (_status == 'ready'
+            ? HandrailDisplayWindowOperation.changes
+            : HandrailDisplayWindowOperation.initial));
+  }
 
-  Future<void> _read(HandrailDisplayWindowOperation operation) {
+  Future<void> _read(HandrailDisplayWindowOperation operation,
+      {_DisplayReadBundle? bundle}) {
     _observationGeneration++;
     _consumedChanges = false;
     if (_disposed)
@@ -374,7 +403,8 @@ class HandrailDisplayWindow {
       _publish();
       try {
         if (operation == HandrailDisplayWindowOperation.changes) {
-          final changed = await client.displayHistoryChanges(
+          final changed = await client._displayHistoryChanges(
+              bundle: bundle,
               conversationId: id,
               capability: capability,
               generation: _generation,
@@ -442,7 +472,8 @@ class HandrailDisplayWindow {
                       messageId: edge.id,
                       generation: _generation,
                       newer: !older);
-          final page = await client.displayHistoryPage(
+          final page = await client._displayHistoryPage(
+              bundle: bundle,
               conversationId: id,
               capability: capability,
               anchor: anchor,
@@ -462,7 +493,8 @@ class HandrailDisplayWindow {
           // through asynchronous sizing without clamping at the leading edge.
           HandrailDisplayPage? before;
           if (replacement && anchor?.newer == true && page.records.isNotEmpty) {
-            before = await client.displayHistoryPage(
+            before = await client._displayHistoryPage(
+                bundle: bundle,
                 conversationId: id,
                 capability: capability,
                 anchor: HandrailDisplayAnchor(

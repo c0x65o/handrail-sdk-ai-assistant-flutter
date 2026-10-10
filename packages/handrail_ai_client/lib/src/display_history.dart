@@ -5,6 +5,7 @@ class HandrailDisplayHistoryCapability {
   final int maximumPageSize;
   final int maximumPageBytes;
   final bool control;
+  final bool readBundle;
   final bool messageText;
   final bool recordText;
   final bool approvalReview;
@@ -14,6 +15,7 @@ class HandrailDisplayHistoryCapability {
       this.maximumPageSize,
       this.maximumPageBytes,
       this.control,
+      this.readBundle,
       this.messageText,
       this.pendingApprovals,
       this.recordText,
@@ -23,6 +25,7 @@ class HandrailDisplayHistoryCapability {
       Map<String, Object?> value) {
     final size = value['maximumPageSize'], bytes = value['maximumPageBytes'];
     if (value['version'] != 1 ||
+        value['readBundle'] != null && value['readBundle'] is! bool ||
         value['control'] != null && value['control'] is! bool ||
         value['messageText'] != null && value['messageText'] is! bool ||
         value['recordText'] != null && value['recordText'] is! bool ||
@@ -42,6 +45,7 @@ class HandrailDisplayHistoryCapability {
         size,
         bytes,
         value['control'] == true,
+        value['readBundle'] == true,
         value['messageText'] == true,
         value['pendingApprovals'] == true,
         value['recordText'] == true,
@@ -256,6 +260,27 @@ class HandrailDisplayAnchor {
 
 extension HandrailClientDisplayHistory on HandrailAiClient {
   Future<HandrailDisplayChanges> displayHistoryChanges(
+          {required String conversationId,
+          required HandrailDisplayHistoryCapability capability,
+          required int generation,
+          required int afterRevision,
+          String? cursor,
+          int limit = 30,
+          int maximumBytes = 65536,
+          Future<void>? cancellation,
+          Duration timeout = const Duration(seconds: 30)}) =>
+      _displayHistoryChanges(
+          conversationId: conversationId,
+          capability: capability,
+          generation: generation,
+          afterRevision: afterRevision,
+          cursor: cursor,
+          limit: limit,
+          maximumBytes: maximumBytes,
+          cancellation: cancellation,
+          timeout: timeout);
+
+  Future<HandrailDisplayChanges> _displayHistoryChanges(
       {required String conversationId,
       required HandrailDisplayHistoryCapability capability,
       required int generation,
@@ -264,7 +289,8 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
       int limit = 30,
       int maximumBytes = 65536,
       Future<void>? cancellation,
-      Duration timeout = const Duration(seconds: 30)}) async {
+      Duration timeout = const Duration(seconds: 30),
+      _DisplayReadBundle? bundle}) async {
     if (!_historyId(conversationId) ||
         generation < 0 ||
         afterRevision < generation ||
@@ -286,7 +312,8 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
         },
         maximumBytes + 1024,
         cancellation,
-        timeout));
+        timeout,
+        bundle));
     if (changes.page.conversationId != conversationId ||
         changes.page.generation != generation ||
         changes.page.records.length > limit ||
@@ -300,6 +327,27 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
   }
 
   Future<HandrailDisplayPage> displayHistoryPage(
+          {required String conversationId,
+          required HandrailDisplayHistoryCapability capability,
+          String? cursor,
+          HandrailDisplayAnchor? anchor,
+          Map<String, Object?>? view,
+          int limit = 30,
+          int maximumBytes = 65536,
+          Future<void>? cancellation,
+          Duration timeout = const Duration(seconds: 30)}) =>
+      _displayHistoryPage(
+          conversationId: conversationId,
+          capability: capability,
+          cursor: cursor,
+          anchor: anchor,
+          view: view,
+          limit: limit,
+          maximumBytes: maximumBytes,
+          cancellation: cancellation,
+          timeout: timeout);
+
+  Future<HandrailDisplayPage> _displayHistoryPage(
       {required String conversationId,
       required HandrailDisplayHistoryCapability capability,
       String? cursor,
@@ -308,7 +356,8 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
       int limit = 30,
       int maximumBytes = 65536,
       Future<void>? cancellation,
-      Duration timeout = const Duration(seconds: 30)}) async {
+      Duration timeout = const Duration(seconds: 30),
+      _DisplayReadBundle? bundle}) async {
     if (!_historyId(conversationId) ||
         anchor != null &&
             (cursor != null || view != null && view['type'] != 'messages') ||
@@ -330,7 +379,8 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
         },
         maximumBytes + 1024,
         cancellation,
-        timeout));
+        timeout,
+        bundle));
     if (page.conversationId != conversationId ||
         page.records.length > limit ||
         anchor != null && page.generation != anchor.generation) {
@@ -396,9 +446,14 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
       Map<String, Object?> input,
       int maximumBytes,
       Future<void>? cancellation,
-      Duration timeout) async {
+      Duration timeout,
+      [_DisplayReadBundle? bundle]) async {
     if (timeout <= Duration.zero)
       throw ArgumentError('A positive history timeout is required.');
+    if (bundle != null) {
+      final value = bundle.take(this, operation, input, maximumBytes);
+      if (value != null) return value;
+    }
     final decision = operation == 'approval_decision';
     final body =
         jsonEncode(decision ? input : {'operation': operation, 'input': input});
@@ -484,4 +539,47 @@ extension HandrailClientDisplayHistory on HandrailAiClient {
       cancel();
     }
   }
+}
+
+// Only one refresh owns this envelope. It cannot outlive that operation, cross
+// client/account boundaries, satisfy an exact-turn intent, or authorize a later
+// refresh. Ordinary response parsers still run for every constituent read.
+class _DisplayReadBundle {
+  final HandrailAiClient client;
+  final List<Map<String, Object?>> reads;
+  final List<Map<String, Object?>?> values;
+  final bool Function() current;
+  bool open = true;
+  _DisplayReadBundle(this.client, this.reads, this.values, this.current);
+  Map<String, Object?>? take(HandrailAiClient owner, String operation,
+      Map<String, Object?> input, int maximumBytes) {
+    if (!open || !identical(owner, client) || !current()) return null;
+    for (var i = 0; i < reads.length; i++) {
+      if (reads[i]['operation'] == operation &&
+          _bundleKey(reads[i]['input']) == _bundleKey(input)) {
+        final value = values[i];
+        values[i] = null;
+        if (value != null &&
+            utf8.encode(jsonEncode(value)).length > maximumBytes) {
+          throw const FormatException(
+              'Display history response exceeded its byte budget.');
+        }
+        return value;
+      }
+    }
+    return null;
+  }
+}
+
+String _bundleKey(Object? value) {
+  Object? sorted(Object? v) {
+    if (v is Map) {
+      final keys = v.keys.cast<String>().toList()..sort();
+      return {for (final key in keys) key: sorted(v[key])};
+    }
+    if (v is List) return v.map(sorted).toList();
+    return v;
+  }
+
+  return jsonEncode(sorted(value));
 }

@@ -195,9 +195,11 @@ class HandrailConversationSession {
     return _loadingApprovalHistory = work;
   }
 
-  Future<void> _readApprovalHistory(String? cursor) async {
+  Future<void> _readApprovalHistory(String? cursor,
+      {_DisplayReadBundle? bundle}) async {
     final epoch = ++_approvalHistoryEpoch;
-    final page = await readApprovals(history: true, cursor: cursor);
+    final page =
+        await _readApprovals(history: true, cursor: cursor, bundle: bundle);
     if (_disposed || epoch != _approvalHistoryEpoch) return;
     if (page.records.any((r) =>
         r.kind != 'approval' ||
@@ -262,6 +264,9 @@ class HandrailConversationSession {
   DateTime? _lastRefreshStarted;
   DateTime? _retryRefreshAt;
   int _refreshFailures = 0;
+  int _streamRefreshDemand = 0;
+  final _observedControls = <String, Future<Map<String, Object?>?>>{};
+  final _cancelRequestedTurns = <String>{};
   Duration get _automaticRefreshInterval =>
       pollingInterval != null && pollingInterval! > const Duration(seconds: 5)
           ? pollingInterval!
@@ -380,10 +385,22 @@ class HandrailConversationSession {
 
   /// Explicit bounded inbox or proposal/tool review, independent of messages.
   Future<HandrailDisplayPage> readApprovals(
+          {String? proposalId,
+          String? cursor,
+          bool history = false,
+          Future<void>? cancellation}) =>
+      _readApprovals(
+          proposalId: proposalId,
+          cursor: cursor,
+          history: history,
+          cancellation: cancellation);
+
+  Future<HandrailDisplayPage> _readApprovals(
       {String? proposalId,
       String? cursor,
       bool history = false,
-      Future<void>? cancellation}) async {
+      Future<void>? cancellation,
+      _DisplayReadBundle? bundle}) async {
     if (history && proposalId != null)
       throw ArgumentError('History cannot select a decision');
     if (_disposed ||
@@ -396,7 +413,8 @@ class HandrailConversationSession {
           retryable: true);
     }
     final generation = _control!.generation, activation = _displayActivation;
-    final page = await _displayRead((closed) => client.displayHistoryPage(
+    final page = await _displayRead((closed) => client._displayHistoryPage(
+        bundle: bundle,
         conversationId: conversationId,
         capability: _capabilities!.displayHistory!,
         view: proposalId == null
@@ -554,15 +572,40 @@ class HandrailConversationSession {
         _lastRefreshStarted != null &&
         DateTime.now().difference(_lastRefreshStarted!) <
             _automaticRefreshInterval) {
+      // A manual read may have moved the deadline after this wake was armed.
+      // Retain the invalidation instead of silently spending an early timer.
+      _scheduleStreamRefresh();
       return _refreshing ?? Future<void>.value();
     }
+    final demand = _streamRefreshDemand;
     return _refreshing ??= _refresh(preparation: preparation).whenComplete(() {
       _refreshing = null;
       if (_displayRefreshRequested) {
         _displayRefreshRequested = false;
         _scheduleDisplayRefresh();
       }
+      if (_streamRefreshDemand != demand) _scheduleStreamRefresh();
     });
+  }
+
+  Future<void> _evictDeniedDisplay(HandrailGatewayException cause) async {
+    _relatedCoverage = null;
+    _control = null;
+    _document = null;
+    _clearApprovalHistory();
+    if (_related.isNotEmpty) _relatedVersion++;
+    _related = const [];
+    _relatedTruncated = false;
+    _relatedViewKey = null;
+    _relatedGroups = const [];
+    _relatedGroup = 0;
+    _relatedCursor = null;
+    _relatedEpoch++;
+    _relatedRevision = null;
+    _relatedInitialized = false;
+    await _displayWindow!.select(null);
+    _error = cause;
+    _publish();
   }
 
   Future<void> _refresh({_PreparedChanges? preparation}) async {
@@ -632,6 +675,7 @@ class HandrailConversationSession {
       _retryRefreshAt = null;
       _publish();
     } catch (cause) {
+      _relatedCoverage = null;
       if (_disposed || activation.isCompleted) return;
       if (_displayWindow != null &&
           cause is HandrailGatewayException &&
@@ -641,20 +685,7 @@ class HandrailConversationSession {
             'unauthenticated',
             'not_found'
           }.contains(cause.code)) {
-        _control = null;
-        _document = null;
-        _clearApprovalHistory();
-        if (_related.isNotEmpty) _relatedVersion++;
-        _related = const [];
-        _relatedTruncated = false;
-        _relatedViewKey = null;
-        _relatedGroups = const [];
-        _relatedGroup = 0;
-        _relatedCursor = null;
-        _relatedEpoch++;
-        _relatedRevision = null;
-        _relatedInitialized = false;
-        await _displayWindow!.select(null);
+        await _evictDeniedDisplay(cause);
       }
       _error = cause is HandrailGatewayException
           ? cause
@@ -747,6 +778,7 @@ class HandrailConversationSession {
   }
 
   void _scheduleStreamRefresh() {
+    _streamRefreshDemand++;
     _preparationGeneration++;
     if (_disposed ||
         (_error != null && !_error!.retryable) ||
@@ -845,8 +877,8 @@ class HandrailConversationSession {
   }
 
   Future<HandrailTurnSubmission?> retryPendingMessage(
-      HandrailPendingTurnStore pendingStore,
-      {void Function(HandrailTurnSubmission)? onAccepted}) =>
+          HandrailPendingTurnStore pendingStore,
+          {void Function(HandrailTurnSubmission)? onAccepted}) =>
       _retryPendingMessage(pendingStore, onAccepted: onAccepted);
 
   Future<HandrailTurnSubmission?> _retryPendingMessage(
@@ -889,7 +921,7 @@ class HandrailConversationSession {
   /// up. This is a presentation notification, not execution success.
   /// Callback failures cannot strand admitted work. Coalesced callers are notified too.
   Future<void> submitTurn(HandrailTurnSubmission submission,
-      {void Function(HandrailTurnSubmission)? onAccepted}) =>
+          {void Function(HandrailTurnSubmission)? onAccepted}) =>
       _submit(submission, onAccepted: onAccepted);
 
   Future<void> _submit(HandrailTurnSubmission submission,
@@ -1100,18 +1132,72 @@ class HandrailConversationSession {
     if (_disposed) throw StateError('Conversation session is disposed');
     final done = Completer<Map<String, Object?>>();
     bool reading = false;
+    Timer? timer;
+    DateTime? lastRead, retryAt;
     Future<void> inspect() async {
       if (done.isCompleted || reading) return;
+      final known = _control?.requestedTurn?.turnId == turnId
+          ? _control?.requestedTurn
+          : _control?.latestTurn?.turnId == turnId
+              ? _control?.latestTurn
+              : null;
+      final urgent = known != null &&
+          const ['completed', 'cancelled', 'failed'].contains(known.status);
+      final interval = _cancelRequestedTurns.contains(turnId)
+          ? const Duration(milliseconds: 500)
+          : _automaticRefreshInterval;
+      final now = DateTime.now();
+      var due = lastRead?.add(interval);
+      if (retryAt != null && (due == null || retryAt!.isAfter(due)))
+        due = retryAt;
+      if ((!urgent || retryAt != null && retryAt!.isAfter(now)) &&
+          due != null &&
+          due.isAfter(now)) {
+        timer ??= Timer(due.difference(now), () {
+          timer = null;
+          inspect();
+        });
+        return;
+      }
+      timer?.cancel();
+      timer = null;
       reading = true;
+      lastRead = now;
       try {
-        final turn = await _findTurn(turnId);
+        // Concurrent observers share only the exact-turn read in progress.
+        // Admission/recovery/cancellation never consume this observation read.
+        final operation =
+            _observedControls.putIfAbsent(turnId, () => _findTurn(turnId));
+        Map<String, Object?>? turn;
+        try {
+          turn = await operation;
+        } finally {
+          if (identical(_observedControls[turnId], operation))
+            _observedControls.remove(turnId);
+        }
         if (done.isCompleted) return;
         if (turn != null &&
             const ['completed', 'failed', 'cancelled', 'waiting_for_approval']
-                .contains(turn['status'])) {
+                .contains(turn['status']) &&
+            (turn['status'] != 'waiting_for_approval' ||
+                !_cancelRequestedTurns.contains(turnId))) {
           done.complete(turn);
         }
       } catch (cause) {
+        if (!_disposed &&
+            _displayWindow != null &&
+            cause is HandrailGatewayException &&
+            const {
+              'forbidden',
+              'permission_denied',
+              'unauthenticated',
+              'not_found'
+            }.contains(cause.code)) {
+          await _evictDeniedDisplay(cause);
+        }
+        if (cause is HandrailGatewayException && cause.retryAfter != null) {
+          retryAt = DateTime.now().add(cause.retryAfter!);
+        }
         if (_disposed && !done.isCompleted) {
           done.completeError(const HandrailGatewayException(
               'observation_closed', 'The conversation account was closed.',
@@ -1121,6 +1207,12 @@ class HandrailConversationSession {
             !cause.retryable) done.completeError(cause);
       } finally {
         reading = false;
+        if (!done.isCompleted) {
+          timer ??= Timer(interval, () {
+            timer = null;
+            inspect();
+          });
+        }
       }
     }
 
@@ -1142,6 +1234,7 @@ class HandrailConversationSession {
       inspect();
       return await done.future;
     } finally {
+      timer?.cancel();
       await subscription.cancel();
     }
   }
@@ -1170,6 +1263,9 @@ class HandrailConversationSession {
           retryable: true);
     }
     if (turnId == null) return;
+    _cancelRequestedTurns.add(turnId);
+    while (_cancelRequestedTurns.length > 32)
+      _cancelRequestedTurns.remove(_cancelRequestedTurns.first);
     await client.cancelTurn({
       'conversationId': conversationId,
       'turnId': turnId,
@@ -1228,6 +1324,8 @@ class HandrailConversationSession {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    _observedControls.clear();
+    _cancelRequestedTurns.clear();
     _relatedCoverage = null;
     if (!_lifetime.isCompleted) _lifetime.complete();
     if (!_displayActivation.isCompleted) _displayActivation.complete();

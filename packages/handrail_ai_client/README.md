@@ -27,6 +27,19 @@ into observation. `refreshObservations()` performs the same cycle manually;
 evidence in `activityError` without changing send authorization or hiding a valid
 catalog. Account disposal stops the loop and ignores late replies.
 
+A gateway advertising `displayHistory.readBundle` lets a refresh carry up to
+five existing authorized history reads in one HTTP request. The session consumes
+matching results only within that refresh; account/activation/intent changes and
+incoherent revisions invalidate the envelope. Context is explicitly tied to its
+message IDs and turn, with paging and deferred coverage preserved. Exact-turn
+admission/recovery and cancellation keep their own fresh reads. A server without
+the capability uses individual reads. Adopt matching published full-SHA gateway
+and Flutter revisions to enable this optimization.
+
+Stream invalidations retain a follow-up when a manual read moves their deadline.
+Ordinary exact-turn observers coalesce concurrent reads and respect the automatic
+five-second floor; canonical cancellation remains responsive.
+
 ### Permanent deletion candidate
 
 `assistant.permanentlyDelete(conversationId, reviewedVersion)` deletes exactly the
