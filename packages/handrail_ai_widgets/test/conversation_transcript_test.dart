@@ -38,7 +38,7 @@ class Fixture {
     'citations': [],
     'citation_sources': [],
   };
-  bool running = false, pending = false;
+  bool running = false, pending = false, submitting = false;
   String conversationId = 'one';
   String? error;
   Future<void> Function()? retryOperation;
@@ -60,6 +60,7 @@ class Fixture {
       'loadMoreRelated': loadMoreRelated,
       'running': running,
       'pending': pending,
+      'submitting': submitting,
       'displayWindow': display,
       'relatedTruncated': relatedTruncated,
       'showLatestRelated': showLatestRelated,
@@ -106,14 +107,18 @@ void main() {
   for (final pair in {
     'user': 'Response stopped by you.',
     'timeout': 'Response timed out.',
-    'superseded': 'Response cancelled because authorization changed or it was superseded.',
+    'superseded':
+        'Response cancelled because authorization changed or it was superseded.',
     'runtime_shutdown': 'Response stopped because the runtime shut down.',
   }.entries) {
     testWidgets('saved cancellation presents ${pair.key}', (tester) async {
-      final f = Fixture(); addTearDown(f.changes.close);
+      final f = Fixture();
+      addTearDown(f.changes.close);
       final turn = (f.document['turns'] as List).first;
-      turn['status'] = 'cancelled'; turn['cancellation_reason'] = pair.key;
-      await tester.pumpWidget(surface(f)); await tester.pumpAndSettle();
+      turn['status'] = 'cancelled';
+      turn['cancellation_reason'] = pair.key;
+      await tester.pumpWidget(surface(f));
+      await tester.pumpAndSettle();
       expect(find.text(pair.value), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     });
@@ -260,8 +265,10 @@ void main() {
         'delivery_status': 'sending',
       };
       await tester.pumpWidget(surface(f));
-      await tester.pumpAndSettle();
       expect(find.text('My new message'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 1999));
+      expect(find.text('Sending…'), findsNothing);
+      await tester.pump(const Duration(milliseconds: 1));
       expect(find.text('Sending…'), findsOneWidget);
       f.outgoingMessage = {...f.outgoingMessage!, 'delivery_status': 'sent'};
       f.publish();
@@ -276,6 +283,94 @@ void main() {
       expect(find.text('My new message'), findsOneWidget);
       expect(find.text('Sent'), findsNothing);
       await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'quick delivery stays quiet and keeps the message height stable',
+    (tester) async {
+      final f = Fixture()
+        ..submitting = true
+        ..pending = true;
+      addTearDown(f.changes.close);
+      f.outgoingMessage = {
+        ...message('quick', 'Quick message', role: 'user'),
+        'delivery_status': 'sending',
+      };
+      await tester.pumpWidget(surface(f));
+      final initialHeight = tester
+          .getSize(find.byType(HandrailTranscriptMessage).last)
+          .height;
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Sending…'), findsNothing);
+      expect(find.text('Sending message…'), findsNothing);
+      expect(find.text('Checking your saved message…'), findsNothing);
+      f.outgoingMessage = {...f.outgoingMessage!, 'delivery_status': 'sent'};
+      f.publish();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 3));
+      expect(find.text('Sent'), findsNothing);
+      (f.document['messages'] as List).add(
+        message('quick', 'Quick message', role: 'user'),
+      );
+      f.outgoingMessage = null;
+      f.submitting = f.pending = false;
+      f.publish();
+      await tester.pumpAndSettle();
+      expect(find.text('Quick message'), findsOneWidget);
+      expect(
+        tester.getSize(find.byType(HandrailTranscriptMessage).last).height,
+        initialHeight,
+      );
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets(
+    'uncertain delivery appears immediately and new messages reset the delay',
+    (tester) async {
+      final f = Fixture();
+      addTearDown(f.changes.close);
+      f.outgoingMessage = {
+        ...message('first', 'First', role: 'user'),
+        'delivery_status': 'sending',
+      };
+      await tester.pumpWidget(surface(f));
+      f.outgoingMessage = {
+        ...f.outgoingMessage!,
+        'delivery_status': 'unconfirmed',
+      };
+      f.pending = true;
+      f.publish();
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Waiting for confirmation'), findsOneWidget);
+      expect(find.text('Retry'), findsOneWidget);
+      f.outgoingMessage = {...f.outgoingMessage!, 'delivery_status': 'sending'};
+      f.publish();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.text('Sending…'), findsOneWidget);
+      f.outgoingMessage = {
+        ...message('second', 'Second', role: 'user'),
+        'delivery_status': 'sending',
+      };
+      f.publish();
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Sending…'), findsNothing);
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.text('Sending…'), findsOneWidget);
+      f.conversationId = 'other';
+      f.publish();
+      await tester.pump();
+      await tester.pump();
+      expect(find.text('Sending…'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 3));
+      expect(tester.takeException(), isNull);
     },
   );
 

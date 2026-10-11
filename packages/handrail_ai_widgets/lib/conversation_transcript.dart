@@ -437,16 +437,18 @@ class _TranscriptState extends State<HandrailConversationTranscript>
               )),
               message: outgoing,
               style: widget.style,
-              showCopy: false,
+              showCopy: widget.showCopy,
+              copyText: widget.copyText,
               attachmentBuilder: widget.attachmentBuilder,
             ),
-            Semantics(
-              liveRegion: true,
-              child: Text(switch (outgoing['delivery_status']) {
-                'sent' => 'Sent',
-                'unconfirmed' => 'Waiting for confirmation',
-                _ => 'Sending…',
-              }),
+            _OutgoingDeliveryStatus(
+              key: ValueKey((
+                widget.binding.scope,
+                _conversationId,
+                'delivery',
+                outgoing['message_id'],
+              )),
+              status: outgoing['delivery_status'] as String? ?? 'sending',
             ),
           ],
         ),
@@ -470,26 +472,20 @@ class _TranscriptState extends State<HandrailConversationTranscript>
           proposals: _records(document['approval_proposals']),
         ),
       );
-    if (_state['submitting'] == true ||
+    if (_state['submitting'] == true && outgoing.isEmpty ||
         _state['running'] == true &&
+            outgoing['delivery_status'] != 'sending' &&
             !activity.hasCurrentAnswer &&
             (!widget.showToolActivity || activity.trailing.isEmpty))
       children.add(
         Padding(
           padding: const EdgeInsets.all(12),
-          child: Semantics(
-            liveRegion: true,
-            child: Text(
-              _state['submitting'] == true &&
-                      outgoing['delivery_status'] == 'sending'
-                  ? 'Sending message…'
-                  : widget.workingLabel,
-            ),
-          ),
+          child: Semantics(liveRegion: true, child: Text(widget.workingLabel)),
         ),
       );
     final error = _state['error'] as String? ?? _localError;
-    if (error != null || _state['pending'] == true) {
+    if (error != null ||
+        _state['pending'] == true && _state['submitting'] != true) {
       children.add(
         HandrailTranscriptNotice(
           key: widget.errorKey,
@@ -1186,3 +1182,59 @@ List<Map<String, Object?>> _records(Object? value) => value is List
           .map((value) => Map<String, Object?>.from(value))
           .toList()
     : const [];
+
+// This widget is keyed by account, conversation and outgoing message so a new
+// send always gets its own quiet period, and abandoned timers cannot leak.
+class _OutgoingDeliveryStatus extends StatefulWidget {
+  const _OutgoingDeliveryStatus({super.key, required this.status});
+  final String status;
+  @override
+  State<_OutgoingDeliveryStatus> createState() =>
+      _OutgoingDeliveryStatusState();
+}
+
+class _OutgoingDeliveryStatusState extends State<_OutgoingDeliveryStatus> {
+  Timer? _timer;
+  bool _delayed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _schedule();
+  }
+
+  void _schedule() {
+    _timer?.cancel();
+    if (widget.status == 'sending' && !_delayed) {
+      _timer = Timer(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _delayed = true);
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(_OutgoingDeliveryStatus oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.status != widget.status) _schedule();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_delayed && widget.status != 'unconfirmed')
+      return const SizedBox.shrink();
+    return Semantics(
+      liveRegion: true,
+      child: Text(switch (widget.status) {
+        'sent' => 'Sent',
+        'unconfirmed' => 'Waiting for confirmation',
+        _ => 'Sending…',
+      }),
+    );
+  }
+}
