@@ -1,19 +1,17 @@
-// Real SDK HTTP gateway, deterministic provider, in-memory persistence. This
+// Real SDK HTTP gateway, deterministic provider, disposable PostgreSQL persistence. This
 // qualifies the cross-language protocol without credentials or billable usage.
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
-import { createRequire } from 'node:module';
+import { PGlite } from '@electric-sql/pglite';
 // Optional explicit cross-revision fixture. Default checks always use the
 // installed public Git dependency; a local path never establishes adoption.
 const dist = process.env.HANDRAIL_TEST_JS_SDK_DIST;
 const { createHandrailAssistant, createProviderToolLoopTransport } = await import(dist
   ? pathToFileURL(resolve(dist, 'server/assistant.js')).href : '@handrail/ai-assistant/server/assistant');
 const {
-  InMemoryConversationEventStore, InMemoryApprovalProposalStore,
-  InMemoryConversationCatalog, InMemoryDurableApplicationTurnStore,
-  InMemoryToolExecutionLedger, parseConversationEvent, assistantToolArgumentReference,
+  parseConversationEvent, assistantToolArgumentReference,
 } = await import(dist ? pathToFileURL(resolve(dist, 'index.js')).href : '@handrail/ai-assistant');
 
 const required = (id) => ({ id, source: 'server_derived', trust: 'authoritative' });
@@ -21,24 +19,15 @@ const attribution = { organization: required('org'), project: required('project'
   service_environment: required('test'), known_user: required('user'),
   session: required(null), automation: required(null) };
 const context = { principalId: 'user', tenantId: 'tenant', scopeId: 'test', attribution };
-const records = new Map();
-let bundle = { events: new InMemoryConversationEventStore(),
-  approvals: new InMemoryApprovalProposalStore({ authorize: () => 'allow' }),
-  catalog: new InMemoryConversationCatalog({ authorize: () => 'allow' }),
-  durableTurns: new InMemoryDurableApplicationTurnStore(), toolLedger: new InMemoryToolExecutionLedger(),
-  activity: { async list() { return [...records.values()]; },
-    async upsert(record) { records.set(record.conversationId, record); return record; },
-    async markRead(conversationId) { const record = records.get(conversationId); if (!record) return null;
-      const read = { ...record, unread: false }; records.set(conversationId, read); return read; } },
-  usageReceiptSink: null, usageAdmissions: null };
-let persistence = { attachmentLimits: { maximumBytes: 1000, acceptedMediaTypes: ['text/plain'], ttlMilliseconds: 60000 },
-  persistence: {}, forScope: () => bundle };
+let bundle;
+const attachmentLimits = { maximumBytes: 1000, acceptedMediaTypes: ['text/plain'], ttlMilliseconds: 60000 };
+let persistence;
 let database;
-if (dist) {
-  // Source qualification uses the JS repository's existing test-only PostgreSQL
-  // engine and real SDK stores. Dependency declarations/locks remain unchanged.
-  const { PGlite } = createRequire(resolve(dist, '../package.json'))('@electric-sql/pglite');
-  const { postgresFromClient } = await import(pathToFileURL(resolve(dist, 'postgres/index.js')).href);
+{
+  // Indexed display history requires the real SDK PostgreSQL stores, including
+  // in ordinary installed-dependency checks. Each process owns a fresh database.
+  const { postgresFromClient } = await import(dist
+    ? pathToFileURL(resolve(dist, 'postgres/index.js')).href : '@handrail/ai-assistant/persistence/postgres');
   database = new PGlite();
   const adapt = db => {
     const client = { async query(sql, values = []) {
@@ -49,7 +38,7 @@ if (dist) {
   };
   const client = { query: adapt(database).query,
     transaction: operation => database.transaction(tx => operation(adapt(tx))) };
-  persistence = postgresFromClient(client, { attachmentLimits: persistence.attachmentLimits });
+  persistence = postgresFromClient(client, { attachmentLimits });
   await persistence.persistence.migrate();
   bundle = persistence.forScope(context, { createConversationId: randomUUID,
     authorizeConversation: () => 'allow', authorizeApproval: () => 'allow' });
@@ -158,7 +147,7 @@ const server = createServer(async (request, response) => {
       }
     }
     if (process.env.HANDRAIL_TEST_PRESEND_TRACE === '1') {
-      if (request.url === '/test/trace-clear' && dist) {
+      if (request.url === '/test/trace-clear') {
         const { conversationId } = JSON.parse(body);
         const revision = await bundle.events.getLatestRevision(conversationId);
         await bundle.events.append({ conversationId, expectedRevision: revision, events: [parseConversationEvent({
@@ -182,7 +171,7 @@ const server = createServer(async (request, response) => {
     if (request.url === '/test/stats') {
       response.setHeader('content-type', 'application/json'); response.end(JSON.stringify(stats)); return;
     }
-    if (request.url === '/test/history-seed' && dist) {
+    if (request.url === '/test/history-seed') {
       const { conversationId, count, text } = JSON.parse(body);
       if (!Number.isSafeInteger(count) || count < 1 || count > 1000) throw new Error('Invalid fixture count');
       if (text !== undefined && (typeof text !== 'string' || text.length * count > 1_000_000)) throw new Error('Invalid fixture text');

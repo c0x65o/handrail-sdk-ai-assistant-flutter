@@ -537,10 +537,7 @@ void main() {
         (((canonical['value'] as Map)['snapshot'] as Map)['state']
             as Map)['messages'],
         hasLength(201));
-  },
-      skip: Platform.environment['HANDRAIL_TEST_JS_SDK_DIST'] == null
-          ? 'Requires explicit local SDK source qualification with PostgreSQL stores.'
-          : false);
+  });
 
   test(
       'oversized review uses compact durable receipts through the real JS gateway',
@@ -607,10 +604,7 @@ void main() {
     expect(after['decisions'], (before['decisions'] as int) + 2);
     expect(after['maximumDecisionBytes'], lessThan(1024));
     expect(after['snapshotReads'], before['snapshotReads']);
-  },
-      skip: Platform.environment['HANDRAIL_TEST_JS_SDK_DIST'] == null
-          ? 'Requires local SDK source qualification with PostgreSQL.'
-          : false);
+  });
 
   test(
       'large message reader uses bounded plaintext HTTP and rejects content after deletion',
@@ -673,10 +667,7 @@ void main() {
         (await readRecord(id, 'message', record.id, 0, record.revision, 0,
             cancellation))['errorCode'],
         anyOf('stale_cursor', 'not_found'));
-  },
-      skip: Platform.environment['HANDRAIL_TEST_JS_SDK_DIST'] == null
-          ? 'Requires explicit local SDK source qualification with PostgreSQL stores.'
-          : false);
+  });
 
   for (final failCancel in [false, true]) {
     test(

@@ -55,16 +55,16 @@ Checks run serially, with one test worker per package. `make setup` installs the
 test gateway's JS SDK from its locked public HTTPS Git commit; that dependency's
 normal `prepare` hook compiles it. The Node fixture is test tooling only and is
 not a Dart dependency. Integration tests exercise a real SDK gateway with
-in-memory stores and a deterministic provider, without credentials or paid API
-calls. Upload/download ownership and expiry run in the default suite alongside
+disposable PGlite PostgreSQL stores and a deterministic provider, without
+credentials or paid API calls. Upload/download ownership and expiry run in the default suite alongside
 submission, cancellation, deletion and approval recovery. They do not need an
 adjacent JavaScript checkout or its `dist` directory.
 
-The gateway fixture currently locks public JS
-`15a3806c2595a3f93a87a768ad13293113f41b58`. Turn-35 normal public-install
-qualification passes full client analysis and all 138 client tests. An explicitly
-set `HANDRAIL_TEST_JS_SDK_DIST` is only a source qualification override; unset it
-for installed-dependency acceptance.
+The gateway fixture locks public JS `0.2.87` at
+`f9e7eefc00a977e6e4e263130d62099b88f68aeb`. Its disposable database runs the
+SDK migrations and supports indexed display history, including bounded message
+and approval reads. An explicitly set `HANDRAIL_TEST_JS_SDK_DIST` is only a
+source qualification override; unset it for installed-dependency acceptance.
 
 Each Dart package retains its own lockfile for reproducible SDK development.
 
